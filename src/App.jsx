@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Onboarding from './onboarding'
 import Home from './Home'
+import CreateCharacter from './CreateCharacter'
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
 
@@ -8,6 +9,7 @@ function App() {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(localStorage.getItem('gh_token'))
   const [onboarded, setOnboarded] = useState(localStorage.getItem('onboarded') === 'true')
+  const [screen, setScreen] = useState('home')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -48,6 +50,7 @@ function App() {
     setToken(null)
     setUser(null)
     setOnboarded(false)
+    setScreen('home')
   }
 
   if (!token) return (
@@ -73,12 +76,21 @@ function App() {
     />
   )
 
+  if (screen === 'create') return (
+    <CreateCharacter
+      token={token}
+      user={user}
+      onComplete={() => setScreen('home')}
+      onCancel={() => setScreen('home')}
+    />
+  )
+
   return (
     <Home
       token={token}
       user={user}
       isGM={localStorage.getItem('is_gm') === 'true'}
-      onCreateCharacter={() => alert('Create character — coming soon!')}
+      onCreateCharacter={() => setScreen('create')}
       onSelectCharacter={(char) => alert(`Selected: ${char.identity.name}`)}
     />
   )
