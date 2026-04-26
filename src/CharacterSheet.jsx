@@ -152,9 +152,40 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
     updateChar({ combat: { ...char.combat, conditions: char.combat.conditions.filter(c => c !== condition) } })
   }
 
+  const toggleDeathSave = (type, index) => {
+    const current = char.combat.deathSaves[type]
+    const updated = current > index ? index : index + 1
+    updateChar({ combat: { ...char.combat, deathSaves: { ...char.combat.deathSaves, [type]: updated } } })
+  }
+
+  const changeLevel = (delta) => {
+    const currentLevel = char.identity.class[0].level
+    const newLevel = Math.max(1, Math.min(20, currentLevel + delta))
+    updateChar({
+      identity: {
+        ...char.identity,
+        class: [{ ...char.identity.class[0], level: newLevel }]
+      }
+    })
+  }
+
   return (
     <div>
       <h3>Combat</h3>
+
+      {/* Level */}
+      <div style={{ marginBottom: '1rem' }}>
+        <label>Level</label><br />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+          {isOwner && !locked && (
+            <button onClick={() => changeLevel(-1)} style={{ padding: '0.25rem 0.75rem' }}>−</button>
+          )}
+          <strong style={{ fontSize: '1.2rem' }}>{char.identity.class[0].level}</strong>
+          {isOwner && !locked && (
+            <button onClick={() => changeLevel(1)} style={{ padding: '0.25rem 0.75rem' }}>+</button>
+          )}
+        </div>
+      </div>
 
       <div style={{ marginBottom: '1rem' }}>
         <label>Max HP</label><br />
@@ -189,6 +220,40 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
         />
       </div>
 
+      {/* Death Saves — only show at 0 HP */}
+      {char.combat.hpCurrent === 0 && (
+        <div style={{ marginBottom: '1.5rem', background: '#2a0a0a', border: '1px solid #8b0000', borderRadius: '8px', padding: '1rem' }}>
+          <strong style={{ color: '#ff4444' }}>⚠️ Death Saves</strong>
+          <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {['successes', 'failures'].map(type => (
+              <div key={type} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ width: '80px', textTransform: 'capitalize', fontSize: '0.9rem' }}>{type}</span>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  {[0, 1, 2].map(i => (
+                    <button
+                      key={i}
+                      onClick={() => { if (isOwner && !locked) toggleDeathSave(type, i) }}
+                      style={{
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        background: i < char.combat.deathSaves[type]
+                          ? (type === 'successes' ? '#2d6a2d' : '#8b0000')
+                          : '#333',
+                        border: '2px solid',
+                        borderColor: i < char.combat.deathSaves[type]
+                          ? (type === 'successes' ? '#4caf50' : '#ff4444')
+                          : '#555',
+                        cursor: isOwner && !locked ? 'pointer' : 'default'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Conditions */}
       <div style={{ marginBottom: '1rem' }}>
         <label>Conditions</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
