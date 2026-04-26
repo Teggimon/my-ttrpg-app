@@ -1,4 +1,4 @@
-const REPO_BASE = 'https://raw.githubusercontent.com/Teggimon/ttrpg-srd-content/main'
+const REPO_BASE = 'https://raw.githubusercontent.com/Teggimon/ttrpg-srd-content/master'
 
 const cache = {}
 
