@@ -6,7 +6,7 @@ const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
 function App() {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(localStorage.getItem('gh_token'))
-  const [onboarded, setOnboarded] = useState(localStorage.getItem('onboarded') === 'true')
+  const [onboarded, setOnboarded] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
