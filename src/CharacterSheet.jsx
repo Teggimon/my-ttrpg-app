@@ -325,7 +325,7 @@ function StatsTab({ char, locked, isOwner, updateChar }) {
             <div key={skill.name} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <button
                 onClick={() => { if (isOwner && !locked) cycleProf(skill.name) }}
-                style={{ background: 'none', border: 'none', cursor: isOwner && !locked ? 'pointer' : 'default', fontSize: '1rem', color: '#fff', padding: 0 }}
+                style={{ background: 'none', border: 'none', cursor: isOwner && !locked ? 'pointer' : 'default', fontSize: '1rem', color: '#fff', padding: 0, width: '1.5rem', textAlign: 'center' }}
               >
                 {profIcon(skill.name)}
               </button>
