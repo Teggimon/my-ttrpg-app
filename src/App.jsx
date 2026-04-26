@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import Onboarding from './Onboarding'
+import Onboarding from './onboarding'
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
 
