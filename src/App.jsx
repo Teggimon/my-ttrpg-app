@@ -12,7 +12,7 @@ function App() {
     const code = params.get('code')
 
     if (code) {
-      fetch(`/api/auth?code=${code}`)
+      fetch(`/api/auth/callback?code=${code}`)
         .then(res => res.json())
         .then(data => {
           if (data.access_token) {
