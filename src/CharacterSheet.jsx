@@ -572,5 +572,15 @@ function XPPopup({ char, onClose, onUpdate }) {
     </div>
   )
 }
+{showXPPopup && (
+  <XPPopup
+    char={char}
+    onClose={() => setShowXPPopup(false)}
+    onUpdate={(updates) => {
+      updateChar(updates)
+      setShowXPPopup(false)
+    }}
+  />
+)}
 
 export default CharacterSheet
