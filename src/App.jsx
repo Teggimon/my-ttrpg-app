@@ -49,7 +49,7 @@ function App() {
     setOnboarded(false)
   }
 
-  if (!user) return (
+  if (!token) return (
     <div style={{ padding: '2rem' }}>
       <h1>⚔️ TTRPG Sheet</h1>
       <p>Create, share and track your characters across every session.</p>
@@ -57,7 +57,14 @@ function App() {
     </div>
   )
 
-  if (user && !onboarded) return (
+  if (!user) return (
+    <div style={{ padding: '2rem' }}>
+      <h1>⚔️ TTRPG Sheet</h1>
+      <p>Loading...</p>
+    </div>
+  )
+
+  if (!onboarded) return (
     <Onboarding
       token={token}
       user={user}
@@ -71,7 +78,6 @@ function App() {
       <p>Welcome back, {user.login}! 👋</p>
       <img src={user.avatar_url} width={64} style={{ borderRadius: '50%' }} />
       <br /><br />
-      <p>Your character repo: <strong>{localStorage.getItem('character_repo')}</strong></p>
       <button onClick={logout}>Sign out</button>
     </div>
   )
