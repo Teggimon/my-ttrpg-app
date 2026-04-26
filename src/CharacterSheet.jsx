@@ -76,12 +76,12 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
         </div>
 
         {/* XP Row */}
-        <div
-          onClick={() => isOwner && setShowXPPopup(true)}
-          style={{ fontSize: '0.85rem', color: '#aaa', cursor: isOwner ? 'pointer' : 'default', marginBottom: '0.5rem' }}
-        >
-          XP {char.identity.xp} {isOwner && '✏️'}
-        </div>
+<button
+  onClick={() => setShowXPPopup(true)}
+  style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '0.85rem', cursor: 'pointer', padding: 0, marginBottom: '0.5rem', textAlign: 'left' }}
+>
+  XP {char.identity.xp} ✏️
+</button>
 
         {/* HP Row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
