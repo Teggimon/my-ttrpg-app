@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
+import Onboarding from './Onboarding'
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
 
 function App() {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(localStorage.getItem('gh_token'))
+  const [onboarded, setOnboarded] = useState(localStorage.getItem('onboarded') === 'true')
 
   useEffect(() => {
-    // Handle OAuth callback
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
 
@@ -40,25 +41,37 @@ function App() {
 
   const logout = () => {
     localStorage.removeItem('gh_token')
+    localStorage.removeItem('onboarded')
+    localStorage.removeItem('character_repo')
+    localStorage.removeItem('is_gm')
     setToken(null)
     setUser(null)
+    setOnboarded(false)
   }
 
-  if (!user) {
-    return (
-      <div style={{ padding: '2rem' }}>
-        <h1>⚔️ TTRPG Sheet</h1>
-        <button onClick={login}>Sign in with GitHub</button>
-      </div>
-    )
-  }
+  if (!user) return (
+    <div style={{ padding: '2rem' }}>
+      <h1>⚔️ TTRPG Sheet</h1>
+      <p>Create, share and track your characters across every session.</p>
+      <button onClick={login}>Sign in with GitHub</button>
+    </div>
+  )
+
+  if (!onboarded) return (
+    <Onboarding
+      token={token}
+      user={user}
+      onComplete={() => setOnboarded(true)}
+    />
+  )
 
   return (
     <div style={{ padding: '2rem' }}>
       <h1>⚔️ TTRPG Sheet</h1>
-      <p>Welcome, {user.login}! 👋</p>
+      <p>Welcome back, {user.login}! 👋</p>
       <img src={user.avatar_url} width={64} style={{ borderRadius: '50%' }} />
       <br /><br />
+      <p>Your character repo: <strong>{localStorage.getItem('character_repo')}</strong></p>
       <button onClick={logout}>Sign out</button>
     </div>
   )
