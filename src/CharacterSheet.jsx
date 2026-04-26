@@ -133,9 +133,29 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
 }
 
 function CombatTab({ char, locked, isOwner, updateChar }) {
+  const [showConditionPicker, setShowConditionPicker] = useState(false)
+
+  const allConditions = [
+    'Blinded', 'Charmed', 'Deafened', 'Exhaustion', 'Frightened',
+    'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified',
+    'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious'
+  ]
+
+  const addCondition = (condition) => {
+    if (!char.combat.conditions.includes(condition)) {
+      updateChar({ combat: { ...char.combat, conditions: [...char.combat.conditions, condition] } })
+    }
+    setShowConditionPicker(false)
+  }
+
+  const removeCondition = (condition) => {
+    updateChar({ combat: { ...char.combat, conditions: char.combat.conditions.filter(c => c !== condition) } })
+  }
+
   return (
     <div>
       <h3>Combat</h3>
+
       <div style={{ marginBottom: '1rem' }}>
         <label>Max HP</label><br />
         <input
@@ -146,6 +166,7 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
           style={{ padding: '0.5rem', width: '100px' }}
         />
       </div>
+
       <div style={{ marginBottom: '1rem' }}>
         <label>Armour Class</label><br />
         <input
@@ -156,7 +177,8 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
           style={{ padding: '0.5rem', width: '100px' }}
         />
       </div>
-      <div style={{ marginBottom: '1rem' }}>
+
+      <div style={{ marginBottom: '1.5rem' }}>
         <label>Speed</label><br />
         <input
           type="number"
@@ -165,6 +187,41 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
           onChange={e => updateChar({ combat: { ...char.combat, speed: parseInt(e.target.value) } })}
           style={{ padding: '0.5rem', width: '100px' }}
         />
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label>Conditions</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+          {char.combat.conditions.map(c => (
+            <span key={c} style={{ background: '#8b0000', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              {c}
+              {isOwner && !locked && (
+                <button onClick={() => removeCondition(c)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, fontSize: '0.8rem' }}>✕</button>
+              )}
+            </span>
+          ))}
+          {isOwner && !locked && (
+            <button onClick={() => setShowConditionPicker(!showConditionPicker)} style={{ background: '#333', border: 'none', color: '#fff', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>
+              + Add
+            </button>
+          )}
+        </div>
+
+        {showConditionPicker && (
+          <div style={{ marginTop: '0.5rem', background: '#12122a', border: '1px solid #444', borderRadius: '8px', padding: '0.75rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              {allConditions.filter(c => !char.combat.conditions.includes(c)).map(c => (
+                <button
+                  key={c}
+                  onClick={() => addCondition(c)}
+                  style={{ background: '#333', border: 'none', color: '#fff', padding: '0.25rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
