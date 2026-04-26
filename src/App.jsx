@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import Onboarding from './onboarding'
+import Home from './Home'
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
 
 function App() {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(localStorage.getItem('gh_token'))
-  const [onboarded, setOnboarded] = useState(false)
+  const [onboarded, setOnboarded] = useState(localStorage.getItem('onboarded') === 'true')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -73,13 +74,13 @@ function App() {
   )
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>⚔️ TTRPG Sheet</h1>
-      <p>Welcome back, {user.login}! 👋</p>
-      <img src={user.avatar_url} width={64} style={{ borderRadius: '50%' }} />
-      <br /><br />
-      <button onClick={logout}>Sign out</button>
-    </div>
+    <Home
+      token={token}
+      user={user}
+      isGM={localStorage.getItem('is_gm') === 'true'}
+      onCreateCharacter={() => alert('Create character — coming soon!')}
+      onSelectCharacter={(char) => alert(`Selected: ${char.identity.name}`)}
+    />
   )
 }
 
