@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { Octokit } from '@octokit/rest'
 
 function CharacterSheet({ character, token, user, onBack, onUpdate }) {
@@ -65,7 +65,7 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
               {locked ? '🔒' : '🔓'}
             </button>
           )}
-         {!isOwner && <span>🔒</span>}
+          {!isOwner && <span>🔒</span>}
           <strong style={{ fontSize: '1.2rem' }}>{char.identity.name}</strong>
           <span style={{ color: '#aaa', fontSize: '0.9rem' }}>
             {char.identity.race} · {char.identity.class[0].name} {char.identity.class[0].level}
@@ -76,12 +76,12 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
         </div>
 
         {/* XP Row */}
-<button
-  onClick={() => setShowXPPopup(true)}
-  style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '0.85rem', cursor: 'pointer', padding: 0, marginBottom: '0.5rem', textAlign: 'left' }}
->
-  XP {char.identity.xp} ✏️
-</button>
+        <button
+          onClick={() => setShowXPPopup(true)}
+          style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '0.85rem', cursor: 'pointer', padding: 0, marginBottom: '0.5rem', textAlign: 'left' }}
+        >
+          XP {char.identity.xp} ✏️
+        </button>
 
         {/* HP Row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
@@ -137,6 +137,18 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
         {activeTab === 'inventory' && <InventoryTab char={char} />}
         {activeTab === 'notes' && <NotesTab char={char} locked={locked} isOwner={isOwner} updateChar={updateChar} />}
       </div>
+
+      {/* XP Popup */}
+      {showXPPopup && (
+        <XPPopup
+          char={char}
+          onClose={() => setShowXPPopup(false)}
+          onUpdate={(updates) => {
+            updateChar(updates)
+            setShowXPPopup(false)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -182,7 +194,6 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
     <div>
       <h3>Combat</h3>
 
-      {/* Level */}
       <div style={{ marginBottom: '1rem' }}>
         <label>Level</label><br />
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
@@ -229,7 +240,6 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
         />
       </div>
 
-      {/* Death Saves — only show at 0 HP */}
       {char.combat.hpCurrent === 0 && (
         <div style={{ marginBottom: '1.5rem', background: '#2a0a0a', border: '1px solid #8b0000', borderRadius: '8px', padding: '1rem' }}>
           <strong style={{ color: '#ff4444' }}>⚠️ Death Saves</strong>
@@ -262,7 +272,6 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
         </div>
       )}
 
-      {/* Conditions */}
       <div style={{ marginBottom: '1rem' }}>
         <label>Conditions</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -460,6 +469,7 @@ function NotesTab({ char, locked, isOwner, updateChar }) {
     </div>
   )
 }
+
 function XPPopup({ char, onClose, onUpdate }) {
   const [amount, setAmount] = useState('')
   const [milestoneMode, setMilestoneMode] = useState(char.settings?.milestoneMode || false)
@@ -572,15 +582,5 @@ function XPPopup({ char, onClose, onUpdate }) {
     </div>
   )
 }
-{showXPPopup && (
-  <XPPopup
-    char={char}
-    onClose={() => setShowXPPopup(false)}
-    onUpdate={(updates) => {
-      updateChar(updates)
-      setShowXPPopup(false)
-    }}
-  />
-)}
 
 export default CharacterSheet
