@@ -57,7 +57,7 @@ function App() {
     </div>
   )
 
-  if (!onboarded) return (
+  if (user && !onboarded) return (
     <Onboarding
       token={token}
       user={user}
