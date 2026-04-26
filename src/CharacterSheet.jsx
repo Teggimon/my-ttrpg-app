@@ -1,16 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Octokit } from '@octokit/rest'
 
 function CharacterSheet({ character, token, user, onBack, onUpdate }) {
   const [activeTab, setActiveTab] = useState('combat')
   const [char, setChar] = useState(character)
   const [locked, setLocked] = useState(false)
+  const [syncStatus, setSyncStatus] = useState('saved')
+  const debounceTimer = useRef(null)
 
+  const octokit = new Octokit({ auth: token })
+  const repoName = localStorage.getItem('character_repo')
   const isOwner = char.meta.owner === `github:${user.login}`
+
+  const saveToGitHub = async (character) => {
+    setSyncStatus('saving')
+    try {
+      const fileName = character.identity.name.toLowerCase().replace(/\s+/g, '-')
+      const { data: existing } = await octokit.repos.getContent({
+        owner: user.login,
+        repo: repoName,
+        path: `characters/${fileName}.json`,
+      })
+      await octokit.repos.createOrUpdateFileContents({
+        owner: user.login,
+        repo: repoName,
+        path: `characters/${fileName}.json`,
+        message: `Update character: ${character.identity.name}`,
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(character, null, 2)))),
+        sha: existing.sha,
+      })
+      setSyncStatus('saved')
+    } catch (err) {
+      setSyncStatus('error')
+    }
+  }
 
   const updateChar = (updates) => {
     const updated = { ...char, ...updates }
     setChar(updated)
-    onUpdate(updated)
+    setSyncStatus('saving')
+    if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    debounceTimer.current = setTimeout(() => {
+      saveToGitHub(updated)
+    }, 1500)
   }
 
   const tabs = [
@@ -36,6 +68,9 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
           <strong style={{ fontSize: '1.2rem' }}>{char.identity.name}</strong>
           <span style={{ color: '#aaa', fontSize: '0.9rem' }}>
             {char.identity.race} · {char.identity.class[0].name} {char.identity.class[0].level}
+          </span>
+          <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: syncStatus === 'saved' ? '#4caf50' : syncStatus === 'error' ? '#f44336' : '#aaa' }}>
+            {syncStatus === 'saved' ? '✓ Saved' : syncStatus === 'saving' ? '⟳ Saving...' : '⚠️ Error'}
           </span>
         </div>
 
@@ -89,8 +124,8 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
       <div style={{ padding: '1rem' }}>
         {activeTab === 'combat' && <CombatTab char={char} locked={locked} isOwner={isOwner} updateChar={updateChar} />}
         {activeTab === 'stats' && <StatsTab char={char} locked={locked} isOwner={isOwner} updateChar={updateChar} />}
-        {activeTab === 'spells' && <SpellsTab char={char} locked={locked} isOwner={isOwner} updateChar={updateChar} />}
-        {activeTab === 'inventory' && <InventoryTab char={char} locked={locked} isOwner={isOwner} updateChar={updateChar} />}
+        {activeTab === 'spells' && <SpellsTab char={char} />}
+        {activeTab === 'inventory' && <InventoryTab char={char} />}
         {activeTab === 'notes' && <NotesTab char={char} locked={locked} isOwner={isOwner} updateChar={updateChar} />}
       </div>
     </div>
@@ -137,9 +172,8 @@ function CombatTab({ char, locked, isOwner, updateChar }) {
 
 function StatsTab({ char, locked, isOwner, updateChar }) {
   const abilities = ['str', 'dex', 'con', 'int', 'wis', 'cha']
-  const modifier = score => Math.floor((score - 10) / 2)
   const modStr = score => {
-    const mod = modifier(score)
+    const mod = Math.floor((score - 10) / 2)
     return mod >= 0 ? `+${mod}` : `${mod}`
   }
 
@@ -170,7 +204,7 @@ function StatsTab({ char, locked, isOwner, updateChar }) {
   )
 }
 
-function SpellsTab({ char }) {
+function SpellsTab() {
   return (
     <div>
       <h3>Spells</h3>
@@ -179,7 +213,7 @@ function SpellsTab({ char }) {
   )
 }
 
-function InventoryTab({ char }) {
+function InventoryTab() {
   return (
     <div>
       <h3>Inventory</h3>
