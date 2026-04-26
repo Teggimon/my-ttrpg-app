@@ -234,10 +234,68 @@ function StatsTab({ char, locked, isOwner, updateChar }) {
     return mod >= 0 ? `+${mod}` : `${mod}`
   }
 
+  const skillList = [
+    { name: 'Acrobatics', ability: 'dex' },
+    { name: 'Animal Handling', ability: 'wis' },
+    { name: 'Arcana', ability: 'int' },
+    { name: 'Athletics', ability: 'str' },
+    { name: 'Deception', ability: 'cha' },
+    { name: 'History', ability: 'int' },
+    { name: 'Insight', ability: 'wis' },
+    { name: 'Intimidation', ability: 'cha' },
+    { name: 'Investigation', ability: 'int' },
+    { name: 'Medicine', ability: 'wis' },
+    { name: 'Nature', ability: 'int' },
+    { name: 'Perception', ability: 'wis' },
+    { name: 'Performance', ability: 'cha' },
+    { name: 'Persuasion', ability: 'cha' },
+    { name: 'Religion', ability: 'int' },
+    { name: 'Sleight of Hand', ability: 'dex' },
+    { name: 'Stealth', ability: 'dex' },
+    { name: 'Survival', ability: 'wis' },
+  ]
+
+  const proficiencyBonus = () => {
+    const level = char.identity.class[0].level
+    return Math.ceil(level / 4) + 1
+  }
+
+  const getSkillKey = (name) => name.toLowerCase().replace(/\s+/g, '')
+
+  const cycleProf = (skillName) => {
+    const key = getSkillKey(skillName)
+    const current = char.stats.skills[key] || 'none'
+    const next = current === 'none' ? 'proficient' : current === 'proficient' ? 'expert' : 'none'
+    updateChar({
+      stats: {
+        ...char.stats,
+        skills: { ...char.stats.skills, [key]: next }
+      }
+    })
+  }
+
+  const getSkillBonus = (skill) => {
+    const key = getSkillKey(skill.name)
+    const prof = char.stats.skills[key] || 'none'
+    const abilityMod = Math.floor((char.stats.abilityScores[skill.ability] - 10) / 2)
+    const pb = proficiencyBonus()
+    if (prof === 'expert') return abilityMod + pb * 2
+    if (prof === 'proficient') return abilityMod + pb
+    return abilityMod
+  }
+
+  const profIcon = (skillName) => {
+    const key = getSkillKey(skillName)
+    const prof = char.stats.skills[key] || 'none'
+    if (prof === 'expert') return '◈'
+    if (prof === 'proficient') return '◆'
+    return '◇'
+  }
+
   return (
     <div>
       <h3>Ability Scores</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {abilities.map(ab => (
           <div key={ab} style={{ border: '1px solid #444', borderRadius: '8px', padding: '0.75rem', textAlign: 'center' }}>
             <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{modStr(char.stats.abilityScores[ab])}</div>
@@ -256,6 +314,27 @@ function StatsTab({ char, locked, isOwner, updateChar }) {
             <div style={{ fontSize: '0.8rem', color: '#aaa', textTransform: 'uppercase', marginTop: '0.25rem' }}>{ab}</div>
           </div>
         ))}
+      </div>
+
+      <h3>Skills</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        {skillList.map(skill => {
+          const bonus = getSkillBonus(skill)
+          const bonusStr = bonus >= 0 ? `+${bonus}` : `${bonus}`
+          return (
+            <div key={skill.name} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                onClick={() => { if (isOwner && !locked) cycleProf(skill.name) }}
+                style={{ background: 'none', border: 'none', cursor: isOwner && !locked ? 'pointer' : 'default', fontSize: '1rem', color: '#fff', padding: 0 }}
+              >
+                {profIcon(skill.name)}
+              </button>
+              <span style={{ flex: 1 }}>{skill.name}</span>
+              <span style={{ color: '#aaa', fontSize: '0.85rem', textTransform: 'uppercase' }}>{skill.ability}</span>
+              <span style={{ width: '2.5rem', textAlign: 'right', fontWeight: 'bold' }}>{bonusStr}</span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
