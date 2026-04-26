@@ -6,6 +6,7 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
   const [char, setChar] = useState(character)
   const [locked, setLocked] = useState(false)
   const [syncStatus, setSyncStatus] = useState('saved')
+  const [showXPPopup, setShowXPPopup] = useState(false)
   const debounceTimer = useRef(null)
 
   const octokit = new Octokit({ auth: token })
@@ -68,6 +69,12 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
           <strong style={{ fontSize: '1.2rem' }}>{char.identity.name}</strong>
           <span style={{ color: '#aaa', fontSize: '0.9rem' }}>
             {char.identity.race} · {char.identity.class[0].name} {char.identity.class[0].level}
+            <div 
+  onClick={() => isOwner && setShowXPPopup(true)}
+  style={{ fontSize: '0.85rem', color: '#aaa', cursor: isOwner ? 'pointer' : 'default', marginTop: '0.25rem' }}
+>
+  XP {char.identity.xp} {isOwner && '✏️'}
+</div>
           </span>
           <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: syncStatus === 'saved' ? '#4caf50' : syncStatus === 'error' ? '#f44336' : '#aaa' }}>
             {syncStatus === 'saved' ? '✓ Saved' : syncStatus === 'saving' ? '⟳ Saving...' : '⚠️ Error'}
@@ -448,6 +455,118 @@ function NotesTab({ char, locked, isOwner, updateChar }) {
           />
         </div>
       ))}
+    </div>
+  )
+}
+function XPPopup({ char, onClose, onUpdate }) {
+  const [amount, setAmount] = useState('')
+  const [milestoneMode, setMilestoneMode] = useState(char.settings?.milestoneMode || false)
+
+  const xpThresholds = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000]
+
+  const currentLevel = char.identity.class[0].level
+  const currentXP = char.identity.xp
+  const nextThreshold = xpThresholds[currentLevel] || null
+  const xpToNext = nextThreshold ? nextThreshold - currentXP : null
+
+  const applyXP = () => {
+    const delta = parseInt(amount)
+    if (isNaN(delta)) return
+
+    const newXP = Math.max(0, currentXP + delta)
+    let newLevel = currentLevel
+
+    if (!milestoneMode) {
+      for (let i = xpThresholds.length - 1; i >= 0; i--) {
+        if (newXP >= xpThresholds[i]) {
+          newLevel = Math.min(20, i + 1)
+          break
+        }
+      }
+    }
+
+    onUpdate({
+      identity: {
+        ...char.identity,
+        xp: newXP,
+        class: [{ ...char.identity.class[0], level: newLevel }]
+      },
+      settings: { ...char.settings, milestoneMode }
+    })
+
+    setAmount('')
+  }
+
+  const currentThreshold = xpThresholds[currentLevel - 1]
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+      <div style={{ background: '#1a1a2e', padding: '1.5rem', borderRadius: '8px', width: '300px' }}>
+        <h3 style={{ margin: '0 0 1rem' }}>Experience Points</h3>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#aaa', marginBottom: '0.25rem' }}>
+            <span>Current XP</span>
+            <strong style={{ color: '#fff' }}>{currentXP.toLocaleString()}</strong>
+          </div>
+          {!milestoneMode && nextThreshold && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#aaa', marginBottom: '0.5rem' }}>
+                <span>To level {currentLevel + 1}</span>
+                <strong style={{ color: '#fff' }}>{xpToNext.toLocaleString()} XP</strong>
+              </div>
+              <div style={{ background: '#333', borderRadius: '4px', height: '6px', marginBottom: '1rem' }}>
+                <div style={{
+                  background: '#4caf50',
+                  height: '100%',
+                  borderRadius: '4px',
+                  width: `${Math.min(100, ((currentXP - currentThreshold) / (nextThreshold - currentThreshold)) * 100)}%`
+                }} />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ fontSize: '0.9rem' }}>Levelling Method</label>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <button
+              onClick={() => setMilestoneMode(false)}
+              style={{ flex: 1, padding: '0.5rem', background: !milestoneMode ? '#4caf50' : '#333', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              XP
+            </button>
+            <button
+              onClick={() => setMilestoneMode(true)}
+              style={{ flex: 1, padding: '0.5rem', background: milestoneMode ? '#4caf50' : '#333', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Milestone
+            </button>
+          </div>
+        </div>
+
+        {!milestoneMode && (
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ fontSize: '0.9rem' }}>Add XP (use negative to subtract)</label><br />
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <input
+                type="number"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                placeholder="e.g. 250 or -100"
+                style={{ flex: 1, padding: '0.5rem', background: '#12122a', border: '1px solid #444', color: '#fff', borderRadius: '4px' }}
+              />
+              <button onClick={applyXP} style={{ padding: '0.5rem 1rem', background: '#4caf50', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}>
+                Apply
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button onClick={onClose} style={{ width: '100%', padding: '0.5rem', background: '#333', border: 'none', color: '#fff', borderRadius: '4px', cursor: 'pointer' }}>
+          Close
+        </button>
+      </div>
     </div>
   )
 }
