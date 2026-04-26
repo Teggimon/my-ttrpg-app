@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import Onboarding from './onboarding'
 import Home from './Home'
 import CreateCharacter from './CreateCharacter'
+import CharacterSheet from './CharacterSheet'
+import { Octokit } from '@octokit/rest'
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
 
@@ -10,6 +12,10 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem('gh_token'))
   const [onboarded, setOnboarded] = useState(localStorage.getItem('onboarded') === 'true')
   const [screen, setScreen] = useState('home')
+  const [selectedCharacter, setSelectedCharacter] = useState(null)
+
+  const octokit = token ? new Octokit({ auth: token }) : null
+  const repoName = localStorage.getItem('character_repo')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -53,6 +59,17 @@ function App() {
     setScreen('home')
   }
 
+  const saveCharacter = async (character) => {
+    const fileName = character.identity.name.toLowerCase().replace(/\s+/g, '-')
+    await octokit.repos.createOrUpdateFileContents({
+      owner: user.login,
+      repo: repoName,
+      path: `characters/${fileName}.json`,
+      message: `Update character: ${character.identity.name}`,
+      content: btoa(JSON.stringify(character, null, 2)),
+    })
+  }
+
   if (!token) return (
     <div style={{ padding: '2rem' }}>
       <h1>⚔️ TTRPG Sheet</h1>
@@ -85,13 +102,26 @@ function App() {
     />
   )
 
+  if (screen === 'character' && selectedCharacter) return (
+    <CharacterSheet
+      character={selectedCharacter}
+      token={token}
+      user={user}
+      onBack={() => setScreen('home')}
+      onUpdate={saveCharacter}
+    />
+  )
+
   return (
     <Home
       token={token}
       user={user}
       isGM={localStorage.getItem('is_gm') === 'true'}
       onCreateCharacter={() => setScreen('create')}
-      onSelectCharacter={(char) => alert(`Selected: ${char.identity.name}`)}
+      onSelectCharacter={(char) => {
+        setSelectedCharacter(char)
+        setScreen('character')
+      }}
     />
   )
 }
