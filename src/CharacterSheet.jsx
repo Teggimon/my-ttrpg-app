@@ -69,13 +69,13 @@ function CharacterSheet({ character, token, user, onBack, onUpdate }) {
           <strong style={{ fontSize: '1.2rem' }}>{char.identity.name}</strong>
           <span style={{ color: '#aaa', fontSize: '0.9rem' }}>
             {char.identity.race} · {char.identity.class[0].name} {char.identity.class[0].level}
-            <div 
-  onClick={() => isOwner && setShowXPPopup(true)}
-  style={{ fontSize: '0.85rem', color: '#aaa', cursor: isOwner ? 'pointer' : 'default', marginTop: '0.25rem' }}
->
-  XP {char.identity.xp} {isOwner && '✏️'}
-</div>
           </span>
+          <div 
+            onClick={() => isOwner && setShowXPPopup(true)}
+            style={{ fontSize: '0.85rem', color: '#aaa', cursor: isOwner ? 'pointer' : 'default', marginTop: '0.25rem' }}
+            >
+             XP {char.identity.xp} {isOwner && '✏️'}
+        </div>
           <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: syncStatus === 'saved' ? '#4caf50' : syncStatus === 'error' ? '#f44336' : '#aaa' }}>
             {syncStatus === 'saved' ? '✓ Saved' : syncStatus === 'saving' ? '⟳ Saving...' : '⚠️ Error'}
           </span>
