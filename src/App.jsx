@@ -94,13 +94,15 @@ function App() {
   )
 
   if (screen === 'create') return (
+  <div className="screen-scroll">
     <CreateCharacter
       token={token}
       user={user}
       onComplete={() => setScreen('home')}
       onCancel={() => setScreen('home')}
     />
-  )
+  </div>
+)
 
 if (screen === 'character' && selectedCharacter) return (
   <CharacterLayout

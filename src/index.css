@@ -157,3 +157,9 @@ body {
   border-radius: var(--radius-lg);
   padding: 8px 10px;
 }
+/* ─── Scrollable screens (e.g. character creation wizard) ── */
+.screen-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
