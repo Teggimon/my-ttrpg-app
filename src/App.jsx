@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Onboarding from './onboarding'
 import Home from './Home'
 import CreateCharacter from './CreateCharacter'
-import CharacterSheet from './CharacterSheet'
+import CharacterLayout from "./CharacterLayout";
 import { Octokit } from '@octokit/rest'
 
 const CLIENT_ID = import.meta.env.VITE_GITHUB_CLIENT_ID
