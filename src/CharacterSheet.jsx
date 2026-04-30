@@ -780,7 +780,7 @@ function InventoryTab({ char, locked, isOwner, updateChar }) {
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid #2a2a4a', cursor: 'pointer' }}>
                   <div>
                     <span>{item.name}</span>
-                    <span style={{ fontSize: '0.78rem', color: '#aaa', marginLeft: '0.5rem' }}>{item.rarity || item.equipment_category?.name || ''}</span>
+                    <span style={{ fontSize: '0.78rem', color: '#aaa', marginLeft: '0.5rem' }}>{item.rarity?.name || item.equipment_category?.name || ''}</span>
                   </div>
                   {item.damage && <span style={{ fontSize: '0.78rem', color: '#888' }}>{item.damage.damage_dice} {item.damage.damage_type?.name}</span>}
                 </div>
