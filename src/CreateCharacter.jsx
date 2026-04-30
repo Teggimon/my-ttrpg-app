@@ -438,30 +438,30 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
         </>
       )}
 
-      {/* Skill choices */}
-      {allSkillGroups.map((group, gi) => (
-        <div key={gi}>
-          <label style={S.label}>Choose {group.choose} Skill{group.choose > 1 ? 's' : ''}</label>
-          <div style={S.cardSub}>{group.desc}</div>
+     {/* Skill choices */}
+{allSkillGroups.map((group, gi) => (
+  <div key={gi}>
+    <label style={S.label}>Choose {group.choose} Skill{group.choose > 1 ? 's' : ''}</label>
+    <div style={S.cardSub}>{group.desc}</div>
 
-            {group.options.map(o => {
-              const skillIndex = o.item.index
-              const checked = selectedSkills.includes(skillIndex)
-              const groupSelected = selectedSkills.filter(s => group.options.some(opt => opt.item.index === s)).length
-              const disabled = !checked && groupSelected >= group.choose
-              return (
-                <div
-                  key={skillIndex}
-                  style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid #7c5fff' : '1px solid #2a2a4a' }}
-                  onClick={() => !disabled && toggleSkill(gi, skillIndex)}
-                >
-                  <span style={{ color: checked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
-                  <span>{o.item.name.replace('Skill: ', '')}</span>
-                </div>
-              )
-            })}
-          </div>
+    {group.options.map(o => {
+      const skillIndex = o.item.index
+      const checked = selectedSkills.includes(skillIndex)
+      const groupSelected = selectedSkills.filter(s => group.options.some(opt => opt.item.index === s)).length
+      const disabled = !checked && groupSelected >= group.choose
+      return (
+        <div
+          key={skillIndex}
+          style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid #7c5fff' : '1px solid #2a2a4a' }}
+          onClick={() => !disabled && toggleSkill(gi, skillIndex)}
+        >
+          <span style={{ color: checked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+          <span>{o.item.name.replace('Skill: ', '')}</span>
         </div>
+      )
+    })}
+  </div>
+))}
       ))}
 
       {/* Equipment choices */}
