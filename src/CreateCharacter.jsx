@@ -180,7 +180,7 @@ function buildCharacter({ user, name, raceData, subraceData, classData, backgrou
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  wrap: { padding: '1.5rem', maxWidth: '520px', margin: '0 auto', color: '#e8e0f0', fontFamily: 'system-ui, sans-serif' },
+  wrap: { padding: '1.5rem 1.5rem 5rem', maxWidth: '520px', margin: '0 auto', color: '#e8e0f0', fontFamily: 'system-ui, sans-serif' },
   h1: { fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', color: '#c9b8ff' },
   sub: { fontSize: '0.85rem', color: '#888', marginBottom: '1.5rem' },
   label: { display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '0.3rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' },
@@ -212,7 +212,7 @@ const S = {
   featureName: { fontWeight: 700, color: '#c9b8ff', marginBottom: '0.5rem' },
   featureDesc: { fontSize: '0.82rem', color: '#999', lineHeight: 1.5 },
   error: { color: '#ff6b6b', fontSize: '0.85rem', marginTop: '0.75rem' },
-  scrollList: { maxHeight: '280px', overflowY: 'auto', marginTop: '0.5rem' },
+  scrollList: { marginTop: '0.5rem' },
 }
 
 // ─── Step 1: Name ─────────────────────────────────────────────────────────────
@@ -443,7 +443,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
         <div key={gi}>
           <label style={S.label}>Choose {group.choose} Skill{group.choose > 1 ? 's' : ''}</label>
           <div style={S.cardSub}>{group.desc}</div>
-          <div style={{ ...S.scrollList, maxHeight: '200px', marginTop: '0.5rem' }}>
+
             {group.options.map(o => {
               const skillIndex = o.item.index
               const checked = selectedSkills.includes(skillIndex)
@@ -605,7 +605,7 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
         <>
           <label style={S.label}>Choose {langChoose} Language{langChoose > 1 ? 's' : ''}</label>
           <div style={S.cardSub}>{selectedLanguages.length} / {langChoose} selected</div>
-          <div style={{ ...S.scrollList, maxHeight: '180px' }}>
+
             {displayLangs.map((opt, i) => {
               const name = opt.item?.name ?? opt
               const checked = selectedLanguages.includes(name)
@@ -831,7 +831,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   }
 
   return (
-    <div style={{ background: '#0d0d20', minHeight: '100vh' }}>
+    <>
       <ProgressBar step={step} totalSteps={TOTAL_STEPS} />
 
       {step === STEP_NAME && (
@@ -921,7 +921,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           <div style={S.error}>⚠ {error}</div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
