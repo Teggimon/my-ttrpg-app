@@ -462,7 +462,6 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
     })}
   </div>
 ))}
-      ))}
 
       {/* Equipment choices */}
       {equipGroups.map((group, gi) => (
