@@ -149,7 +149,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
       {showRaceList && (
         <div style={listStyle}>
           {filteredRaces.map(r => (
-            <div key={r.id} style={listItemStyle} onClick={() => { setRace(r.name); setRaceSearch(''); setShowRaceList(false) }}>
+            <div key={r.index} style={listItemStyle} onClick={() => { setRace(r.name); setRaceSearch(''); setShowRaceList(false) }}>
               {r.name}
             </div>
           ))}
@@ -172,7 +172,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
       {showClassList && (
         <div style={listStyle}>
           {filteredClasses.map(c => (
-            <div key={c.id} style={listItemStyle} onClick={() => { setClassName(c.name); setClassSearch(''); setShowClassList(false) }}>
+            <div key={c.index} style={listItemStyle} onClick={() => { setClassName(c.name); setClassSearch(''); setShowClassList(false) }}>
               {c.name}
             </div>
           ))}
@@ -195,7 +195,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
       {showBackgroundList && (
         <div style={listStyle}>
           {filteredBackgrounds.map(b => (
-            <div key={b.id} style={listItemStyle} onClick={() => { setBackground(b.name); setBackgroundSearch(''); setShowBackgroundList(false) }}>
+            <div key={b.index} style={listItemStyle} onClick={() => { setBackground(b.name); setBackgroundSearch(''); setShowBackgroundList(false) }}>
               {b.name}
             </div>
           ))}
