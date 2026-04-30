@@ -645,7 +645,7 @@ function InventoryTab({ char, locked, isOwner, updateChar }) {
 
   const addSrdItem = (srdItem) => {
     const isWeapon = srdItem.equipment_category?.index === 'weapon'
-    const isMagic = srdItem.rarity !== undefined
+    const isMagic = srdItem.rarity?.name !== undefined
     updateChar({
       inventory: [...inventory, {
         itemId: srdItem.index,
