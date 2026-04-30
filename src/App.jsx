@@ -102,15 +102,18 @@ function App() {
     />
   )
 
-  if (screen === 'character' && selectedCharacter) return (
-    <CharacterLayout
-      character={selectedCharacter}
-      token={token}
-      user={user}
-      onBack={() => setScreen('home')}
-      onUpdate={saveCharacter}
-    />
-  )
+if (screen === 'character' && selectedCharacter) return (
+  <CharacterLayout
+    characters={[selectedCharacter]}
+    activeCharId={selectedCharacter.meta.characterId}
+    onSwitchChar={() => {}}
+    onNewChar={() => setScreen('create')}
+    onBack={() => setScreen('home')}
+    user={user}
+    onUpdateChar={saveCharacter}
+    syncStatus="saved"
+  />
+)
 
   return (
     <Home
