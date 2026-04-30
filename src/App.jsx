@@ -103,7 +103,7 @@ function App() {
   )
 
   if (screen === 'character' && selectedCharacter) return (
-    <CharacterSheet
+    <CharacterLayout
       character={selectedCharacter}
       token={token}
       user={user}
