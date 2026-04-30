@@ -579,7 +579,7 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
   })
 
   const langReady = langChoose === 0 || selectedLanguages.length >= langChoose
-  const equipReady = equipGroups.every(g => selectedEquipment.some(e => e.groupIndex === gi))
+  const equipReady = equipGroups.every(g => selectedEquipment.some(e => e.groupIndex === g.groupIndex))
 
   // Recalculate equipReady properly
   const equipOk = equipGroups.length === 0 || equipGroups.every(g => selectedEquipment.some(e => e.groupIndex === g.groupIndex))
@@ -604,23 +604,21 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
         <>
           <label style={S.label}>Choose {langChoose} Language{langChoose > 1 ? 's' : ''}</label>
           <div style={S.cardSub}>{selectedLanguages.length} / {langChoose} selected</div>
-
-            {displayLangs.map((opt, i) => {
-              const name = opt.item?.name ?? opt
-              const checked = selectedLanguages.includes(name)
-              const disabled = !checked && selectedLanguages.length >= langChoose
-              return (
-                <div
-                  key={i}
-                  style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid #7c5fff' : '1px solid #2a2a4a' }}
-                  onClick={() => !disabled && toggleLang(name)}
-                >
-                  <span style={{ color: checked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
-                  <span>{name}</span>
-                </div>
-              )
-            })}
-          </div>
+          {displayLangs.map((opt, i) => {
+            const name = opt.item?.name ?? opt
+            const checked = selectedLanguages.includes(name)
+            const disabled = !checked && selectedLanguages.length >= langChoose
+            return (
+              <div
+                key={i}
+                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid #7c5fff' : '1px solid #2a2a4a' }}
+                onClick={() => !disabled && toggleLang(name)}
+              >
+                <span style={{ color: checked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                <span>{name}</span>
+              </div>
+            )
+          })}
         </>
       )}
 
