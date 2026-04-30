@@ -1,0 +1,33 @@
+.slot-grid-spells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+}
+.slot-row-spells { display: flex; align-items: center; gap: 5px; }
+.slot-lbl-spells { font-size: 10px; color: var(--text-muted); width: 16px; text-align: right; }
+.spell-pips { display: flex; gap: 4px; }
+.spell-pip {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent); border: 0.5px solid var(--accent-light);
+  cursor: pointer; padding: 0;
+}
+.spell-pip--used { background: transparent; border-color: var(--border-hi); }
+
+.spell-level-head {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-faint); margin: 10px 0 5px;
+}
+
+.spell-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 5px;
+}
+.spell-row--unprepared { opacity: 0.45; }
+.spell-name { flex: 1; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+
+.conc-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #378add; flex-shrink: 0; display: inline-block;
+}

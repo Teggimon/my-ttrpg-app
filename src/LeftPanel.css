@@ -1,0 +1,315 @@
+/* ── Base panel ──────────────────────────────────────────── */
+.left-panel {
+  background: var(--bg-raised);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Portrait: horizontal strip at top ───────────────────── */
+.left-panel--portrait {
+  border-bottom: 0.5px solid var(--border);
+}
+
+/* ── Landscape: fixed-width sidebar ─────────────────────── */
+.left-panel--landscape {
+  width: 210px;
+  border-right: 0.5px solid var(--border);
+  overflow-y: auto;
+}
+
+/* ── Identity row ─────────────────────────────────────────── */
+.lp-identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 12px 7px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.lp-lock {
+  font-size: 14px !important;
+}
+
+.lp-back {
+  font-size: 16px !important;
+}
+
+.lp-name-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.lp-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-meta {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-actions {
+  display: flex;
+  gap: 5px;
+}
+
+/* ── Vitals (HP + stat pills) ─────────────────────────────── */
+.lp-vitals {
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.lp-hp {
+  flex: 1;
+  background: var(--hp-bg);
+  border: 0.5px solid var(--hp-border);
+  border-radius: var(--radius-lg);
+  padding: 6px 9px;
+}
+
+.lp-hp-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9080c0;
+  margin-bottom: 3px;
+}
+
+.lp-hp-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+
+.lp-hp-current {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--hp-text);
+  line-height: 1;
+}
+
+.lp-hp-max {
+  font-size: 12px;
+  color: var(--hp-muted);
+  margin-left: 3px;
+  align-self: flex-end;
+  margin-bottom: 1px;
+}
+
+.lp-hp-btns {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+  align-self: center;
+}
+
+.hp-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-md);
+  background: var(--hp-btn-bg);
+  border: 0.5px solid var(--hp-btn-bdr);
+  color: var(--hp-btn-txt);
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: var(--font);
+  line-height: 1;
+}
+.hp-btn:active { opacity: 0.65; }
+
+.lp-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  justify-content: center;
+}
+
+.stat-pip {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 3px 7px;
+  text-align: center;
+  min-width: 46px;
+}
+
+.stat-pip-val {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.stat-pip-lbl {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-faint);
+  margin-top: 1px;
+}
+
+/* In portrait, lay stats out horizontally */
+.left-panel--portrait .lp-vitals {
+  align-items: center;
+}
+.left-panel--portrait .lp-stats {
+  flex-direction: row;
+}
+
+/* ── Conditions ───────────────────────────────────────────── */
+.lp-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px 12px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+/* ── XP bar ───────────────────────────────────────────────── */
+.lp-xp {
+  padding: 6px 12px 7px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.xp-bar-wrap {}
+
+.xp-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-faint);
+  margin-bottom: 4px;
+}
+
+.xp-track {
+  background: var(--bg-surface);
+  border-radius: 3px;
+  height: 3px;
+  overflow: hidden;
+}
+
+.xp-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+/* ── Sync ─────────────────────────────────────────────────── */
+.lp-sync {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  font-size: 10px;
+}
+
+.lp-sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sync--ok   { color: var(--green); }
+.sync--ok   .lp-sync-dot { background: var(--green); }
+
+.sync--busy { color: var(--text-muted); }
+.sync--busy .lp-sync-dot { background: var(--text-muted); }
+
+.sync--err  { color: #f09090; }
+.sync--err  .lp-sync-dot { background: #f09090; }
+
+/* ── Nav rail (landscape sidebar) ────────────────────────── */
+.nav-rail {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  border-top: 0.5px solid var(--border);
+  margin-top: auto;
+}
+
+.nav-rail-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  position: relative;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-rail-item:active { opacity: 0.7; }
+
+.nav-rail-item--active {
+  background: var(--bg-surface);
+}
+
+.nav-rail-item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-rail-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.nav-rail-item--active .nav-rail-icon {
+  background: var(--accent-bg);
+}
+
+.nav-rail-label {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.nav-rail-item--active .nav-rail-label {
+  color: var(--accent-light);
+}
+
+/* ── Compact header in landscape phone ───────────────────── */
+@media (orientation: landscape) and (max-height: 420px) {
+  .lp-identity { padding: 6px 10px 5px; }
+  .lp-vitals   { padding: 5px 10px; }
+  .lp-xp       { padding: 4px 10px 5px; }
+  .lp-sync     { padding: 3px 10px; }
+  .lp-hp-current { font-size: 18px; }
+  .nav-rail-item { padding: 7px 10px; }
+}

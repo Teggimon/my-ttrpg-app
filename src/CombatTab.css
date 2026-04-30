@@ -1,0 +1,171 @@
+/* ── Attacks ─────────────────────────────────────────────── */
+.attack-card {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.atk-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 80px;
+}
+
+/* ── Spell slots ──────────────────────────────────────────── */
+.slot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slot-lbl {
+  font-size: 10px;
+  color: var(--text-muted);
+  width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.slot-pips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.slot-pip {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 0.5px solid var(--accent-light);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.slot-pip--used {
+  background: transparent;
+  border-color: var(--border-hi);
+}
+
+/* ── Conditions ───────────────────────────────────────────── */
+.cond-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.cond-option {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: 0.5px solid var(--border-mid);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.cond-option:hover { border-color: var(--accent-border); color: var(--accent-light); }
+
+.active-conds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.cond-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 0 0 4px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+/* ── Death saves ──────────────────────────────────────────── */
+.death-saves {
+  display: flex;
+  gap: 24px;
+}
+
+.ds-group {}
+
+.ds-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-faint);
+  margin-bottom: 5px;
+}
+
+.ds-pips {
+  display: flex;
+  gap: 6px;
+}
+
+.ds-pip {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 0.5px solid var(--border-mid);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ds-pip--success.ds-pip--filled {
+  background: var(--save-bg);
+  border-color: var(--save-bdr);
+}
+
+.ds-pip--failure.ds-pip--filled {
+  background: var(--fail-bg);
+  border-color: var(--fail-bdr);
+}
+
+/* ── Edit fields ──────────────────────────────────────────── */
+.edit-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.edit-field input {
+  background: var(--bg-input);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 6px 9px;
+  font-family: var(--font);
+  width: 100%;
+}
+
+.edit-field input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
