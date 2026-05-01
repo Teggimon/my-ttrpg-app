@@ -89,12 +89,14 @@ function buildCharacter({ user, name, raceData, subraceData, classData, backgrou
     inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of classEquipment) {
+    if (item.index?.startsWith('__choice__')) continue  // category placeholder — skip
     inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
   }
   for (const item of (backgroundData?.starting_equipment ?? [])) {
     inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of backgroundEquipment) {
+    if (item.index?.startsWith('__choice__')) continue  // category placeholder — skip
     inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
   }
 
@@ -404,22 +406,42 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
     }
   }
 
-  // Flatten equipment options into simple pick-one groups
+  // Build equipment option groups. Each selectable "choice" is one card.
+  // option_type === 'multiple' → bundle (array of items) shown as one card
+  // option_type === 'choice'   → category pick (any simple weapon, etc.)
+  // option_type === 'counted_reference' → single item
+  const parseEquipOption = (o, gi, oi) => {
+    if (o.option_type === 'counted_reference') {
+      const name = o.of?.name ?? 'Unknown item'
+      const idx = o.of?.index ?? `__ref__${gi}_${oi}`
+      // Holy symbol / undefined items become a generic placeholder
+      const resolvedIdx = idx === 'holy-symbol' || !o.of?.index ? 'holy-symbol' : idx
+      const resolvedName = resolvedIdx === 'holy-symbol' ? 'Holy Symbol' : name
+      return { id: `${gi}_${oi}`, label: o.count > 1 ? `${resolvedName} ×${o.count}` : resolvedName, items: [{ index: resolvedIdx, name: resolvedName, quantity: o.count ?? 1 }], isChoice: false }
+    }
+    if (o.option_type === 'multiple') {
+      const parts = (o.items ?? []).filter(i => i.option_type === 'counted_reference').map(i => ({ index: i.of?.index ?? `__multi__${gi}_${oi}`, name: i.of?.name ?? 'Item', quantity: i.count ?? 1 }))
+      const label = parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name).join(' + ')
+      return { id: `${gi}_${oi}`, label, items: parts, isChoice: false }
+    }
+    if (o.option_type === 'choice') {
+      const desc = o.choice?.desc ?? 'Any item'
+      return { id: `${gi}_${oi}`, label: desc, items: [], isChoice: true, choiceDesc: desc }
+    }
+    return null
+  }
+
   const equipGroups = equipOptions.map((opt, gi) => {
-    const items = (opt.from?.options ?? []).flatMap(o => {
-      if (o.option_type === 'counted_reference') return [{ index: o.of.index, name: o.of.name, quantity: o.count }]
-      if (o.option_type === 'multiple') return o.items.filter(i => i.option_type === 'counted_reference').map(i => ({ index: i.of.index, name: i.of.name, quantity: i.count }))
-      if (o.option_type === 'choice') return [{ index: `__choice__${gi}`, name: o.choice.desc, quantity: 1 }]
-      return []
-    })
-    return { desc: opt.desc, items, groupIndex: gi }
+    const choices = (opt.from?.options ?? []).map((o, oi) => parseEquipOption(o, gi, oi)).filter(Boolean)
+    return { desc: opt.desc, choices, groupIndex: gi }
   })
 
   const allSkillsSelected = allSkillGroups.every(g => {
     const count = selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length
     return count >= g.choose
   })
-  const allEquipSelected = equipGroups.every(g => selectedEquipment.some(e => g.items.some(i => i.index === e.index)))
+  // Next is enabled when every equip group has a selection (matched by groupIndex)
+  const allEquipSelected = equipGroups.every(g => selectedEquipment.some(e => e.groupIndex === g.groupIndex))
 
   return (
     <div style={S.wrap}>
@@ -464,22 +486,29 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
 ))}
 
       {/* Equipment choices */}
-      {equipGroups.map((group, gi) => (
-        <div key={gi}>
+      {equipGroups.map((group) => (
+        <div key={group.groupIndex}>
           <label style={S.label}>Choose Starting Equipment</label>
           <div style={S.cardSub}>{group.desc}</div>
-          {group.items.map(item => {
-            const checked = selectedEquipment.some(e => e.index === item.index && e.groupIndex === gi)
+          {group.choices.map(choice => {
+            const checked = selectedEquipment.some(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
             return (
               <div
-                key={item.index + gi}
+                key={choice.id}
                 style={{ ...S.card(checked) }}
                 onClick={() => {
-                  const without = selectedEquipment.filter(e => e.groupIndex !== gi)
-                  onEquipmentChange([...without, { ...item, groupIndex: gi }])
+                  const without = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
+                  if (choice.isChoice) {
+                    // Category pick — store a placeholder, user can edit later
+                    onEquipmentChange([...without, { index: `__choice__${choice.id}`, name: choice.choiceDesc, quantity: 1, groupIndex: group.groupIndex, choiceId: choice.id }])
+                  } else {
+                    // Store all bundle items under this choice
+                    onEquipmentChange([...without, ...choice.items.map(item => ({ ...item, groupIndex: group.groupIndex, choiceId: choice.id }))])
+                  }
                 }}
               >
-                <div style={S.cardName}>{item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name}</div>
+                <div style={S.cardName}>{choice.label}</div>
+                {choice.isChoice && <div style={S.cardSub}>You'll be able to specify this item later</div>}
               </div>
             )
           })}
@@ -569,19 +598,33 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
 
   const equipOptions = backgroundData.starting_equipment_options ?? []
   const equipGroups = equipOptions.map((opt, gi) => {
-    const items = opt.from?.option_set_type === 'options_array'
-      ? (opt.from.options ?? []).flatMap(o => {
-          if (o.option_type === 'counted_reference') return [{ index: o.of.index, name: o.of.name, quantity: o.count }]
-          return []
-        })
-      : [{ index: `__category__${gi}`, name: `Any ${opt.from?.equipment_category?.name ?? 'item'}`, quantity: 1 }]
-    return { desc: opt.desc, items, groupIndex: gi }
+    let choices = []
+    if (opt.from?.option_set_type === 'options_array') {
+      choices = (opt.from.options ?? []).map((o, oi) => {
+        if (o.option_type === 'counted_reference') {
+          const idx = o.of?.index ?? `__ref__${gi}_${oi}`
+          const name = o.of?.name ?? 'Item'
+          return { id: `${gi}_${oi}`, label: o.count > 1 ? `${name} ×${o.count}` : name, items: [{ index: idx, name, quantity: o.count ?? 1 }], isChoice: false }
+        }
+        if (o.option_type === 'multiple') {
+          const parts = (o.items ?? []).filter(i => i.option_type === 'counted_reference').map(i => ({ index: i.of?.index ?? `__multi__${gi}_${oi}`, name: i.of?.name ?? 'Item', quantity: i.count ?? 1 }))
+          const label = parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name).join(' + ')
+          return { id: `${gi}_${oi}`, label, items: parts, isChoice: false }
+        }
+        if (o.option_type === 'choice') {
+          const desc = o.choice?.desc ?? 'Any item'
+          return { id: `${gi}_${oi}`, label: desc, items: [], isChoice: true, choiceDesc: desc }
+        }
+        return null
+      }).filter(Boolean)
+    } else {
+      const desc = `Any ${opt.from?.equipment_category?.name ?? 'item'}`
+      choices = [{ id: `${gi}_0`, label: desc, items: [{ index: `__category__${gi}`, name: desc, quantity: 1 }], isChoice: true, choiceDesc: desc }]
+    }
+    return { desc: opt.desc, choices, groupIndex: gi }
   })
 
   const langReady = langChoose === 0 || selectedLanguages.length >= langChoose
-  const equipReady = equipGroups.every(g => selectedEquipment.some(e => e.groupIndex === g.groupIndex))
-
-  // Recalculate equipReady properly
   const equipOk = equipGroups.length === 0 || equipGroups.every(g => selectedEquipment.some(e => e.groupIndex === g.groupIndex))
 
   return (
@@ -623,21 +666,27 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
       )}
 
       {/* Equipment choices */}
-      {equipGroups.map((group, gi) => (
-        <div key={gi}>
+      {equipGroups.map((group) => (
+        <div key={group.groupIndex}>
           <label style={S.label}>Choose Equipment</label>
-          {group.items.map(item => {
-            const checked = selectedEquipment.some(e => e.index === item.index && e.groupIndex === gi)
+          <div style={S.cardSub}>{group.desc}</div>
+          {group.choices.map(choice => {
+            const checked = selectedEquipment.some(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
             return (
               <div
-                key={item.index}
+                key={choice.id}
                 style={S.card(checked)}
                 onClick={() => {
-                  const without = selectedEquipment.filter(e => e.groupIndex !== gi)
-                  onEquipmentChange([...without, { ...item, groupIndex: gi }])
+                  const without = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
+                  if (choice.isChoice) {
+                    onEquipmentChange([...without, { index: `__choice__${choice.id}`, name: choice.choiceDesc, quantity: 1, groupIndex: group.groupIndex, choiceId: choice.id }])
+                  } else {
+                    onEquipmentChange([...without, ...choice.items.map(item => ({ ...item, groupIndex: group.groupIndex, choiceId: choice.id }))])
+                  }
                 }}
               >
-                <div style={S.cardName}>{item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name}</div>
+                <div style={S.cardName}>{choice.label}</div>
+                {choice.isChoice && <div style={S.cardSub}>You'll be able to specify this item later</div>}
               </div>
             )
           })}
