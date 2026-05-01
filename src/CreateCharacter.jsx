@@ -89,14 +89,12 @@ function buildCharacter({ user, name, raceData, subraceData, classData, backgrou
     inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of classEquipment) {
-    if (item.index?.startsWith('__choice__')) continue  // category placeholder — skip
     inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
   }
   for (const item of (backgroundData?.starting_equipment ?? [])) {
     inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of backgroundEquipment) {
-    if (item.index?.startsWith('__choice__')) continue  // category placeholder — skip
     inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
   }
 
@@ -384,7 +382,22 @@ function StepClass({ classes, selected, onSelect, onNext, onBack }) {
 
 // ─── Step 5: Class setup (skills + equipment choices) ─────────────────────────
 
+// Fetch all items in an equipment category from the SRD
+async function fetchCategoryItems(categoryIndex) {
+  const BASE = 'https://raw.githubusercontent.com/Teggimon/ttrpg-srd-content/master/5e_PHB_2014'
+  try {
+    const res = await fetch(`${BASE}/5e-SRD-Equipment.json`)
+    if (!res.ok) return []
+    const all = await res.json()
+    return all.filter(item => item.equipment_category?.index === categoryIndex)
+      .map(item => ({ index: item.index, name: item.name, quantity: 1 }))
+  } catch { return [] }
+}
+
 function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEquipment, onEquipmentChange, onNext, onBack }) {
+  const [categoryItems, setCategoryItems] = useState({}) // { choiceId: [items] }
+  const [expandedChoice, setExpandedChoice] = useState(null) // choiceId being expanded
+
   const profChoices = classData.proficiency_choices?.filter(pc => pc.type === 'proficiencies') ?? []
   const equipOptions = classData.starting_equipment_options ?? []
 
@@ -406,27 +419,35 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
     }
   }
 
-  // Build equipment option groups. Each selectable "choice" is one card.
-  // option_type === 'multiple' → bundle (array of items) shown as one card
-  // option_type === 'choice'   → category pick (any simple weapon, etc.)
-  // option_type === 'counted_reference' → single item
+  // Parse a single equipment option into a selectable card descriptor
   const parseEquipOption = (o, gi, oi) => {
     if (o.option_type === 'counted_reference') {
-      const name = o.of?.name ?? 'Unknown item'
       const idx = o.of?.index ?? `__ref__${gi}_${oi}`
-      // Holy symbol / undefined items become a generic placeholder
-      const resolvedIdx = idx === 'holy-symbol' || !o.of?.index ? 'holy-symbol' : idx
-      const resolvedName = resolvedIdx === 'holy-symbol' ? 'Holy Symbol' : name
-      return { id: `${gi}_${oi}`, label: o.count > 1 ? `${resolvedName} ×${o.count}` : resolvedName, items: [{ index: resolvedIdx, name: resolvedName, quantity: o.count ?? 1 }], isChoice: false }
+      const name = o.of?.name ?? 'Unknown item'
+      return { id: `${gi}_${oi}`, label: o.count > 1 ? `${name} ×${o.count}` : name, items: [{ index: idx, name, quantity: o.count ?? 1 }], isCategory: false }
     }
     if (o.option_type === 'multiple') {
-      const parts = (o.items ?? []).filter(i => i.option_type === 'counted_reference').map(i => ({ index: i.of?.index ?? `__multi__${gi}_${oi}`, name: i.of?.name ?? 'Item', quantity: i.count ?? 1 }))
+      // Bundle — may include counted_reference AND choice (e.g. holy symbol option)
+      const parts = (o.items ?? []).flatMap((i, ii) => {
+        if (i.option_type === 'counted_reference') {
+          return [{ index: i.of?.index ?? `__multi__${gi}_${oi}_${ii}`, name: i.of?.name ?? 'Item', quantity: i.count ?? 1 }]
+        }
+        if (i.option_type === 'choice') {
+          // e.g. "a holy symbol" — use a generic placeholder that the user sees as real gear
+          const desc = i.choice?.desc ?? 'Holy Symbol'
+          return [{ index: 'holy-symbol', name: 'Holy Symbol', quantity: 1, placeholder: desc }]
+        }
+        return []
+      })
       const label = parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name).join(' + ')
-      return { id: `${gi}_${oi}`, label, items: parts, isChoice: false }
+      return { id: `${gi}_${oi}`, label, items: parts, isCategory: false }
     }
     if (o.option_type === 'choice') {
+      // Category pick — needs inline expansion; may allow choosing multiple
       const desc = o.choice?.desc ?? 'Any item'
-      return { id: `${gi}_${oi}`, label: desc, items: [], isChoice: true, choiceDesc: desc }
+      const categoryIndex = o.choice?.from?.equipment_category?.index ?? null
+      const choose = o.choice?.choose ?? 1
+      return { id: `${gi}_${oi}`, label: desc, items: [], isCategory: true, categoryIndex, choiceDesc: desc, choose }
     }
     return null
   }
@@ -434,14 +455,34 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
   const equipGroups = equipOptions.map((opt, gi) => {
     const choices = (opt.from?.options ?? []).map((o, oi) => parseEquipOption(o, gi, oi)).filter(Boolean)
     return { desc: opt.desc, choices, groupIndex: gi }
-  }).filter(g => g.choices.length > 0)  // skip groups with no selectable options
+  }).filter(g => g.choices.length > 0)
+
+  // When user clicks a category card, fetch its items
+  const expandCategory = async (choice, groupIndex) => {
+    setExpandedChoice(choice.id)
+    if (categoryItems[choice.id]) return // already loaded
+    const items = choice.categoryIndex
+      ? await fetchCategoryItems(choice.categoryIndex)
+      : []
+    setCategoryItems(prev => ({ ...prev, [choice.id]: items }))
+  }
 
   const allSkillsSelected = allSkillGroups.every(g => {
     const count = selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length
     return count >= g.choose
   })
-  // Next is enabled when every equip group has a selection (matched by groupIndex)
-  const allEquipSelected = equipGroups.every(g => selectedEquipment.some(e => e.groupIndex === g.groupIndex))
+  const allEquipSelected = equipGroups.every(g => {
+    // For each choice in the group, category picks need `choose` items; others need 1
+    const groupSelections = selectedEquipment.filter(e => e.groupIndex === g.groupIndex)
+    if (groupSelections.length === 0) return false
+    // Check all category choices within this group are fully satisfied
+    return g.choices.every(choice => {
+      if (!choice.isCategory) return true // non-category: just need group to have any selection
+      const need = choice.choose ?? 1
+      const have = groupSelections.filter(e => e.choiceId === choice.id).length
+      return have >= need
+    })
+  })
 
   return (
     <div style={S.wrap}>
@@ -492,23 +533,68 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
           <div style={S.cardSub}>{group.desc}</div>
           {group.choices.map(choice => {
             const checked = selectedEquipment.some(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
+            const isExpanded = expandedChoice === choice.id
+            const catItems = categoryItems[choice.id] ?? []
+
+            if (choice.isCategory) {
+              const choose = choice.choose ?? 1
+              const selectedForChoice = selectedEquipment.filter(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
+              const choiceComplete = selectedForChoice.length >= choose
+              return (
+                <div key={choice.id}>
+                  <div
+                    style={{ ...S.card(choiceComplete), opacity: 1, cursor: 'pointer' }}
+                    onClick={() => expandCategory(choice, group.groupIndex)}
+                  >
+                    <div style={S.cardName}>{choice.label}</div>
+                    <div style={S.cardSub}>
+                      {isExpanded
+                        ? `${selectedForChoice.length}/${choose} selected — choose below ↓`
+                        : `Tap to expand · choose ${choose}`}
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ paddingLeft: '1rem', marginBottom: '0.5rem' }}>
+                      {catItems.length === 0 && <div style={S.cardSub}>Loading…</div>}
+                      {catItems.map(item => {
+                        const itemChecked = selectedForChoice.some(e => e.index === item.index)
+                        const disabled = !itemChecked && selectedForChoice.length >= choose
+                        return (
+                          <div
+                            key={item.index}
+                            style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: itemChecked ? '1px solid #7c5fff' : '1px solid #2a2a4a', marginBottom: '0.35rem' }}
+                            onClick={() => {
+                              if (disabled) return
+                              const withoutThis = selectedEquipment.filter(e => !(e.groupIndex === group.groupIndex && e.choiceId === choice.id && e.index === item.index))
+                              if (itemChecked) {
+                                onEquipmentChange(withoutThis)
+                              } else {
+                                onEquipmentChange([...withoutThis, { ...item, groupIndex: group.groupIndex, choiceId: choice.id }])
+                              }
+                            }}
+                          >
+                            <span style={{ color: itemChecked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{itemChecked ? '◉' : '○'}</span>
+                            <span>{item.name}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            // Normal card (single item or bundle)
             return (
               <div
                 key={choice.id}
                 style={{ ...S.card(checked) }}
                 onClick={() => {
                   const without = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
-                  if (choice.isChoice) {
-                    // Category pick — store a placeholder, user can edit later
-                    onEquipmentChange([...without, { index: `__choice__${choice.id}`, name: choice.choiceDesc, quantity: 1, groupIndex: group.groupIndex, choiceId: choice.id }])
-                  } else {
-                    // Store all bundle items under this choice
-                    onEquipmentChange([...without, ...choice.items.map(item => ({ ...item, groupIndex: group.groupIndex, choiceId: choice.id }))])
-                  }
+                  onEquipmentChange([...without, ...choice.items.map(item => ({ ...item, groupIndex: group.groupIndex, choiceId: choice.id }))])
                 }}
               >
                 <div style={S.cardName}>{choice.label}</div>
-                {choice.isChoice && <div style={S.cardSub}>You'll be able to specify this item later</div>}
               </div>
             )
           })}
