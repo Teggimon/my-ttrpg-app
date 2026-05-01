@@ -434,7 +434,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
   const equipGroups = equipOptions.map((opt, gi) => {
     const choices = (opt.from?.options ?? []).map((o, oi) => parseEquipOption(o, gi, oi)).filter(Boolean)
     return { desc: opt.desc, choices, groupIndex: gi }
-  })
+  }).filter(g => g.choices.length > 0)  // skip groups with no selectable options
 
   const allSkillsSelected = allSkillGroups.every(g => {
     const count = selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length
@@ -533,6 +533,12 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
           Next: Background →
         </button>
       </div>
+      {(!allSkillsSelected || !allEquipSelected) && (
+        <div style={{ fontSize: '0.78rem', color: '#888', marginTop: '0.5rem' }}>
+          {!allSkillsSelected && <div>⚠ Skills not complete ({allSkillGroups.map(g => `${selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length}/${g.choose}`).join(', ')})</div>}
+          {!allEquipSelected && <div>⚠ Equipment not complete — groups: {equipGroups.length}, selected groupIndexes: [{selectedEquipment.map(e => e.groupIndex).join(', ')}]</div>}
+        </div>
+      )}
     </div>
   )
 }
