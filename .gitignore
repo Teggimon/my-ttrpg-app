@@ -29,3 +29,4 @@ git rm -r --cached node_modules
 git add .gitignore
 git commit -m "Remove node_modules from tracking"
 git push origin mainnode_modules/
+node_modules/
