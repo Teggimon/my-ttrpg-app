@@ -222,22 +222,52 @@
   .save-bonus.prof { color: var(--accent); }
 
   /* ── Skills ── */
+  /* Skills — two column grid */
+  .skills-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
   .skill-row {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
+    gap: 8px;
+    padding: 7px 10px;
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--r-md);
-    margin-bottom: 4px;
     transition: border-color 150ms;
     cursor: pointer;
   }
-  .skill-row:last-child { margin-bottom: 0; }
   .skill-row:hover { border-color: var(--border-strong); }
 
-  /* Three-state proficiency marker — clearly distinct */
+  .skill-name-wrap { flex: 1; min-width: 0; }
+  .skill-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  .skill-attr-inline {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-weight: 400;
+  }
+  .skill-bonus {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    flex-shrink: 0;
+    min-width: 28px;
+    text-align: right;
+  }
+  .skill-bonus.prof { color: var(--accent); }
+  .skill-bonus.expert { color: var(--accent); }
   .prof-marker {
     display: flex;
     align-items: center;
@@ -272,25 +302,6 @@
     color: #fff;
   }
   .prof-marker.expert::after { content: '★'; font-size: 10px; }
-
-  .skill-name { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
-  .skill-bonus {
-    font-family: var(--font-mono);
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-    min-width: 32px;
-    text-align: right;
-  }
-  .skill-bonus.prof { color: var(--accent); }
-  .skill-bonus.expert { color: var(--accent); }
-  .skill-attr {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-muted);
-    min-width: 28px;
-    text-align: right;
-  }
 
   /* ── Magic item buff dot ── */
   .magic-dot {
@@ -569,181 +580,209 @@
         <!-- SAVING THROWS -->
         <div>
           <div class="section-header">Saving Throws</div>
+          <div class="skills-grid">
 
-          <div class="save-row">
-            <div class="save-left">
+            <div class="skill-row">
               <div class="save-pip prof"></div>
-              <span class="save-name">Strength</span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Strength <span class="skill-attr-inline">(str)</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span class="skill-bonus prof">+6</span>
+                <div class="magic-dot" style="position:relative;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span class="save-bonus prof">+6</span>
-              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
-            </div>
-          </div>
-          <div class="save-row">
-            <div class="save-left">
+
+            <div class="skill-row">
               <div class="save-pip prof"></div>
-              <span class="save-name">Dexterity</span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Dexterity <span class="skill-attr-inline">(dex)</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span class="skill-bonus prof">+8</span>
+                <div class="magic-dot" style="position:relative;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span class="save-bonus prof">+8</span>
-              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
-            </div>
-          </div>
-          <div class="save-row">
-            <div class="save-left">
+
+            <div class="skill-row">
               <div class="save-pip none"></div>
-              <span class="save-name">Constitution</span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Constitution <span class="skill-attr-inline">(con)</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span class="skill-bonus">+3</span>
+                <div class="magic-dot" style="position:relative;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span class="save-bonus">+3</span>
-              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
-            </div>
-          </div>
-          <div class="save-row">
-            <div class="save-left">
+
+            <div class="skill-row">
               <div class="save-pip none"></div>
-              <span class="save-name">Intelligence</span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Intelligence <span class="skill-attr-inline">(int)</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span class="skill-bonus">+1</span>
+                <div class="magic-dot" style="position:relative;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span class="save-bonus">+1</span>
-              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
-            </div>
-          </div>
-          <div class="save-row">
-            <div class="save-left">
+
+            <div class="skill-row">
               <div class="save-pip none"></div>
-              <span class="save-name">Wisdom</span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Wisdom <span class="skill-attr-inline">(wis)</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span class="skill-bonus">+2</span>
+                <div class="magic-dot" style="position:relative;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span class="save-bonus">+2</span>
-              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
-            </div>
-          </div>
-          <div class="save-row">
-            <div class="save-left">
+
+            <div class="skill-row">
               <div class="save-pip none"></div>
-              <span class="save-name">Charisma</span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Charisma <span class="skill-attr-inline">(cha)</span></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span class="skill-bonus">+1</span>
+                <div class="magic-dot" style="position:relative;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+              </div>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <span class="save-bonus">+1</span>
-              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
-            </div>
+
           </div>
         </div>
 
         <!-- SKILLS -->
         <div>
           <div class="section-header">Skills</div>
+          <div class="skills-grid">
 
-          <!-- ◇ none  ◆ proficient  ◈ expertise -->
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Acrobatics</span>
-            <span class="skill-bonus">+4</span>
-            <span class="skill-attr">DEX</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Animal Handling</span>
-            <span class="skill-bonus">+2</span>
-            <span class="skill-attr">WIS</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Arcana</span>
-            <span class="skill-bonus">+1</span>
-            <span class="skill-attr">INT</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker prof"></span>
-            <span class="skill-name">Athletics</span>
-            <span class="skill-bonus prof">+6</span>
-            <span class="skill-attr">STR</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Deception</span>
-            <span class="skill-bonus">+1</span>
-            <span class="skill-attr">CHA</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">History</span>
-            <span class="skill-bonus">+1</span>
-            <span class="skill-attr">INT</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Insight</span>
-            <span class="skill-bonus">+2</span>
-            <span class="skill-attr">WIS</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker prof"></span>
-            <span class="skill-name">Intimidation</span>
-            <span class="skill-bonus prof">+5</span>
-            <span class="skill-attr">CHA</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Investigation</span>
-            <span class="skill-bonus">+1</span>
-            <span class="skill-attr">INT</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Medicine</span>
-            <span class="skill-bonus">+2</span>
-            <span class="skill-attr">WIS</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Nature</span>
-            <span class="skill-bonus">+1</span>
-            <span class="skill-attr">INT</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker expert"></span>
-            <span class="skill-name">Perception</span>
-            <span class="skill-bonus expert">+10</span>
-            <span class="skill-attr">WIS</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Performance</span>
-            <span class="skill-bonus">+1</span>
-            <span class="skill-attr">CHA</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Persuasion</span>
-            <span class="skill-bonus">+1</span>
-            <span class="skill-attr">CHA</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker prof"></span>
-            <span class="skill-name">Religion</span>
-            <span class="skill-bonus prof">+5</span>
-            <span class="skill-attr">INT</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker none"></span>
-            <span class="skill-name">Sleight of Hand</span>
-            <span class="skill-bonus">+4</span>
-            <span class="skill-attr">DEX</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker expert"></span>
-            <span class="skill-name">Stealth</span>
-            <span class="skill-bonus expert">+12</span>
-            <span class="skill-attr">DEX</span>
-          </div>
-          <div class="skill-row">
-            <span class="prof-marker prof"></span>
-            <span class="skill-name">Survival</span>
-            <span class="skill-bonus prof">+6</span>
-            <span class="skill-attr">WIS</span>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Acrobatics <span class="skill-attr-inline">(dex)</span></div>
+              </div>
+              <span class="skill-bonus">+4</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Animal Handling <span class="skill-attr-inline">(wis)</span></div>
+              </div>
+              <span class="skill-bonus">+2</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Arcana <span class="skill-attr-inline">(int)</span></div>
+              </div>
+              <span class="skill-bonus">+1</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker prof"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Athletics <span class="skill-attr-inline">(str)</span></div>
+              </div>
+              <span class="skill-bonus prof">+6</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Deception <span class="skill-attr-inline">(cha)</span></div>
+              </div>
+              <span class="skill-bonus">+1</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">History <span class="skill-attr-inline">(int)</span></div>
+              </div>
+              <span class="skill-bonus">+1</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Insight <span class="skill-attr-inline">(wis)</span></div>
+              </div>
+              <span class="skill-bonus">+2</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker prof"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Intimidation <span class="skill-attr-inline">(cha)</span></div>
+              </div>
+              <span class="skill-bonus prof">+5</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Investigation <span class="skill-attr-inline">(int)</span></div>
+              </div>
+              <span class="skill-bonus">+1</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Medicine <span class="skill-attr-inline">(wis)</span></div>
+              </div>
+              <span class="skill-bonus">+2</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Nature <span class="skill-attr-inline">(int)</span></div>
+              </div>
+              <span class="skill-bonus">+1</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker expert"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Perception <span class="skill-attr-inline">(wis)</span></div>
+              </div>
+              <span class="skill-bonus expert">+10</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Performance <span class="skill-attr-inline">(cha)</span></div>
+              </div>
+              <span class="skill-bonus">+1</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Persuasion <span class="skill-attr-inline">(cha)</span></div>
+              </div>
+              <span class="skill-bonus">+1</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker prof"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Religion <span class="skill-attr-inline">(int)</span></div>
+              </div>
+              <span class="skill-bonus prof">+5</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker none"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Sleight of Hand <span class="skill-attr-inline">(dex)</span></div>
+              </div>
+              <span class="skill-bonus">+4</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker expert"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Stealth <span class="skill-attr-inline">(dex)</span></div>
+              </div>
+              <span class="skill-bonus expert">+12</span>
+            </div>
+            <div class="skill-row">
+              <span class="prof-marker prof"></span>
+              <div class="skill-name-wrap">
+                <div class="skill-name">Survival <span class="skill-attr-inline">(wis)</span></div>
+              </div>
+              <span class="skill-bonus prof">+6</span>
+            </div>
+
           </div>
         </div>
 

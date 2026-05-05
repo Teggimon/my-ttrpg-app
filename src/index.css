@@ -109,9 +109,8 @@
 /* ── Reset ── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body, #root {
+html, body {
   height: 100%;
-  overflow: hidden;
 }
 
 body {
@@ -124,12 +123,14 @@ body {
 }
 
 #root {
+  height: 100%;
+  overflow: auto;      /* was: overflow: hidden — changed so Home panel can scroll on desktop */
   display: flex;
   justify-content: center;
   align-items: flex-start;
 }
 
-/* ── App shell ── */
+/* ── App shell (character sheet — has its own scroll management) ── */
 .app-shell {
   width: 100%;
   max-width: 480px;
@@ -138,7 +139,7 @@ body {
   flex-direction: column;
   background: var(--bg-base);
   border-inline: 0.5px solid var(--border);
-  overflow: hidden;
+  overflow: hidden;    /* character sheet keeps its own overflow:hidden */
 }
 
 @media (orientation: landscape) and (min-width: 480px) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
 import './Home.css'
 
-// ── Helpers ─────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────
 
 function hpPercent(char) {
   if (!char.combat?.hpMax) return 0
@@ -10,7 +10,7 @@ function hpPercent(char) {
 }
 
 function hpAccentColour(pct) {
-  if (pct <= 0)  return 'var(--text-muted)'   // dead / zero
+  if (pct <= 0)  return 'var(--text-muted)'
   if (pct < 25)  return 'var(--hp-low)'
   if (pct < 50)  return 'var(--hp-mid)'
   return 'var(--hp-high)'
@@ -20,7 +20,7 @@ function classLine(char) {
   return (char.identity?.class ?? []).map(c => `${c.name} ${c.level}`).join(' / ')
 }
 
-// ── Character Card ───────────────────────────────────────────
+// ── Character Card ────────────────────────────────────────────
 
 function CharCard({ char, onClick, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -40,7 +40,7 @@ function CharCard({ char, onClick, onDelete }) {
       {/* Top accent line (HP colour) */}
       <div className="char-card-accent-line" />
 
-      {/* Portrait area — top 55% of 3:4 card */}
+      {/* Portrait area */}
       <div className="char-card-portrait">
         {char.identity?.portrait
           ? <img src={char.identity.portrait} alt={char.identity.name} className="char-card-img" />
@@ -103,7 +103,7 @@ function CharCard({ char, onClick, onDelete }) {
   )
 }
 
-// ── New Character Card ───────────────────────────────────────
+// ── New Character Card ────────────────────────────────────────
 
 function NewCharCard({ onClick }) {
   return (
@@ -117,7 +117,7 @@ function NewCharCard({ onClick }) {
   )
 }
 
-// ── Delete Confirm ───────────────────────────────────────────
+// ── Delete Confirm ────────────────────────────────────────────
 
 function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
   return (
@@ -126,7 +126,7 @@ function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
         <div className="modal-handle" />
         <p className="modal-title">Delete {char.identity.name}?</p>
         <p className="modal-body">
-          This permanently removes the character from your GitHub repo.
+          This permanently removes the character from your GitHub repo. This cannot be undone.
         </p>
         <div className="modal-actions">
           <button className="home-btn home-btn--ghost" onClick={onCancel}>Cancel</button>
@@ -139,7 +139,7 @@ function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
   )
 }
 
-// ── Main Home ────────────────────────────────────────────────
+// ── Main Home ─────────────────────────────────────────────────
 
 export default function Home({
   token, user,
@@ -149,11 +149,11 @@ export default function Home({
   onOpenGMDashboard,
   onLogout,
 }) {
-  const [characters, setCharacters]     = useState([])
-  const [loading, setLoading]           = useState(true)
+  const [characters, setCharacters]       = useState([])
+  const [loading, setLoading]             = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [gmMode, setGmMode]             = useState(isGMProp)
+  const [gmMode, setGmMode]               = useState(isGMProp)
 
   const octokit  = new Octokit({ auth: token })
   const repoName = localStorage.getItem('character_repo')
@@ -210,127 +210,127 @@ export default function Home({
     setDeleteLoading(false)
   }
 
-  const toggleGM = () => {
-    const next = !gmMode
-    setGmMode(next)
-    localStorage.setItem('is_gm', String(next))
-    if (next) onOpenGMDashboard()
-  }
-
   return (
-    <div className="home">
+    /* ── Outer body — darker background the panel floats on ── */
+    <div className="home-body">
 
-      {/* ── Header ── */}
-      <header className="home-header">
-        {/* Logo + wordmark */}
-        <div className="home-logo-wrap">
-          <div className={`home-logo-icon${gmMode ? ' home-logo-icon--dm' : ''}`}>
-            {gmMode ? '📖' : '⚔️'}
+      {/* ── The floating panel ── */}
+      <div className={`home-panel${gmMode ? ' home-panel--dm' : ''}`}>
+
+        {/* ── Header ── */}
+        <header className="home-header">
+
+          {/* Logo + wordmark */}
+          <div className="home-logo-wrap">
+            <div className={`home-logo-icon${gmMode ? ' home-logo-icon--dm' : ''}`}>
+              {gmMode ? '📖' : '⚔️'}
+            </div>
+            <div>
+              <div className="home-wordmark">TTRPG Sheet</div>
+              <div className="home-tagline">{gmMode ? 'Dungeon Master' : 'Character Manager'}</div>
+            </div>
           </div>
-          <div>
-            <div className="home-wordmark">TTRPG Sheet</div>
-            <div className="home-tagline">{gmMode ? 'Dungeon Master' : 'Character Manager'}</div>
+
+          {/* Player / DM pill toggle — centred */}
+          <div className="mode-toggle">
+            <button
+              className={`mode-btn${!gmMode ? ' mode-btn--active' : ''}`}
+              onClick={() => { setGmMode(false); localStorage.setItem('is_gm', 'false') }}
+            >
+              ⚔️ Player
+            </button>
+            <button
+              className={`mode-btn mode-btn--dm${gmMode ? ' mode-btn--active mode-btn--dm-active' : ''}`}
+              onClick={() => { setGmMode(true); localStorage.setItem('is_gm', 'true') }}
+            >
+              📖 DM
+            </button>
           </div>
-        </div>
 
-        {/* Player / DM pill toggle */}
-        <div className="mode-toggle">
-          <button
-            className={`mode-btn${!gmMode ? ' mode-btn--active' : ''}`}
-            onClick={() => { setGmMode(false); localStorage.setItem('is_gm', 'false') }}
-          >
-            ⚔️ Player
-          </button>
-          <button
-            className={`mode-btn mode-btn--dm${gmMode ? ' mode-btn--active mode-btn--dm-active' : ''}`}
-            onClick={() => { setGmMode(true); localStorage.setItem('is_gm', 'true') }}
-          >
-            📖 DM
-          </button>
-        </div>
-
-        {/* User */}
-        <div className="home-user">
-          <div className="home-user-info">
-            <span className="home-user-name">{user.login}</span>
-            <span className="home-user-handle">@{user.login}</span>
+          {/* User info + avatar */}
+          <div className="home-user">
+            <div className="home-user-info">
+              <span className="home-user-name">{user.login}</span>
+              <span className="home-user-handle">@{user.login}</span>
+            </div>
+            {user.avatar_url
+              ? <img src={user.avatar_url} alt={user.login} className="home-avatar" onClick={onLogout} title="Log out" />
+              : <div className="home-avatar home-avatar--initial" onClick={onLogout}>{user.login[0].toUpperCase()}</div>
+            }
           </div>
-          {user.avatar_url
-            ? <img src={user.avatar_url} alt={user.login} className="home-avatar" onClick={onLogout} title="Log out" />
-            : <div className="home-avatar home-avatar--initial" onClick={onLogout}>{user.login[0].toUpperCase()}</div>
-          }
-        </div>
-      </header>
+        </header>
 
-      {/* ── DM mode banner ── */}
-      {gmMode && (
-        <div className="dm-banner">
-          <span className="dm-banner-icon">📖</span>
-          You're in DM mode. Your characters are safe — switch back to Player mode anytime.
-        </div>
-      )}
-
-      {/* ── Scrollable content ── */}
-      <div className="home-scroll">
-
-        {/* ── GM: Party Dashboard button ── */}
+        {/* ── DM mode banner ── */}
         {gmMode && (
-          <section className="home-section">
-            <div className="gm-campaigns-header">
-              <h2 className="home-section-title">Party Dashboard</h2>
-              <button className="section-action-btn" onClick={onOpenGMDashboard}>Open →</button>
-            </div>
-            <div className="gm-strip" onClick={onOpenGMDashboard}>
-              <span className="gm-strip-emoji">⚔️</span>
-              <div>
-                <div className="gm-strip-title">Open Party Dashboard</div>
-                <div className="gm-strip-sub">Track HP, conditions and stats for all your players live</div>
-              </div>
-              <span className="gm-strip-arrow">→</span>
-            </div>
-          </section>
+          <div className="dm-banner">
+            <span className="dm-banner-icon">📖</span>
+            You're in DM mode. Your characters are safe — switch back to Player mode anytime.
+          </div>
         )}
 
-        {/* ── My Characters ── */}
-        <section className="home-section">
-          <div className="home-section-header">
-            <h2 className="home-section-title">
-              My Characters
-              {!loading && <span className="home-section-count">{characters.length}</span>}
-            </h2>
-          </div>
+        {/* ── Scrollable content ── */}
+        <div className="home-scroll">
 
-          {loading ? (
-            <div className="home-loading">
-              <div className="home-spinner" />
-              Loading characters…
-            </div>
-          ) : (
-            <div className="char-grid">
-              {characters.map(char => (
-                <CharCard
-                  key={char.meta?.characterId ?? char._fileName}
-                  char={char}
-                  onClick={() => onSelectCharacter(char)}
-                  onDelete={setConfirmDelete}
-                />
-              ))}
-              <NewCharCard onClick={onCreateCharacter} />
-            </div>
+          {/* ── GM: Party Dashboard strip ── */}
+          {gmMode && (
+            <section className="home-section">
+              <div className="home-section-header">
+                <h2 className="home-section-title">Party Dashboard</h2>
+                <button className="section-action-btn" onClick={onOpenGMDashboard}>Open →</button>
+              </div>
+              <div className="gm-strip" onClick={onOpenGMDashboard}>
+                <span className="gm-strip-emoji">⚔️</span>
+                <div>
+                  <div className="gm-strip-title">Open Party Dashboard</div>
+                  <div className="gm-strip-sub">Track HP, conditions and stats for all your players live</div>
+                </div>
+                <span className="gm-strip-arrow">→</span>
+              </div>
+            </section>
           )}
-        </section>
 
-      </div>
+          {/* ── My Characters ── */}
+          <section className="home-section">
+            <div className="home-section-header">
+              <h2 className="home-section-title">
+                My Characters
+                {!loading && <span className="home-section-count">{characters.length}</span>}
+              </h2>
+            </div>
 
-      {/* ── Delete modal ── */}
-      {confirmDelete && (
-        <ConfirmDelete
-          char={confirmDelete}
-          onConfirm={deleteCharacter}
-          onCancel={() => setConfirmDelete(null)}
-          loading={deleteLoading}
-        />
-      )}
-    </div>
+            {loading ? (
+              <div className="home-loading">
+                <div className="home-spinner" />
+                Loading characters…
+              </div>
+            ) : (
+              <div className="char-grid">
+                {characters.map(char => (
+                  <CharCard
+                    key={char.meta?.characterId ?? char._fileName}
+                    char={char}
+                    onClick={() => onSelectCharacter(char)}
+                    onDelete={setConfirmDelete}
+                  />
+                ))}
+                <NewCharCard onClick={onCreateCharacter} />
+              </div>
+            )}
+          </section>
+
+        </div>
+
+        {/* ── Delete modal ── */}
+        {confirmDelete && (
+          <ConfirmDelete
+            char={confirmDelete}
+            onConfirm={deleteCharacter}
+            onCancel={() => setConfirmDelete(null)}
+            loading={deleteLoading}
+          />
+        )}
+
+      </div>{/* end .home-panel */}
+    </div>  /* end .home-body */
   )
 }
