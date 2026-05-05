@@ -139,7 +139,6 @@ function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
   )
 }
 
-
 // ── Main Home ─────────────────────────────────────────────────
 
 export default function Home({
