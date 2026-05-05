@@ -146,6 +146,7 @@ body {
   .app-shell { max-width: 100%; }
 }
 
+
 /* ── Scrollbars ── */
 ::-webkit-scrollbar { width: 0; height: 0; }
 
