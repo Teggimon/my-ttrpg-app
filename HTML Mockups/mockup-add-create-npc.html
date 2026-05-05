@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Add & Create NPC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --font-body:'Nunito',system-ui,sans-serif; --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
+    --dm:#e05252; --dm-hover:#f07070; --dm-subtle:rgba(224,82,82,0.12); --dm-border:rgba(224,82,82,0.38);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080712;color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;padding:24px 16px 48px;}
+  h1{font-family:'Outfit',var(--font-body);font-size:22px;font-weight:800;margin-bottom:6px;}
+  .page-sub{font-size:12px;color:var(--text-muted);margin-bottom:32px;font-family:var(--font-mono);}
+
+  .screens-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:24px;max-width:1100px;margin:0 auto;}
+  .screen-block{display:flex;flex-direction:column;gap:8px;}
+  .screen-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;}
+  .screen-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;box-shadow:var(--shadow-md);}
+
+  .modal-inner{padding:20px 20px 24px;display:flex;flex-direction:column;gap:14px;}
+  .modal-handle{width:36px;height:4px;background:var(--border-strong);border-radius:var(--r-full);margin:0 auto 4px;}
+  .modal-title{font-family:'Outfit',var(--font-body);font-size:17px;font-weight:800;}
+  .modal-sub{font-size:12px;color:var(--text-secondary);margin-top:-6px;line-height:1.5;}
+  .modal-actions{display:flex;gap:8px;margin-top:4px;}
+  .btn-primary{flex:1;background:var(--dm);color:#fff;border:none;border-radius:var(--r-md);padding:11px;font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer;}
+  .btn-secondary{background:var(--bg-surface);color:var(--text-secondary);border:1px solid var(--border);border-radius:var(--r-md);padding:11px 16px;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+  /* Search */
+  .search-bar{display:flex;gap:8px;}
+  .search-input{flex:1;background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-md);color:var(--text-primary);font-family:var(--font-body);font-size:13px;padding:9px 12px;outline:none;}
+  .search-input::placeholder{color:var(--text-muted);font-style:italic;}
+  .search-input:focus{border-color:var(--dm);}
+
+  /* Source filter chips */
+  .source-chips{display:flex;gap:6px;}
+  .source-chip{font-size:11px;font-weight:700;padding:4px 10px;border-radius:var(--r-full);cursor:pointer;border:1px solid var(--border);color:var(--text-muted);background:transparent;transition:all 150ms;}
+  .source-chip.active{border-color:var(--dm);color:var(--dm);background:var(--dm-subtle);}
+
+  /* Search results */
+  .search-results{display:flex;flex-direction:column;gap:5px;max-height:280px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .search-result{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;cursor:pointer;transition:border-color 150ms;display:flex;align-items:center;gap:10px;}
+  .search-result:hover{border-color:var(--border-strong);}
+  .sr-icon{font-size:20px;flex-shrink:0;}
+  .sr-info{flex:1;min-width:0;}
+  .sr-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sr-meta{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);margin-top:2px;}
+  .sr-source{font-size:9px;font-weight:700;padding:2px 6px;border-radius:var(--r-full);white-space:nowrap;flex-shrink:0;}
+  .sr-source.srd{background:rgba(124,111,245,0.12);color:var(--accent);border:1px solid rgba(124,111,245,0.3);}
+  .sr-source.custom{background:var(--dm-subtle);color:var(--dm);border:1px solid var(--dm-border);}
+  .sr-add-btns{display:flex;gap:4px;flex-shrink:0;}
+  .add-as-btn{font-size:10px;font-weight:700;padding:3px 8px;border-radius:var(--r-sm);cursor:pointer;border:1px solid;transition:all 150ms;white-space:nowrap;font-family:var(--font-body);}
+  .add-as-btn.enemy{color:var(--dm);border-color:var(--dm-border);background:var(--dm-subtle);}
+  .add-as-btn.enemy:hover{background:var(--dm);color:#fff;}
+  .add-as-btn.ally{color:var(--text-muted);border-color:var(--border);}
+  .add-as-btn.ally:hover{border-color:var(--border-strong);color:var(--text-secondary);}
+  .add-as-btn.boss{color:var(--warning);border-color:rgba(245,158,11,0.35);background:rgba(245,158,11,0.08);}
+  .add-as-btn.boss:hover{background:rgba(245,158,11,0.18);}
+
+  .create-npc-link{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border:1px dashed var(--border-strong);border-radius:var(--r-md);font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;transition:all 150ms;}
+  .create-npc-link:hover{border-color:var(--dm);color:var(--dm);background:var(--dm-subtle);}
+
+  /* ── Create NPC ── */
+  .mode-toggle{display:flex;background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-full);padding:3px;gap:2px;}
+  .mode-btn{flex:1;text-align:center;padding:6px 10px;border-radius:var(--r-full);font-size:12px;font-weight:700;cursor:pointer;color:var(--text-muted);transition:all 180ms;border:none;background:transparent;font-family:var(--font-body);}
+  .mode-btn.active{background:var(--dm);color:#fff;box-shadow:0 0 8px rgba(224,82,82,0.3);}
+
+  /* Form atoms */
+  .form-section{display:flex;flex-direction:column;gap:8px;}
+  .sec-lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding-bottom:5px;border-bottom:1px solid var(--border);}
+  .form-row{display:grid;gap:8px;}
+  .form-row.col2{grid-template-columns:1fr 1fr;}
+  .form-row.col3{grid-template-columns:1fr 1fr 1fr;}
+  .form-row.col6{grid-template-columns:repeat(6,1fr);}
+  .form-field{display:flex;flex-direction:column;gap:3px;}
+  .field-label{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+  .field-input{background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-sm);color:var(--text-primary);font-family:var(--font-body);font-size:12px;padding:6px 8px;outline:none;width:100%;transition:border-color 150ms;}
+  .field-input:focus{border-color:var(--dm);}
+  .field-input::placeholder{color:var(--text-muted);}
+  .field-input.mono{font-family:var(--font-mono);text-align:center;}
+
+  /* Ability score tiles */
+  .ability-tile{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:6px 4px;text-align:center;display:flex;flex-direction:column;gap:3px;}
+  .ability-tile-lbl{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .ability-tile-mod{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);}
+
+  /* Actions list */
+  .action-entry{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;display:flex;flex-direction:column;gap:5px;margin-bottom:5px;}
+  .action-entry:last-child{margin-bottom:0;}
+  .action-entry-header{display:flex;align-items:center;gap:8px;}
+  .action-entry-name{font-size:12px;font-weight:700;flex:1;}
+  .del-action{font-size:12px;color:var(--danger);background:transparent;border:none;cursor:pointer;opacity:.6;}
+  .del-action:hover{opacity:1;}
+  .add-action-row{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px;border:1px dashed var(--border-strong);border-radius:var(--r-sm);font-size:11px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all 150ms;}
+  .add-action-row:hover{border-color:var(--dm);color:var(--dm);}
+
+  /* Tag pills — resistances/immunities */
+  .tag-pills{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+  .tag-pill{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:var(--r-full);padding:3px 9px;font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:4px;}
+  .tag-pill button{background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:11px;line-height:1;padding:0;}
+  .tag-pill button:hover{color:var(--danger);}
+  .add-tag{background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-full);padding:3px 9px;font-size:11px;color:var(--text-muted);cursor:pointer;transition:all 150ms;}
+  .add-tag:hover{border-color:var(--dm);color:var(--dm);}
+
+  /* Full mode only sections */
+  .full-only{display:none;}
+  .full-only.visible{display:flex;flex-direction:column;gap:8px;}
+</style>
+</head>
+<body>
+
+<h1>Add NPC / Enemy & Create NPC</h1>
+<p class="page-sub">DM screens · Search merges SRD + Campaign Library · Create NPC has Quick and Full modes</p>
+
+<div class="screens-grid">
+
+  <!-- ══════════════════════════════
+       1. ADD NPC / ENEMY — Merged Search
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Add NPC / Enemy — Merged Search</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div>
+          <div class="modal-title">Add NPC / Enemy</div>
+          <div class="modal-sub">Search the SRD and your campaign library at once. Or create a new NPC from scratch.</div>
+        </div>
+
+        <!-- Single search bar -->
+        <div class="search-bar">
+          <input class="search-input" placeholder="Search monsters, NPCs… e.g. Goblin, Veteran…" value="Orc">
+        </div>
+
+        <!-- Source filter -->
+        <div class="source-chips">
+          <span class="source-chip active" onclick="toggleChip(this)">All sources</span>
+          <span class="source-chip" onclick="toggleChip(this)">SRD only</span>
+          <span class="source-chip" onclick="toggleChip(this)">My campaign</span>
+        </div>
+
+        <!-- Results -->
+        <div class="search-results">
+
+          <!-- SRD result -->
+          <div class="search-result">
+            <div class="sr-icon">👺</div>
+            <div class="sr-info">
+              <div class="sr-name">Orc</div>
+              <div class="sr-meta">Humanoid · CR ½ · 15 HP · AC 13 · +2 Init</div>
+            </div>
+            <span class="sr-source srd">SRD</span>
+            <div class="sr-add-btns">
+              <button class="add-as-btn enemy">Enemy</button>
+              <button class="add-as-btn ally">Ally</button>
+            </div>
+          </div>
+
+          <!-- SRD result — boss -->
+          <div class="search-result">
+            <div class="sr-icon">👹</div>
+            <div class="sr-info">
+              <div class="sr-name">Orc War Chief</div>
+              <div class="sr-meta">Humanoid · CR 4 · 93 HP · AC 16 · +2 Init</div>
+            </div>
+            <span class="sr-source srd">SRD</span>
+            <div class="sr-add-btns">
+              <button class="add-as-btn boss">Boss</button>
+              <button class="add-as-btn enemy">Enemy</button>
+              <button class="add-as-btn ally">Ally</button>
+            </div>
+          </div>
+
+          <!-- SRD result -->
+          <div class="search-result">
+            <div class="sr-icon">👺</div>
+            <div class="sr-info">
+              <div class="sr-name">Orc Eye of Gruumsh</div>
+              <div class="sr-meta">Humanoid · CR 2 · 45 HP · AC 16 · +1 Init</div>
+            </div>
+            <span class="sr-source srd">SRD</span>
+            <div class="sr-add-btns">
+              <button class="add-as-btn enemy">Enemy</button>
+              <button class="add-as-btn ally">Ally</button>
+            </div>
+          </div>
+
+          <!-- Campaign library result — custom NPC -->
+          <div class="search-result">
+            <div class="sr-icon">🗡️</div>
+            <div class="sr-info">
+              <div class="sr-name">Orc Warchief Gorthak</div>
+              <div class="sr-meta">Custom · CR 5 · 78 HP · AC 17 · +3 Init</div>
+            </div>
+            <span class="sr-source custom">Campaign</span>
+            <div class="sr-add-btns">
+              <button class="add-as-btn boss">Boss</button>
+              <button class="add-as-btn enemy">Enemy</button>
+            </div>
+          </div>
+
+          <!-- No more results hint -->
+          <div style="text-align:center;padding:6px;font-size:11px;color:var(--text-muted);">4 results for "Orc"</div>
+        </div>
+
+        <!-- Create NPC shortcut -->
+        <div class="create-npc-link" onclick="alert('Opens Create NPC screen')">
+          + Can't find what you need? Create a custom NPC →
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       2. CREATE NPC — QUICK MODE
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Create NPC — Quick Mode (mooks)</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div>
+          <div class="modal-title">Create NPC</div>
+          <div class="modal-sub">Quick mode for standard enemies. Switch to Full for complete stat blocks.</div>
+        </div>
+
+        <!-- Mode toggle -->
+        <div class="mode-toggle">
+          <button class="mode-btn active" onclick="setMode('quick',this)">⚡ Quick</button>
+          <button class="mode-btn" onclick="setMode('full',this)">📋 Full Stat Block</button>
+        </div>
+
+        <!-- Quick mode fields -->
+        <div class="form-section" id="quick-fields">
+          <div class="form-row col2">
+            <div class="form-field" style="grid-column:1/-1;">
+              <div class="field-label">Name</div>
+              <input class="field-input" placeholder="e.g. Goblin Shaman" value="Goblin Shaman">
+            </div>
+          </div>
+          <div class="form-row col3">
+            <div class="form-field">
+              <div class="field-label">Max HP</div>
+              <input class="field-input mono" type="number" value="18">
+            </div>
+            <div class="form-field">
+              <div class="field-label">AC</div>
+              <input class="field-input mono" type="number" value="13">
+            </div>
+            <div class="form-field">
+              <div class="field-label">Initiative</div>
+              <input class="field-input mono" type="number" value="+2">
+            </div>
+            <div class="form-field">
+              <div class="field-label">CR</div>
+              <input class="field-input mono" placeholder="½">
+            </div>
+            <div class="form-field">
+              <div class="field-label">Speed</div>
+              <input class="field-input mono" value="30ft">
+            </div>
+            <div class="form-field">
+              <div class="field-label">Type</div>
+              <select class="field-input" style="cursor:pointer;">
+                <option>Humanoid</option>
+                <option>Beast</option>
+                <option>Undead</option>
+                <option>Fiend</option>
+                <option>Dragon</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Quick actions — free text -->
+          <div class="form-field">
+            <div class="field-label">Actions / Notes</div>
+            <textarea class="field-input" rows="3" placeholder="e.g. Scimitar +4, 1d6+2 slashing. Cantrip: Poison Spray DC 11, 2d12 poison.">Scimitar +4 · 1d6+2 slashing
+Poison Spray DC 11 · 2d12 poison (Con save)</textarea>
+          </div>
+
+          <!-- Category -->
+          <div class="form-row col2">
+            <div class="form-field">
+              <div class="field-label">Add to campaign as</div>
+              <select class="field-input" style="cursor:pointer;">
+                <option>Standard Enemy</option>
+                <option>Boss / Named NPC</option>
+                <option>Ally NPC</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <div class="field-label">Hit Die</div>
+              <input class="field-input mono" placeholder="e.g. 2d8+2">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary">Cancel</button>
+          <button class="btn-primary">Save NPC</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       3. CREATE NPC — FULL STAT BLOCK
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Create NPC — Full Stat Block (bosses)</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div>
+          <div class="modal-title">Create NPC</div>
+          <div class="modal-sub">Full stat block mode. All fields pulled into the encounter view automatically.</div>
+        </div>
+
+        <div class="mode-toggle">
+          <button class="mode-btn" onclick="setMode('quick',this)">⚡ Quick</button>
+          <button class="mode-btn active" onclick="setMode('full',this)">📋 Full Stat Block</button>
+        </div>
+
+        <!-- Identity -->
+        <div class="form-section">
+          <div class="sec-lbl">Identity</div>
+          <div class="form-row">
+            <div class="form-field">
+              <div class="field-label">Name</div>
+              <input class="field-input" value="Gorthak, Orc Warchief">
+            </div>
+          </div>
+          <div class="form-row col3">
+            <div class="form-field">
+              <div class="field-label">Size</div>
+              <select class="field-input" style="cursor:pointer;">
+                <option>Tiny</option><option>Small</option><option selected>Medium</option><option>Large</option><option>Huge</option><option>Gargantuan</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <div class="field-label">Type</div>
+              <select class="field-input" style="cursor:pointer;"><option selected>Humanoid</option><option>Beast</option><option>Undead</option><option>Fiend</option><option>Dragon</option></select>
+            </div>
+            <div class="form-field">
+              <div class="field-label">Alignment</div>
+              <input class="field-input" value="Chaotic Evil">
+            </div>
+          </div>
+        </div>
+
+        <!-- Core stats -->
+        <div class="form-section">
+          <div class="sec-lbl">Core Stats</div>
+          <div class="form-row col3">
+            <div class="form-field"><div class="field-label">AC</div><input class="field-input mono" value="17"></div>
+            <div class="form-field"><div class="field-label">Max HP</div><input class="field-input mono" value="93"></div>
+            <div class="form-field"><div class="field-label">Hit Die</div><input class="field-input mono" value="11d8+44"></div>
+            <div class="form-field"><div class="field-label">Speed</div><input class="field-input mono" value="30ft"></div>
+            <div class="form-field"><div class="field-label">CR</div><input class="field-input mono" value="4"></div>
+            <div class="form-field"><div class="field-label">Prof Bonus</div><input class="field-input mono" value="+2"></div>
+          </div>
+        </div>
+
+        <!-- Ability scores -->
+        <div class="form-section">
+          <div class="sec-lbl">Ability Scores</div>
+          <div class="form-row col6">
+            <div class="ability-tile">
+              <div class="ability-tile-lbl">STR</div>
+              <input class="field-input mono" value="18" style="padding:4px 2px;font-size:13px;">
+              <div class="ability-tile-mod">+4</div>
+            </div>
+            <div class="ability-tile">
+              <div class="ability-tile-lbl">DEX</div>
+              <input class="field-input mono" value="12" style="padding:4px 2px;font-size:13px;">
+              <div class="ability-tile-mod">+1</div>
+            </div>
+            <div class="ability-tile">
+              <div class="ability-tile-lbl">CON</div>
+              <input class="field-input mono" value="18" style="padding:4px 2px;font-size:13px;">
+              <div class="ability-tile-mod">+4</div>
+            </div>
+            <div class="ability-tile">
+              <div class="ability-tile-lbl">INT</div>
+              <input class="field-input mono" value="11" style="padding:4px 2px;font-size:13px;">
+              <div class="ability-tile-mod">+0</div>
+            </div>
+            <div class="ability-tile">
+              <div class="ability-tile-lbl">WIS</div>
+              <input class="field-input mono" value="11" style="padding:4px 2px;font-size:13px;">
+              <div class="ability-tile-mod">+0</div>
+            </div>
+            <div class="ability-tile">
+              <div class="ability-tile-lbl">CHA</div>
+              <input class="field-input mono" value="16" style="padding:4px 2px;font-size:13px;">
+              <div class="ability-tile-mod">+3</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resistances / Immunities -->
+        <div class="form-section">
+          <div class="sec-lbl">Resistances & Immunities</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div>
+              <div class="field-label" style="margin-bottom:4px;">Damage Resistances</div>
+              <div class="tag-pills">
+                <span class="tag-pill">Poison <button>✕</button></span>
+                <button class="add-tag">+ Add</button>
+              </div>
+            </div>
+            <div>
+              <div class="field-label" style="margin-bottom:4px;">Damage Immunities</div>
+              <div class="tag-pills">
+                <button class="add-tag">+ Add</button>
+              </div>
+            </div>
+            <div>
+              <div class="field-label" style="margin-bottom:4px;">Condition Immunities</div>
+              <div class="tag-pills">
+                <span class="tag-pill">Frightened <button>✕</button></span>
+                <button class="add-tag">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-section">
+          <div class="sec-lbl">Actions</div>
+          <div class="action-entry">
+            <div class="action-entry-header">
+              <input class="field-input" value="Multiattack" style="font-weight:700;font-size:12px;">
+              <button class="del-action">✕</button>
+            </div>
+            <input class="field-input" placeholder="Effect / description" value="Makes 2 Greataxe attacks per turn.">
+          </div>
+          <div class="action-entry">
+            <div class="action-entry-header">
+              <input class="field-input" value="Greataxe" style="font-weight:700;font-size:12px;">
+              <button class="del-action">✕</button>
+            </div>
+            <div class="form-row col3">
+              <div class="form-field"><div class="field-label">To Hit</div><input class="field-input mono" value="+6"></div>
+              <div class="form-field"><div class="field-label">Damage</div><input class="field-input mono" value="1d12+4"></div>
+              <div class="form-field"><div class="field-label">Type</div><input class="field-input" value="Slashing"></div>
+            </div>
+            <input class="field-input" placeholder="Additional effect…" value="Reach 5ft · one target">
+          </div>
+          <div class="add-action-row">+ Add Action</div>
+        </div>
+
+        <!-- Traits -->
+        <div class="form-section">
+          <div class="sec-lbl">Traits</div>
+          <div class="action-entry">
+            <div class="action-entry-header">
+              <input class="field-input" value="Aggressive" style="font-weight:700;font-size:12px;">
+              <button class="del-action">✕</button>
+            </div>
+            <input class="field-input" value="Bonus action to move up to speed toward a hostile creature.">
+          </div>
+          <div class="add-action-row">+ Add Trait</div>
+        </div>
+
+        <!-- Category -->
+        <div class="form-section">
+          <div class="sec-lbl">Campaign</div>
+          <div class="form-row col2">
+            <div class="form-field">
+              <div class="field-label">Add to campaign as</div>
+              <select class="field-input" style="cursor:pointer;">
+                <option>Standard Enemy</option>
+                <option selected>Boss / Named NPC</option>
+                <option>Ally NPC</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <div class="field-label">Senses</div>
+              <input class="field-input" placeholder="e.g. Darkvision 60ft">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-secondary">Cancel</button>
+          <button class="btn-primary">Save NPC</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function toggleChip(chip) {
+    chip.parentElement.querySelectorAll('.source-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  }
+
+  function setMode(mode, btn) {
+    btn.closest('.modal-inner').querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+</script>
+</body>
+</html>

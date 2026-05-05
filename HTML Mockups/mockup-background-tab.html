@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Background Tab v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --condition-bg:rgba(239,100,60,0.22); --condition-text:#f4845f;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --tab-active-bg:#1c1b35; --tab-active-text:#eeedf8; --tab-inactive-text:#45426a;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --font-body:'Nunito',system-ui,sans-serif; --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-full:9999px;
+    --gold:#c9a227; --gold-subtle:rgba(201,162,39,0.1); --gold-border:rgba(201,162,39,0.38);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080712;color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px;}
+  .mockup-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;}
+  .app{width:100%;max-width:1100px;background:var(--bg-base);border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-md);}
+
+  .char-switcher{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+  .char-switcher::-webkit-scrollbar{display:none;}
+  .char-tab{padding:6px 14px;border-radius:var(--r-full);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid transparent;color:var(--text-secondary);}
+  .char-tab.active{background:var(--accent);color:var(--text-inverse);border-color:var(--accent);}
+  .char-tab.new-char{border:1px solid var(--border-strong);color:var(--text-muted);}
+  .sheet-body{display:flex;min-height:820px;}
+
+  /* Left panel */
+  .left-panel{width:clamp(200px,30%,300px);flex-shrink:0;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+  .char-info{padding:14px;border-bottom:1px solid var(--border);}
+  .char-info-row{display:flex;align-items:flex-start;justify-content:space-between;}
+  .char-name{font-family:'Outfit',var(--font-body);font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.01em;}
+  .char-meta{font-size:12px;color:var(--text-secondary);margin-top:3px;}
+  .icon-btn{width:28px;height:28px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;}
+  .hp-block{margin:12px 14px 0;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;}
+  .hp-label{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;}
+  .hp-row{display:flex;align-items:center;justify-content:space-between;}
+  .hp-value{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1;}
+  .hp-max{font-family:var(--font-mono);font-size:16px;color:var(--text-secondary);}
+  .hp-controls{display:flex;gap:6px;}
+  .hp-btn{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-strong);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg-inset);}
+  .hp-btn.plus{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .hp-bar-track{height:4px;background:var(--bg-inset);border-radius:var(--r-full);margin-top:8px;overflow:hidden;}
+  .hp-bar-fill{height:100%;width:80%;background:var(--hp-high);border-radius:var(--r-full);}
+  .stat-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 14px 0;}
+  .stat-tile{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 4px 6px;text-align:center;}
+  .stat-tile-value{font-family:var(--font-mono);font-size:17px;font-weight:500;line-height:1;}
+  .stat-tile-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:4px;}
+  .conditions-row{display:flex;align-items:center;gap:6px;padding:10px 14px 0;flex-wrap:wrap;}
+  .condition-pill{background:var(--condition-bg);color:var(--condition-text);font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--r-sm);border:1px solid rgba(244,132,95,0.3);}
+  .add-condition{background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-sm);border:1px dashed var(--border-strong);cursor:pointer;}
+  .xp-row{padding:10px 14px 0;}
+  .xp-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:5px;}
+  .xp-track{height:3px;background:var(--bg-inset);border-radius:var(--r-full);overflow:hidden;}
+  .xp-fill{height:100%;width:76%;background:var(--accent);border-radius:var(--r-full);}
+  .saved-indicator{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:11px;color:var(--success);font-weight:600;}
+  .saved-dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--success);}
+  .sidebar-tabs{flex:1;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;border-top:1px solid var(--border);}
+  .sidebar-tab{display:flex;align-items:center;gap:8px;padding:10px;border-radius:var(--r-md);cursor:pointer;color:var(--tab-inactive-text);font-size:13px;font-weight:600;border:1px solid transparent;white-space:nowrap;}
+  .sidebar-tab:hover{color:var(--text-secondary);background:var(--bg-elevated);}
+  .sidebar-tab.active{background:var(--tab-active-bg);color:var(--tab-active-text);border-color:var(--border);}
+  .tab-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+
+  /* Right panel */
+  .right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* Summary strip — total level, alignment, background only */
+  .summary-strip{display:flex;align-items:center;border-bottom:1px solid var(--border);background:var(--bg-surface);flex-shrink:0;}
+  .strip-cell{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:11px 8px 9px;border-right:1px solid var(--border);gap:3px;}
+  .strip-cell:last-child{border-right:none;}
+  .strip-val{font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--text-primary);line-height:1;}
+  .strip-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);text-align:center;}
+  .strip-sub{font-size:11px;color:var(--text-secondary);font-family:var(--font-mono);margin-top:1px;text-align:center;}
+
+  /* Scroll */
+  .bg-scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:22px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+
+  .section-header{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+
+  /* Shared card atoms */
+  .edit-btn{font-size:11px;font-weight:700;padding:5px 11px;border-radius:var(--r-sm);border:1px solid var(--border-strong);background:var(--bg-elevated);color:var(--text-secondary);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 150ms;}
+  .edit-btn:hover{color:var(--text-primary);border-color:var(--accent);}
+  .xbtn{width:26px;height:26px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:10px;transition:all 150ms;user-select:none;}
+  .xbtn:hover{border-color:var(--border-strong);color:var(--text-secondary);}
+  .expanded>.xbtn,.expanded .class-card-head>.xbtn,.expanded .ally-head>.xbtn{background:var(--accent-subtle);border-color:var(--accent);color:var(--accent);transform:rotate(180deg);}
+  .ds{display:flex;flex-direction:column;gap:2px;}
+  .ds-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .ds-val{font-family:var(--font-mono);font-size:12px;color:var(--text-primary);}
+  .dact{font-size:12px;font-weight:700;padding:6px 14px;border-radius:var(--r-sm);cursor:pointer;border:1px solid var(--border-strong);background:var(--bg-elevated);color:var(--text-secondary);transition:all 150ms;}
+  .dact:hover{color:var(--text-primary);}
+  .dact.danger{color:var(--danger);border-color:rgba(248,113,113,0.3);}
+  .dact.danger:hover{background:rgba(248,113,113,0.1);}
+
+  /* ── RACE card ── */
+  .race-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;}
+  .race-card-head{display:flex;align-items:center;gap:12px;padding:13px 14px;}
+  .race-name{font-size:16px;font-weight:700;color:var(--text-primary);flex:1;}
+  .race-subrace{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+  .race-detail{padding:0 14px 14px;border-top:1px solid var(--border);background:var(--bg-inset);}
+  .race-bonus-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:12px 0 10px;}
+
+  /* Racial traits list */
+  .trait-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;padding-top:10px;border-top:1px solid var(--border);}
+  .trait-row{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;}
+  .trait-name{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:3px;}
+  .trait-desc{font-size:12px;color:var(--text-secondary);line-height:1.5;}
+
+  /* ── CLASS cards ── */
+  .class-grid{display:flex;flex-direction:column;gap:6px;}
+  .class-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;transition:border-color 150ms;}
+  .class-card:hover{border-color:var(--border-strong);}
+  .class-card.expanded{border-color:var(--border-strong);}
+  .class-card-head{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;}
+  .class-level-badge{font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--accent);line-height:1;min-width:28px;text-align:center;flex-shrink:0;}
+  .class-level-badge.secondary{color:var(--text-secondary);}
+  .class-info{flex:1;min-width:0;}
+  .class-name{font-size:15px;font-weight:700;color:var(--text-primary);}
+  .class-subclass{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+  .primary-pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-full);background:var(--accent-subtle);border:1px solid var(--accent);color:var(--accent-hover);white-space:nowrap;flex-shrink:0;}
+
+  .class-detail{display:none;border-top:1px solid var(--border);background:var(--bg-inset);}
+  .class-card.expanded .class-detail{display:block;}
+  .class-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;padding:12px 14px 10px;}
+  .detail-actions{display:flex;gap:8px;padding:0 14px 12px;}
+
+  /* Level abilities — collapsed rows within class detail */
+  .abilities-section{padding:0 14px 6px;}
+  .abilities-header{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;padding-top:8px;border-top:1px solid var(--border);}
+
+  .level-row{margin-bottom:4px;}
+  .level-row-head{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);cursor:pointer;transition:border-color 150ms;}
+  .level-row-head:hover{border-color:var(--border-strong);}
+  .level-row.expanded .level-row-head{border-color:var(--accent);background:var(--accent-subtle);}
+  .level-num{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted);min-width:52px;}
+  .level-gains{font-size:12px;color:var(--text-secondary);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .level-row.expanded .level-gains{color:var(--text-primary);}
+  .level-chevron{font-size:10px;color:var(--text-muted);flex-shrink:0;transition:transform 150ms;}
+  .level-row.expanded .level-chevron{transform:rotate(180deg);color:var(--accent);}
+
+  .level-row-detail{display:none;padding:8px 10px 10px;background:var(--bg-inset);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r-sm) var(--r-sm);margin-top:-4px;}
+  .level-row.expanded .level-row-detail{display:block;}
+
+  .ability-entry{margin-bottom:8px;}
+  .ability-entry:last-child{margin-bottom:0;}
+  .ability-name{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:3px;display:flex;align-items:center;gap:8px;}
+  .ability-tag{font-size:10px;font-weight:700;padding:1px 6px;border-radius:var(--r-full);white-space:nowrap;}
+  .ability-tag.active{background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.35);color:var(--success);}
+  .ability-tag.passive{background:var(--bg-elevated);border:1px solid var(--border-strong);color:var(--text-muted);}
+  .ability-tag.combat{background:var(--accent-subtle);border:1px solid var(--accent);color:var(--accent-hover);}
+  .ability-desc{font-size:12px;color:var(--text-secondary);line-height:1.55;}
+
+  .add-class-btn{display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:10px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;width:100%;transition:all 150ms;}
+  .add-class-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* Background & personality */
+  .bg-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;}
+  .bg-card-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;}
+  .bg-name{font-size:16px;font-weight:700;color:var(--text-primary);}
+  .bg-feature-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;margin-top:8px;}
+  .bg-feature-text{font-size:13px;color:var(--text-secondary);line-height:1.6;}
+  .personality-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .personality-field{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;display:flex;flex-direction:column;gap:6px;}
+  .personality-field-header{display:flex;align-items:center;justify-content:space-between;}
+  .personality-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .personality-text{font-size:13px;color:var(--text-secondary);line-height:1.6;min-height:48px;}
+
+  /* Alignment — grid HIDDEN until edit */
+  .alignment-section{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;}
+  .alignment-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;}
+  .alignment-current{font-size:15px;font-weight:700;color:var(--text-primary);}
+  .alignment-current span{color:var(--text-secondary);font-size:12px;font-weight:400;margin-left:6px;}
+  /* Grid hidden by default */
+  .alignment-grid{display:none;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:14px;}
+  .alignment-grid.visible{display:grid;}
+  .align-cell{background:var(--bg-elevated);border:1.5px solid var(--border);border-radius:var(--r-md);padding:10px 6px;text-align:center;cursor:pointer;transition:all 150ms;user-select:none;}
+  .align-cell:hover{border-color:var(--border-strong);}
+  .align-cell.selected{border-color:var(--accent);background:var(--accent-subtle);}
+  .align-cell-name{font-size:11px;font-weight:700;color:var(--text-primary);line-height:1.3;}
+  .align-cell-short{font-size:9px;color:var(--text-muted);margin-top:2px;font-family:var(--font-mono);}
+  .alignment-confirm{display:none;margin-top:10px;width:100%;background:var(--accent);color:white;border:none;border-radius:var(--r-md);padding:10px;font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer;}
+  .alignment-confirm:hover{background:var(--accent-hover);}
+  .alignment-confirm.visible{display:block;}
+
+  /* Freeform */
+  .freeform-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px;}
+  .freeform-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .freeform-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .freeform-text{font-size:13px;color:var(--text-secondary);line-height:1.7;min-height:60px;}
+  .freeform-text.tall{min-height:100px;}
+
+  /* Allies */
+  .ally-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:6px;transition:border-color 150ms;}
+  .ally-card:hover{border-color:var(--border-strong);}
+  .ally-card.expanded{border-color:var(--border-strong);}
+  .ally-head{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;}
+  .ally-name{font-size:14px;font-weight:600;flex:1;}
+  .ally-type{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);flex-shrink:0;}
+  .ally-detail{display:none;padding:10px 14px 14px;border-top:1px solid var(--border);background:var(--bg-inset);font-size:13px;color:var(--text-secondary);line-height:1.6;}
+  .ally-card.expanded .ally-detail{display:block;}
+  .add-ally-btn{display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:9px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;width:100%;transition:all 150ms;margin-top:6px;}
+  .add-ally-btn:hover{border-color:var(--accent);color:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Background Tab v2 · Race · Class + Level Abilities · Alignment grid hidden · Total level strip</div>
+
+<div class="app">
+  <div class="char-switcher">
+    <div class="char-tab active">Aragorn 10</div>
+    <div class="char-tab">Frodo 7</div>
+    <div class="char-tab">Gandalf 20</div>
+    <div class="char-tab new-char">+ New</div>
+  </div>
+
+  <div class="sheet-body">
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <div class="char-info">
+        <div class="char-info-row">
+          <div><div class="char-name">Aragorn</div><div class="char-meta">Human · Ranger · Lv 10</div></div>
+          <div style="display:flex;gap:4px;align-items:flex-start;padding-top:2px;">
+            <span style="font-size:13px;color:var(--text-muted)">🔒</span>
+            <div class="icon-btn">↑</div>
+            <div class="icon-btn">⋯</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 14px;">
+        <div class="hp-block">
+          <div class="hp-label">Hit Points</div>
+          <div class="hp-row">
+            <div><span class="hp-value">72</span><span class="hp-max"> / 90</span></div>
+            <div class="hp-controls"><div class="hp-btn">−</div><div class="hp-btn plus">+</div></div>
+          </div>
+          <div class="hp-bar-track"><div class="hp-bar-fill"></div></div>
+        </div>
+      </div>
+      <div class="stat-tiles">
+        <div class="stat-tile"><div class="stat-tile-value">16</div><div class="stat-tile-label">AC</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">+6</div><div class="stat-tile-label">Init</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">30ft</div><div class="stat-tile-label">Speed</div></div>
+      </div>
+      <div class="conditions-row">
+        <span class="condition-pill">Poisoned</span>
+        <span class="add-condition">+ Add</span>
+      </div>
+      <div class="xp-row">
+        <div class="xp-labels"><span>64,500 XP</span><span>Lv 11 at 85k</span></div>
+        <div class="xp-track"><div class="xp-fill"></div></div>
+      </div>
+      <div class="saved-indicator"><div class="saved-dot"></div>Saved</div>
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab"><span class="tab-icon">✕</span> Combat</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎲</span> Stats</div>
+        <div class="sidebar-tab"><span class="tab-icon">✨</span> Spells</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎒</span> Gear</div>
+        <div class="sidebar-tab active"><span class="tab-icon">📖</span> Background</div>
+        <div class="sidebar-tab"><span class="tab-icon">📝</span> Notes</div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+
+      <!-- Summary strip — total level only, full breakdown below -->
+      <div class="summary-strip">
+        <div class="strip-cell">
+          <span class="strip-val">10</span>
+          <span class="strip-lbl">Total Level</span>
+          <span class="strip-sub">Ranger 8 / Fighter 2</span>
+        </div>
+        <div class="strip-cell">
+          <span class="strip-val" style="font-size:14px;">Lawful Good</span>
+          <span class="strip-lbl">Alignment</span>
+        </div>
+        <div class="strip-cell">
+          <span class="strip-val" style="font-size:14px;">Outlander</span>
+          <span class="strip-lbl">Background</span>
+        </div>
+        <div class="strip-cell">
+          <span class="strip-val" style="font-size:14px;">Human</span>
+          <span class="strip-lbl">Race</span>
+          <span class="strip-sub">Variant Human</span>
+        </div>
+      </div>
+
+      <div class="bg-scroll">
+
+        <!-- RACE -->
+        <div>
+          <div class="section-header">Race</div>
+          <div class="race-card">
+            <div class="race-card-head">
+              <div style="flex:1;">
+                <div class="race-name">Human</div>
+                <div class="race-subrace">Variant Human</div>
+              </div>
+              <button class="edit-btn">✎ Edit</button>
+            </div>
+            <div class="race-detail">
+              <div class="race-bonus-grid">
+                <div class="ds"><span class="ds-lbl">Size</span><span class="ds-val">Medium</span></div>
+                <div class="ds"><span class="ds-lbl">Speed</span><span class="ds-val">30 ft</span></div>
+                <div class="ds"><span class="ds-lbl">Languages</span><span class="ds-val">Common + 1</span></div>
+                <div class="ds"><span class="ds-lbl">ASI</span><span class="ds-val">+1 to 2 stats</span></div>
+                <div class="ds"><span class="ds-lbl">Feat</span><span class="ds-val">Sharpshooter</span></div>
+                <div class="ds"><span class="ds-lbl">Skill</span><span class="ds-val">1 extra prof</span></div>
+              </div>
+              <div class="trait-list">
+                <div class="trait-row">
+                  <div class="trait-name">Resourceful <span class="ability-tag active">Active · 1/LR</span></div>
+                  <div class="trait-desc">You gain Heroic Inspiration whenever you finish a Long Rest. Adds to Combat tab as a usable ability.</div>
+                </div>
+                <div class="trait-row">
+                  <div class="trait-name">Skilled <span class="ability-tag passive">Passive</span></div>
+                  <div class="trait-desc">Proficiency in any combination of 3 skills or tools of your choice.</div>
+                </div>
+                <div class="trait-row">
+                  <div class="trait-name">Versatile <span class="ability-tag passive">Passive</span></div>
+                  <div class="trait-desc">You gain the Origin feat of your choice. (Sharpshooter selected.)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CLASS & MULTICLASS -->
+        <div>
+          <div class="section-header">Class & Multiclass</div>
+          <div class="class-grid">
+
+            <!-- Ranger — primary, expanded -->
+            <div class="class-card expanded" id="cc-ranger">
+              <div class="class-card-head" onclick="togCard('cc-ranger')">
+                <div class="class-level-badge">8</div>
+                <div class="class-info">
+                  <div class="class-name">Ranger</div>
+                  <div class="class-subclass">Gloom Stalker</div>
+                </div>
+                <span class="primary-pill">Primary</span>
+                <button class="xbtn" onclick="event.stopPropagation();togCard('cc-ranger')">▾</button>
+              </div>
+              <div class="class-detail">
+                <div class="class-detail-grid">
+                  <div class="ds"><span class="ds-lbl">Hit Die</span><span class="ds-val">d10</span></div>
+                  <div class="ds"><span class="ds-lbl">Spellcasting</span><span class="ds-val">WIS (half)</span></div>
+                  <div class="ds"><span class="ds-lbl">Save Profs</span><span class="ds-val">STR, DEX</span></div>
+                  <div class="ds"><span class="ds-lbl">Levels</span><span class="ds-val">8</span></div>
+                </div>
+
+                <!-- Level-by-level abilities, collapsed by default -->
+                <div class="abilities-section">
+                  <div class="abilities-header">Abilities by level — tap to expand</div>
+
+                  <div class="level-row" id="lr-r1">
+                    <div class="level-row-head" onclick="togLevel('lr-r1')">
+                      <span class="level-num">Level 1</span>
+                      <span class="level-gains">Favoured Enemy, Natural Explorer</span>
+                      <span class="level-chevron">▾</span>
+                    </div>
+                    <div class="level-row-detail">
+                      <div class="ability-entry">
+                        <div class="ability-name">Favoured Enemy <span class="ability-tag passive">Passive</span></div>
+                        <div class="ability-desc">Advantage on Survival checks to track chosen enemy type (Orcs). +2 damage vs favoured enemy.</div>
+                      </div>
+                      <div class="ability-entry">
+                        <div class="ability-name">Natural Explorer <span class="ability-tag passive">Passive</span></div>
+                        <div class="ability-desc">Proficiency bonus doubled for INT and WIS checks in chosen terrain type. Difficult terrain doesn't slow travel.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="level-row" id="lr-r2">
+                    <div class="level-row-head" onclick="togLevel('lr-r2')">
+                      <span class="level-num">Level 2</span>
+                      <span class="level-gains">Fighting Style, Spellcasting</span>
+                      <span class="level-chevron">▾</span>
+                    </div>
+                    <div class="level-row-detail">
+                      <div class="ability-entry">
+                        <div class="ability-name">Fighting Style — Archery <span class="ability-tag passive">Passive</span></div>
+                        <div class="ability-desc">+2 bonus to attack rolls with ranged weapons.</div>
+                      </div>
+                      <div class="ability-entry">
+                        <div class="ability-name">Spellcasting <span class="ability-tag passive">Passive</span></div>
+                        <div class="ability-desc">Cast ranger spells using WIS. Half-caster — spell slots from Ranger table.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="level-row" id="lr-r3">
+                    <div class="level-row-head" onclick="togLevel('lr-r3')">
+                      <span class="level-num">Level 3</span>
+                      <span class="level-gains">Gloom Stalker: Dread Ambusher, Umbral Sight</span>
+                      <span class="level-chevron">▾</span>
+                    </div>
+                    <div class="level-row-detail">
+                      <div class="ability-entry">
+                        <div class="ability-name">Dread Ambusher <span class="ability-tag combat">→ Combat</span> <span class="ability-tag active">Active · 1/turn</span></div>
+                        <div class="ability-desc">On the first turn of combat, your walking speed increases by 10ft and you can make one additional attack. That attack deals an extra 1d8 damage. Appears in Combat tab under Class/Race Abilities.</div>
+                      </div>
+                      <div class="ability-entry">
+                        <div class="ability-name">Umbral Sight <span class="ability-tag passive">Passive</span></div>
+                        <div class="ability-desc">You gain Darkvision 60ft. If you already had it, it extends by 30ft. You are invisible to creatures that rely on Darkvision to see you in darkness.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="level-row" id="lr-r5">
+                    <div class="level-row-head" onclick="togLevel('lr-r5')">
+                      <span class="level-num">Level 5</span>
+                      <span class="level-gains">Extra Attack</span>
+                      <span class="level-chevron">▾</span>
+                    </div>
+                    <div class="level-row-detail">
+                      <div class="ability-entry">
+                        <div class="ability-name">Extra Attack <span class="ability-tag passive">Passive</span></div>
+                        <div class="ability-desc">You can attack twice, instead of once, whenever you take the Attack action on your turn.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="level-row" id="lr-r7">
+                    <div class="level-row-head" onclick="togLevel('lr-r7')">
+                      <span class="level-num">Level 7</span>
+                      <span class="level-gains">Iron Mind</span>
+                      <span class="level-chevron">▾</span>
+                    </div>
+                    <div class="level-row-detail">
+                      <div class="ability-entry">
+                        <div class="ability-name">Iron Mind <span class="ability-tag passive">Passive</span></div>
+                        <div class="ability-desc">You gain proficiency in WIS saving throws. If you already have proficiency, you gain proficiency in INT or CHA saves instead (your choice).</div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div><!-- /abilities -->
+                <div class="detail-actions" style="padding:10px 14px 12px;border-top:1px solid var(--border);">
+                  <button class="dact">✎ Edit</button>
+                  <button class="dact danger">✕ Remove</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fighter — multiclass -->
+            <div class="class-card" id="cc-fighter">
+              <div class="class-card-head" onclick="togCard('cc-fighter')">
+                <div class="class-level-badge secondary">2</div>
+                <div class="class-info">
+                  <div class="class-name">Fighter</div>
+                  <div class="class-subclass">Battle Master</div>
+                </div>
+                <button class="xbtn" onclick="event.stopPropagation();togCard('cc-fighter')">▾</button>
+              </div>
+              <div class="class-detail">
+                <div class="class-detail-grid">
+                  <div class="ds"><span class="ds-lbl">Hit Die</span><span class="ds-val">d10</span></div>
+                  <div class="ds"><span class="ds-lbl">Spellcasting</span><span class="ds-val">None</span></div>
+                  <div class="ds"><span class="ds-lbl">Levels</span><span class="ds-val">2</span></div>
+                </div>
+                <div class="abilities-section">
+                  <div class="abilities-header">Abilities by level</div>
+
+                  <div class="level-row" id="lr-f1">
+                    <div class="level-row-head" onclick="togLevel('lr-f1')">
+                      <span class="level-num">Level 1</span>
+                      <span class="level-gains">Second Wind, Fighting Style</span>
+                      <span class="level-chevron">▾</span>
+                    </div>
+                    <div class="level-row-detail">
+                      <div class="ability-entry">
+                        <div class="ability-name">Second Wind <span class="ability-tag combat">→ Combat</span> <span class="ability-tag active">Active · 1/SR</span></div>
+                        <div class="ability-desc">Bonus action to regain 1d10 + Fighter level HP. Recharges on Short or Long Rest. Appears in Combat tab.</div>
+                      </div>
+                      <div class="ability-entry">
+                        <div class="ability-name">Fighting Style — Defense <span class="ability-tag passive">Passive</span></div>
+                        <div class="ability-desc">+1 AC while wearing armour. Already reflected in your AC total.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="level-row" id="lr-f2">
+                    <div class="level-row-head" onclick="togLevel('lr-f2')">
+                      <span class="level-num">Level 2</span>
+                      <span class="level-gains">Action Surge</span>
+                      <span class="level-chevron">▾</span>
+                    </div>
+                    <div class="level-row-detail">
+                      <div class="ability-entry">
+                        <div class="ability-name">Action Surge <span class="ability-tag combat">→ Combat</span> <span class="ability-tag active">Active · 1/SR</span></div>
+                        <div class="ability-desc">Take one additional action on your turn. Cannot be used to cast a second levelled spell. Recharges on Short or Long Rest. Appears in Combat tab.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="detail-actions" style="padding:10px 14px 12px;border-top:1px solid var(--border);">
+                  <button class="dact">Set as primary</button>
+                  <button class="dact">✎ Edit</button>
+                  <button class="dact danger">✕ Remove</button>
+                </div>
+              </div>
+            </div>
+
+            <button class="add-class-btn">+ Add multiclass</button>
+          </div>
+        </div>
+
+        <!-- BACKGROUND -->
+        <div>
+          <div class="section-header">Background</div>
+          <div class="bg-card">
+            <div class="bg-card-row">
+              <div class="bg-name">Outlander</div>
+              <button class="edit-btn">✎ Edit</button>
+            </div>
+            <div class="bg-feature-label">Background Feature</div>
+            <div class="bg-feature-text"><strong style="color:var(--text-primary)">Wanderer.</strong> You have an excellent memory for maps and geography and can always recall general terrain layouts. You can find food and fresh water for yourself and up to five others each day in natural environments.</div>
+          </div>
+        </div>
+
+        <!-- PERSONALITY -->
+        <div>
+          <div class="section-header">Personality</div>
+          <div class="personality-grid">
+            <div class="personality-field">
+              <div class="personality-field-header"><span class="personality-label">Traits</span><button class="edit-btn">✎ Edit</button></div>
+              <div class="personality-text">I watch over my companions as if they were a litter of newborn pups. I am slow to trust, but deeply loyal to those who earn it.</div>
+            </div>
+            <div class="personality-field">
+              <div class="personality-field-header"><span class="personality-label">Ideals</span><button class="edit-btn">✎ Edit</button></div>
+              <div class="personality-text">Greater Good. It is each person's responsibility to make the most happiness for the whole tribe. <em style="color:var(--text-muted)">(Good)</em></div>
+            </div>
+            <div class="personality-field">
+              <div class="personality-field-header"><span class="personality-label">Bonds</span><button class="edit-btn">✎ Edit</button></div>
+              <div class="personality-text">I am the last of my tribe, and it is my duty to ensure their stories live on. I suffer visions of coming disaster.</div>
+            </div>
+            <div class="personality-field">
+              <div class="personality-field-header"><span class="personality-label">Flaws</span><button class="edit-btn">✎ Edit</button></div>
+              <div class="personality-text">There's no room for caution in a life lived to the fullest. I am too proud and slow to admit when I am wrong.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALIGNMENT — grid hidden until Edit -->
+        <div>
+          <div class="section-header">Alignment</div>
+          <div class="alignment-section">
+            <div class="alignment-header">
+              <div class="alignment-current" id="align-current-label">Lawful Good <span>— tap Edit to change</span></div>
+              <button class="edit-btn" id="align-edit-btn" onclick="unlockAlignment()">✎ Edit</button>
+            </div>
+            <!-- 3×3 grid — hidden until unlocked -->
+            <div class="alignment-grid" id="align-grid">
+              <div class="align-cell" onclick="selectAlign(this,'Lawful Good')"><div class="align-cell-name">Lawful Good</div><div class="align-cell-short">LG</div></div>
+              <div class="align-cell" onclick="selectAlign(this,'Neutral Good')"><div class="align-cell-name">Neutral Good</div><div class="align-cell-short">NG</div></div>
+              <div class="align-cell" onclick="selectAlign(this,'Chaotic Good')"><div class="align-cell-name">Chaotic Good</div><div class="align-cell-short">CG</div></div>
+              <div class="align-cell" onclick="selectAlign(this,'Lawful Neutral')"><div class="align-cell-name">Lawful Neutral</div><div class="align-cell-short">LN</div></div>
+              <div class="align-cell" onclick="selectAlign(this,'True Neutral')"><div class="align-cell-name">True Neutral</div><div class="align-cell-short">TN</div></div>
+              <div class="align-cell" onclick="selectAlign(this,'Chaotic Neutral')"><div class="align-cell-name">Chaotic Neutral</div><div class="align-cell-short">CN</div></div>
+              <div class="align-cell" onclick="selectAlign(this,'Lawful Evil')"><div class="align-cell-name">Lawful Evil</div><div class="align-cell-short">LE</div></div>
+              <div class="align-cell" onclick="selectAlign(this,'Neutral Evil')"><div class="align-cell-name">Neutral Evil</div><div class="align-cell-short">NE</div></div>
+              <div class="align-cell" onclick="selectAlign(this,'Chaotic Evil')"><div class="align-cell-name">Chaotic Evil</div><div class="align-cell-short">CE</div></div>
+            </div>
+            <button class="alignment-confirm" id="align-confirm" onclick="confirmAlignment()">Confirm Alignment</button>
+          </div>
+        </div>
+
+        <!-- APPEARANCE -->
+        <div>
+          <div class="section-header">Appearance</div>
+          <div class="freeform-card">
+            <div class="freeform-header"><span class="freeform-label">Physical Description</span><button class="edit-btn">✎ Edit</button></div>
+            <div class="freeform-text">Tall and weathered, dark hair streaked grey at the temples. Grey eyes that miss little. A long scar runs from left jaw to collarbone. Wears a worn Ranger's cloak over battered but well-maintained armour.</div>
+          </div>
+        </div>
+
+        <!-- BACKSTORY -->
+        <div>
+          <div class="section-header">Backstory</div>
+          <div class="freeform-card">
+            <div class="freeform-header"><span class="freeform-label">Character History</span><button class="edit-btn">✎ Edit</button></div>
+            <div class="freeform-text tall">Born Aragorn II, son of Arathorn, raised in Rivendell under the name Estel — hope — kept ignorant of his true heritage until his twentieth year. He has spent decades ranging the wilds of Eriador, protecting settlements from orc raids, known to most only as Strider...</div>
+          </div>
+        </div>
+
+        <!-- ALLIES & ORGANISATIONS -->
+        <div>
+          <div class="section-header">Allies & Organisations</div>
+          <div class="ally-card expanded" id="ally-rangers">
+            <div class="ally-head" onclick="togCard('ally-rangers')">
+              <span class="ally-name">Rangers of the North</span>
+              <span class="ally-type">Organisation</span>
+              <button class="xbtn" onclick="event.stopPropagation();togCard('ally-rangers')">▾</button>
+            </div>
+            <div class="ally-detail">A secretive brotherhood of Dúnedain Rangers who patrol Eriador. Aragorn serves as their Chieftain, though few outside the order know this.</div>
+          </div>
+          <div class="ally-card" id="ally-gandalf">
+            <div class="ally-head" onclick="togCard('ally-gandalf')">
+              <span class="ally-name">Gandalf the Grey</span>
+              <span class="ally-type">NPC · Ally</span>
+              <button class="xbtn" onclick="event.stopPropagation();togCard('ally-gandalf')">▾</button>
+            </div>
+            <div class="ally-detail">An Istari wizard of great power. A trusted advisor whose counsel is rarely wrong and never simple.</div>
+          </div>
+          <button class="add-ally-btn">+ Add ally or organisation</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function togCard(id){ document.getElementById(id).classList.toggle('expanded'); }
+  function togLevel(id){ document.getElementById(id).classList.toggle('expanded'); }
+
+  let pendingAlignment = 'Lawful Good';
+  let alignUnlocked = false;
+
+  function unlockAlignment() {
+    alignUnlocked = true;
+    document.getElementById('align-grid').classList.add('visible');
+    document.getElementById('align-edit-btn').style.display = 'none';
+    document.getElementById('align-current-label').innerHTML = 'Choose new alignment below';
+  }
+
+  function selectAlign(cell, name) {
+    if (!alignUnlocked) return;
+    document.querySelectorAll('.align-cell').forEach(c => c.classList.remove('selected'));
+    cell.classList.add('selected');
+    pendingAlignment = name;
+    const btn = document.getElementById('align-confirm');
+    btn.textContent = 'Confirm — ' + name;
+    btn.classList.add('visible');
+  }
+
+  function confirmAlignment() {
+    document.querySelector('.strip-val[style*="font-size:14px"]').textContent = pendingAlignment;
+    document.getElementById('align-current-label').innerHTML =
+      pendingAlignment + ' <span>— tap Edit to change</span>';
+    alignUnlocked = false;
+    document.getElementById('align-grid').classList.remove('visible');
+    document.getElementById('align-confirm').classList.remove('visible');
+    document.getElementById('align-edit-btn').style.display = '';
+    document.querySelectorAll('.align-cell').forEach(c => c.classList.remove('selected'));
+  }
+</script>
+</body>
+</html>

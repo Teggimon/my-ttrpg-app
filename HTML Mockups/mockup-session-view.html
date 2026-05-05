@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SheetForge — Session 14 · The Fellowship</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --shadow-sm:0 2px 8px rgba(0,0,0,0.4);
+    --font-body:'Nunito',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
+    --dm:#e05252; --dm-hover:#f07070; --dm-subtle:rgba(224,82,82,0.12); --dm-border:rgba(224,82,82,0.38);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg-base);color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px;}
+  .mockup-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;}
+
+  .app{width:100%;max-width:1100px;background:var(--bg-base);border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--dm-border);box-shadow:0 0 0 1px var(--dm-border),var(--shadow-md);display:flex;flex-direction:column;}
+
+  /* ── Top bar ── */
+  .top-bar{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;background:linear-gradient(90deg,rgba(224,82,82,0.08) 0%,var(--bg-surface) 55%);border-bottom:1px solid var(--dm-border);gap:12px;flex-shrink:0;}
+  .top-bar-left{display:flex;align-items:center;gap:10px;}
+  .session-badge{background:var(--dm);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:var(--r-full);display:flex;align-items:center;gap:5px;font-family:var(--font-body);}
+  .pulse{width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .top-bar-title{font-family:'Outfit',var(--font-body);font-size:15px;font-weight:800;letter-spacing:-.01em;}
+  .top-bar-sub{font-size:11px;color:var(--text-muted);}
+  .top-bar-right{display:flex;align-items:center;gap:8px;}
+  .end-session-btn{background:transparent;color:var(--dm);border:1px solid var(--dm-border);border-radius:var(--r-md);padding:6px 12px;font-family:var(--font-body);font-size:12px;font-weight:700;cursor:pointer;transition:all 150ms;}
+  .end-session-btn:hover{background:var(--dm-subtle);}
+  .icon-btn{width:30px;height:30px;border-radius:var(--r-md);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;}
+
+  /* ── Sheet body ── */
+  .sheet-body{display:flex;min-height:680px;}
+
+  /* ── Left Panel ── */
+  .left-panel{width:clamp(200px,28%,280px);flex-shrink:0;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+
+  /* Session clock block */
+  .clock-block{padding:16px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px;}
+
+  .clock-main{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 10px;}
+  .clock-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .clock-value{font-family:var(--font-mono);font-size:36px;font-weight:500;color:var(--text-primary);line-height:1;letter-spacing:-.02em;}
+  .clock-sub{font-size:10px;color:var(--text-secondary);font-family:var(--font-mono);}
+
+  .clock-secondary{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .clock-mini{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 10px;display:flex;flex-direction:column;align-items:center;gap:1px;}
+  .clock-mini-label{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .clock-mini-val{font-family:var(--font-mono);font-size:16px;font-weight:500;color:var(--text-primary);line-height:1;}
+  .clock-mini-sub{font-size:9px;color:var(--text-secondary);font-family:var(--font-mono);}
+
+  /* Clock controls */
+  .clock-controls{display:flex;gap:6px;}
+  .clock-btn{flex:1;padding:7px 8px;border-radius:var(--r-sm);font-family:var(--font-body);font-size:11px;font-weight:700;cursor:pointer;transition:all 150ms;border:1px solid;text-align:center;}
+  .clock-btn.pause{background:var(--bg-elevated);color:var(--text-secondary);border-color:var(--border-strong);}
+  .clock-btn.pause:hover{color:var(--text-primary);}
+  .clock-btn.reset{background:transparent;color:var(--text-muted);border-color:var(--border);}
+  .clock-btn.reset:hover{color:var(--danger);border-color:rgba(248,113,113,0.3);}
+
+  /* ── Sidebar tabs ── */
+  .sidebar-tabs{flex:1;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;border-top:1px solid var(--border);}
+  .sidebar-tab{display:flex;align-items:center;gap:8px;padding:10px;border-radius:var(--r-md);cursor:pointer;color:var(--text-muted);font-size:13px;font-weight:600;border:1px solid transparent;white-space:nowrap;transition:all 150ms;}
+  .sidebar-tab:hover{color:var(--text-secondary);background:var(--bg-elevated);}
+  .sidebar-tab.active{background:var(--bg-elevated);color:var(--text-primary);border-color:var(--border);}
+  /* DM accent on encounter tab when active */
+  .sidebar-tab.dm-active{background:var(--dm-subtle);color:var(--dm-hover);border-color:var(--dm-border);}
+  .tab-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+
+  /* ── Right panel ── */
+  .right-panel{flex:1;background:var(--bg-base);overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:18px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+
+  .tab-panel{display:none;flex-direction:column;gap:18px;}
+  .tab-panel.active{display:flex;}
+
+  .section-header{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+
+  /* ── OVERVIEW TAB — Party HP ── */
+  .party-overview-grid{display:flex;flex-direction:column;gap:8px;}
+
+  .party-overview-row{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;display:flex;align-items:center;gap:14px;transition:border-color 150ms;}
+  .party-overview-row:hover{border-color:var(--border-strong);}
+  .party-overview-row.downed{border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.04);}
+
+  .po-portrait{font-size:22px;width:38px;height:38px;border-radius:var(--r-md);background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;}
+  .po-online{position:absolute;bottom:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:var(--success);border:2px solid var(--bg-surface);box-shadow:0 0 4px rgba(74,222,128,0.6);}
+
+  .po-info{flex:1;min-width:0;}
+  .po-name{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;}
+  .po-class{font-size:11px;color:var(--text-secondary);margin-top:1px;}
+  .po-hp-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+  .po-hp-bar{flex:1;height:5px;background:var(--bg-inset);border-radius:var(--r-full);overflow:hidden;}
+  .po-hp-fill{height:100%;border-radius:var(--r-full);transition:width 300ms ease-out;}
+  .po-hp-text{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;}
+  .po-hp-text span{color:var(--text-primary);}
+
+  .po-badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+  .po-ac{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);}
+  .po-condition{background:var(--condition-bg,rgba(239,100,60,0.22));color:var(--condition-text,#f4845f);font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-sm);border:1px solid rgba(244,132,95,0.3);}
+  .po-down{background:rgba(248,113,113,0.15);color:var(--danger);font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-sm);}
+
+  /* ── ENCOUNTER TAB ── */
+  .no-encounter{background:var(--bg-surface);border:1px dashed var(--border-strong);border-radius:var(--r-lg);padding:40px 24px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;}
+  .no-encounter-icon{font-size:36px;opacity:0.5;}
+  .no-encounter-title{font-family:'Outfit',var(--font-body);font-size:16px;font-weight:700;color:var(--text-secondary);}
+  .no-encounter-sub{font-size:12px;color:var(--text-muted);line-height:1.5;max-width:280px;}
+  .start-encounter-btn{background:var(--dm);color:#fff;border:none;border-radius:var(--r-md);padding:12px 28px;font-family:var(--font-body);font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;transition:background 150ms;box-shadow:0 0 14px rgba(224,82,82,0.3);}
+  .start-encounter-btn:hover{background:var(--dm-hover);}
+
+  /* Past encounters list */
+  .encounter-row{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:11px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color 150ms;margin-bottom:6px;}
+  .encounter-row:hover{border-color:var(--border-strong);}
+  .encounter-row.live{border-color:var(--dm-border);background:linear-gradient(90deg,rgba(224,82,82,0.05),var(--bg-surface) 50%);}
+  .enc-num{font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--text-muted);min-width:28px;text-align:center;flex-shrink:0;}
+  .encounter-row.live .enc-num{color:var(--dm);}
+  .enc-info{flex:1;min-width:0;}
+  .enc-name{font-size:14px;font-weight:700;}
+  .enc-meta{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-top:2px;}
+  .enc-status{font-size:11px;font-weight:700;font-family:var(--font-mono);flex-shrink:0;}
+  .enc-live{color:var(--dm);}
+  .enc-win{color:var(--success);}
+  .enc-fled{color:var(--warning);}
+
+  .add-encounter-row{background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:12px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);transition:all 150ms;}
+  .add-encounter-row:hover{border-color:var(--dm);color:var(--dm);background:var(--dm-subtle);}
+
+  /* ── NOTES TAB ── */
+  .note-section{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:8px;transition:border-color 150ms;}
+  .note-section:focus-within{border-color:var(--border-strong);}
+  .note-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px 0;}
+  .note-lbl{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);flex:1;}
+  .note-chevron{width:22px;height:22px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;transition:transform 150ms;}
+  .note-section.collapsed .note-chevron{transform:rotate(-90deg);}
+  .note-textarea{width:100%;background:transparent;border:none;outline:none;resize:none;color:var(--text-secondary);font-family:var(--font-body);font-size:13px;line-height:1.7;padding:8px 14px 14px;min-height:90px;}
+  .note-textarea:focus{color:var(--text-primary);}
+  .note-textarea::placeholder{color:var(--text-muted);font-style:italic;}
+  .note-section.collapsed .note-textarea{display:none;}
+  .add-note-btn{display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:10px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;width:100%;transition:all 150ms;}
+  .add-note-btn:hover{border-color:var(--dm);color:var(--dm);}
+
+  /* ── CHARACTER REFERENCE CARDS GRID ── */
+  .char-ref-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .char-ref-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 150ms;
+  }
+  .char-ref-card:hover { border-color: var(--border-strong); }
+  .char-ref-card.warning-card { border-color: rgba(245,158,11,0.4); background: linear-gradient(180deg, rgba(245,158,11,0.04) 0%, var(--bg-surface) 40%); }
+  .char-ref-card.offline-card { opacity: 0.65; }
+
+  /* Header */
+  .crc-header { display: flex; align-items: center; gap: 10px; }
+  .crc-portrait {
+    font-size: 24px; width: 42px; height: 42px;
+    border-radius: var(--r-md); background: var(--bg-elevated);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; position: relative;
+  }
+  .crc-online {
+    position: absolute; bottom: -2px; right: -2px;
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--success); border: 2px solid var(--bg-surface);
+    box-shadow: 0 0 5px rgba(74,222,128,0.6);
+  }
+  .crc-identity { flex: 1; min-width: 0; }
+  .crc-name { font-family: 'Outfit', var(--font-body); font-size: 15px; font-weight: 800; line-height: 1.1; }
+  .crc-class { font-size: 11px; color: var(--text-secondary); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .crc-owner { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 1px; }
+
+  /* Attendance toggle — top right of card */
+  .crc-attend-toggle {
+    width: 26px; height: 26px; border-radius: var(--r-full);
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border: 1.5px solid; flex-shrink: 0;
+    transition: all 150ms; user-select: none;
+  }
+  .crc-attend-toggle.present { color: var(--success); border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.1); }
+  .crc-attend-toggle.absent { color: var(--text-muted); border-color: var(--border); background: transparent; }
+  .crc-attend-toggle:hover { opacity: 0.75; }
+
+  /* HP block */
+  .crc-hp-block { display: flex; flex-direction: column; gap: 5px; }
+  .crc-hp-row { display: flex; align-items: baseline; justify-content: space-between; }
+  .crc-hp-val { font-family: var(--font-mono); font-size: 22px; font-weight: 500; color: var(--text-primary); line-height: 1; }
+  .crc-hp-max { font-size: 14px; color: var(--text-secondary); }
+  .crc-hp-label { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
+  .crc-hp-bar { height: 4px; background: var(--bg-inset); border-radius: var(--r-full); overflow: hidden; }
+  .crc-hp-fill { height: 100%; border-radius: var(--r-full); transition: width 300ms ease-out; }
+
+  /* Conditions */
+  .crc-conditions { display: flex; flex-wrap: wrap; gap: 4px; }
+  .crc-condition {
+    background: rgba(239,100,60,0.22); color: #f4845f;
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: var(--r-sm); border: 1px solid rgba(244,132,95,0.3);
+  }
+
+  /* Primary stats — 4 equal tiles */
+  .crc-primary-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .crc-stat {
+    background: var(--bg-elevated); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 7px 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .crc-stat-val { font-family: var(--font-mono); font-size: 16px; font-weight: 500; color: var(--text-primary); line-height: 1; }
+  .crc-stat-lbl { font-size: 8px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+
+  /* Secondary info */
+  .crc-secondary { display: flex; flex-direction: column; gap: 4px; }
+  .crc-secondary-row { display: flex; align-items: baseline; gap: 6px; }
+  .crc-sec-label { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; min-width: 78px; }
+  .crc-sec-val { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+
+  /* DM note textarea */
+  .crc-note {
+    width: 100%; background: var(--bg-inset);
+    border: 1px solid var(--border); border-radius: var(--r-sm);
+    color: var(--text-secondary); font-family: var(--font-body);
+    font-size: 11px; line-height: 1.5; padding: 6px 8px;
+    resize: none; outline: none; min-height: 44px;
+    transition: border-color 150ms;
+  }
+  .crc-note:focus { border-color: var(--dm); color: var(--text-primary); }
+  .crc-note::placeholder { color: var(--text-muted); font-style: italic; }
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Session View · Opens in new browser tab · Session 14 — The Fellowship</div>
+
+<div class="app">
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <div class="session-badge"><div class="pulse"></div> Live</div>
+      <div>
+        <div class="top-bar-title">Session 14 — The Mines of Moria</div>
+        <div class="top-bar-sub">The Fellowship · Started today at 7:04pm</div>
+      </div>
+    </div>
+    <div class="top-bar-right">
+      <button class="end-session-btn">■ End Session</button>
+      <div class="icon-btn" title="Settings">⚙</div>
+    </div>
+  </div>
+
+  <div class="sheet-body">
+
+    <!-- ── Left Panel ── -->
+    <div class="left-panel">
+
+      <!-- Session clock -->
+      <div class="clock-block">
+
+        <!-- Real world clock -->
+        <div class="clock-main">
+          <div class="clock-label">Session Time</div>
+          <div class="clock-value" id="session-clock">04:22</div>
+          <div class="clock-sub">Real world · Started 7:04pm</div>
+        </div>
+
+        <!-- In-game time + rounds -->
+        <div class="clock-secondary">
+          <div class="clock-mini">
+            <div class="clock-mini-label">Round</div>
+            <div class="clock-mini-val" id="round-count">8</div>
+            <div class="clock-mini-sub">Current encounter</div>
+          </div>
+          <div class="clock-mini">
+            <div class="clock-mini-label">In-game</div>
+            <div class="clock-mini-val" id="ingame-time">0:48</div>
+            <div class="clock-mini-sub">6s × rounds</div>
+          </div>
+        </div>
+
+        <!-- Clock controls -->
+        <div class="clock-controls">
+          <div class="clock-btn pause" onclick="togglePause(this)">⏸ Pause</div>
+          <div class="clock-btn reset" onclick="confirmReset()">↺ Reset</div>
+        </div>
+
+      </div>
+
+      <!-- Sidebar tabs — 3 only -->
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab active" onclick="switchTab('overview',this)">
+          <span class="tab-icon">👁</span> Party
+        </div>
+        <div class="sidebar-tab dm-active" onclick="switchTab('encounter',this)">
+          <span class="tab-icon">⚔️</span> Encounter
+        </div>
+        <div class="sidebar-tab" onclick="switchTab('notes',this)">
+          <span class="tab-icon">📝</span> Notes
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Right Panel ── -->
+    <div class="right-panel">
+
+      <!-- ══ OVERVIEW TAB — Character reference cards grid ══ -->
+      <div class="tab-panel active" id="tab-overview">
+
+        <div class="char-ref-grid">
+
+          <!-- ── Aragorn ── -->
+          <div class="char-ref-card">
+            <div class="crc-header">
+              <div class="crc-portrait">🧙<div class="crc-online"></div></div>
+              <div class="crc-identity">
+                <div class="crc-name">Aragorn</div>
+                <div class="crc-class">Human · Ranger/Fighter · Lv 10</div>
+                <div class="crc-owner">@aragorn_ii</div>
+              </div>
+              <div class="crc-attend-toggle present" onclick="toggleAttend(this)" title="Toggle attendance">✓</div>
+            </div>
+
+            <!-- HP bar — prominent -->
+            <div class="crc-hp-block">
+              <div class="crc-hp-row">
+                <span class="crc-hp-val">72 <span class="crc-hp-max">/ 90</span></span>
+                <span class="crc-hp-label">HP</span>
+              </div>
+              <div class="crc-hp-bar"><div class="crc-hp-fill" style="width:80%;background:var(--hp-high);"></div></div>
+            </div>
+
+            <!-- Primary stats — prominent -->
+            <div class="crc-primary-stats">
+              <div class="crc-stat">
+                <div class="crc-stat-val">+6</div>
+                <div class="crc-stat-lbl">Initiative</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">16</div>
+                <div class="crc-stat-lbl">AC</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">15</div>
+                <div class="crc-stat-lbl">Pass. Perc</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">+7</div>
+                <div class="crc-stat-lbl">Spell DC</div>
+              </div>
+            </div>
+
+            <!-- Secondary info — smaller -->
+            <div class="crc-secondary">
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Resistances</span>
+                <span class="crc-sec-val">—</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Immunities</span>
+                <span class="crc-sec-val">—</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Proficiencies</span>
+                <span class="crc-sec-val">Simple, Martial, Med. Armour</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Alignment</span>
+                <span class="crc-sec-val">Lawful Good</span>
+              </div>
+            </div>
+
+            <!-- DM note for this character -->
+            <textarea class="crc-note" placeholder="DM note about this character…">Watch for Aragorn claiming leadership after Gandalf's fall.</textarea>
+          </div>
+
+          <!-- ── Frodo — wounded, poisoned ── -->
+          <div class="char-ref-card warning-card">
+            <div class="crc-header">
+              <div class="crc-portrait">🧝<div class="crc-online"></div></div>
+              <div class="crc-identity">
+                <div class="crc-name">Frodo</div>
+                <div class="crc-class">Hobbit · Rogue · Lv 7</div>
+                <div class="crc-owner">@frodo_b</div>
+              </div>
+              <div class="crc-attend-toggle present" onclick="toggleAttend(this)">✓</div>
+            </div>
+
+            <div class="crc-hp-block">
+              <div class="crc-hp-row">
+                <span class="crc-hp-val" style="color:var(--hp-mid);">19 <span class="crc-hp-max">/ 35</span></span>
+                <span class="crc-hp-label">HP</span>
+              </div>
+              <div class="crc-hp-bar"><div class="crc-hp-fill" style="width:54%;background:var(--hp-mid);"></div></div>
+            </div>
+
+            <!-- Condition pills -->
+            <div class="crc-conditions">
+              <span class="crc-condition">Poisoned</span>
+            </div>
+
+            <div class="crc-primary-stats">
+              <div class="crc-stat">
+                <div class="crc-stat-val">+4</div>
+                <div class="crc-stat-lbl">Initiative</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">13</div>
+                <div class="crc-stat-lbl">AC</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">14</div>
+                <div class="crc-stat-lbl">Pass. Perc</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">—</div>
+                <div class="crc-stat-lbl">Spell DC</div>
+              </div>
+            </div>
+
+            <div class="crc-secondary">
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Resistances</span>
+                <span class="crc-sec-val">—</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Immunities</span>
+                <span class="crc-sec-val">—</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Proficiencies</span>
+                <span class="crc-sec-val">Simple weapons, Thieves' tools</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Alignment</span>
+                <span class="crc-sec-val">Neutral Good</span>
+              </div>
+            </div>
+
+            <textarea class="crc-note" placeholder="DM note…">Frodo is carrying the One Ring — keep track of his mental state.</textarea>
+          </div>
+
+          <!-- ── Legolas ── -->
+          <div class="char-ref-card">
+            <div class="crc-header">
+              <div class="crc-portrait">🧝‍♂️<div class="crc-online"></div></div>
+              <div class="crc-identity">
+                <div class="crc-name">Legolas</div>
+                <div class="crc-class">Elf · Ranger · Lv 10</div>
+                <div class="crc-owner">@greenleaf</div>
+              </div>
+              <div class="crc-attend-toggle present" onclick="toggleAttend(this)">✓</div>
+            </div>
+
+            <div class="crc-hp-block">
+              <div class="crc-hp-row">
+                <span class="crc-hp-val">63 <span class="crc-hp-max">/ 70</span></span>
+                <span class="crc-hp-label">HP</span>
+              </div>
+              <div class="crc-hp-bar"><div class="crc-hp-fill" style="width:90%;background:var(--hp-high);"></div></div>
+            </div>
+
+            <div class="crc-primary-stats">
+              <div class="crc-stat">
+                <div class="crc-stat-val">+5</div>
+                <div class="crc-stat-lbl">Initiative</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">15</div>
+                <div class="crc-stat-lbl">AC</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">18</div>
+                <div class="crc-stat-lbl">Pass. Perc</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">+6</div>
+                <div class="crc-stat-lbl">Spell DC</div>
+              </div>
+            </div>
+
+            <div class="crc-secondary">
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Resistances</span>
+                <span class="crc-sec-val">—</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Immunities</span>
+                <span class="crc-sec-val">Sleep magic, Charm</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Proficiencies</span>
+                <span class="crc-sec-val">Longsword, Shortbow, Light armour</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Alignment</span>
+                <span class="crc-sec-val">Chaotic Good</span>
+              </div>
+            </div>
+
+            <textarea class="crc-note" placeholder="DM note…">Highest passive perception in party — use him for secret checks.</textarea>
+          </div>
+
+          <!-- ── Gimli — offline, full HP ── -->
+          <div class="char-ref-card offline-card">
+            <div class="crc-header">
+              <div class="crc-portrait" style="opacity:0.6;">🧔</div>
+              <div class="crc-identity">
+                <div class="crc-name" style="color:var(--text-secondary);">Gimli</div>
+                <div class="crc-class">Dwarf · Fighter · Lv 10</div>
+                <div class="crc-owner">@axe_lord · offline</div>
+              </div>
+              <div class="crc-attend-toggle absent" onclick="toggleAttend(this)" title="Mark absent">✕</div>
+            </div>
+
+            <div class="crc-hp-block">
+              <div class="crc-hp-row">
+                <span class="crc-hp-val">88 <span class="crc-hp-max">/ 88</span></span>
+                <span class="crc-hp-label">HP</span>
+              </div>
+              <div class="crc-hp-bar"><div class="crc-hp-fill" style="width:100%;background:var(--hp-high);"></div></div>
+            </div>
+
+            <div class="crc-primary-stats">
+              <div class="crc-stat">
+                <div class="crc-stat-val">+2</div>
+                <div class="crc-stat-lbl">Initiative</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">18</div>
+                <div class="crc-stat-lbl">AC</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">12</div>
+                <div class="crc-stat-lbl">Pass. Perc</div>
+              </div>
+              <div class="crc-stat">
+                <div class="crc-stat-val">—</div>
+                <div class="crc-stat-lbl">Spell DC</div>
+              </div>
+            </div>
+
+            <div class="crc-secondary">
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Resistances</span>
+                <span class="crc-sec-val">Poison</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Immunities</span>
+                <span class="crc-sec-val">—</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Proficiencies</span>
+                <span class="crc-sec-val">All armour, Axes, Hammers</span>
+              </div>
+              <div class="crc-secondary-row">
+                <span class="crc-sec-label">Alignment</span>
+                <span class="crc-sec-val">Lawful Good</span>
+              </div>
+            </div>
+
+            <textarea class="crc-note" placeholder="DM note…">Absent tonight — Gimli will be an NPC this session if needed.</textarea>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══ ENCOUNTER TAB ══ -->
+      <div class="tab-panel" id="tab-encounter">
+
+        <!-- Active encounter -->
+        <div>
+          <div class="section-header">Active Encounter</div>
+          <div class="encounter-row live">
+            <div class="enc-num">3</div>
+            <div class="enc-info">
+              <div class="enc-name">Orc Pursuit — Bridge of Khazad-dûm</div>
+              <div class="enc-meta">Round 8 · 0:48 in-game · 3 enemies remaining</div>
+            </div>
+            <div class="enc-status enc-live">● Live</div>
+          </div>
+          <button style="width:100%;background:var(--dm);color:#fff;border:none;border-radius:var(--r-md);padding:11px;font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer;margin-top:8px;transition:background 150ms;" onmouseover="this.style.background='var(--dm-hover)'" onmouseout="this.style.background='var(--dm)'">
+            ⚔️ Enter Encounter View →
+          </button>
+        </div>
+
+        <!-- Past encounters this session -->
+        <div>
+          <div class="section-header">Previous Encounters This Session</div>
+          <div class="encounter-row">
+            <div class="enc-num">1</div>
+            <div class="enc-info">
+              <div class="enc-name">Cave Troll + Goblins</div>
+              <div class="enc-meta">Round 6 · 0:36 in-game</div>
+            </div>
+            <div class="enc-status enc-win">Victory</div>
+          </div>
+          <div class="encounter-row">
+            <div class="enc-num">2</div>
+            <div class="enc-info">
+              <div class="enc-name">Watcher in the Water</div>
+              <div class="enc-meta">Round 4 · 0:24 in-game</div>
+            </div>
+            <div class="enc-status enc-fled">Fled</div>
+          </div>
+          <div class="add-encounter-row" onclick="alert('Starts a new encounter')">+ New Encounter</div>
+        </div>
+
+      </div>
+
+      <!-- ══ NOTES TAB ══ -->
+      <div class="tab-panel" id="tab-notes">
+        <div class="section-header">Session 14 Notes</div>
+
+        <div class="note-section">
+          <div class="note-hdr">
+            <span class="note-lbl">What Happened</span>
+            <button class="note-chevron" onclick="this.closest('.note-section').classList.toggle('collapsed')">▾</button>
+          </div>
+          <textarea class="note-textarea" rows="4" placeholder="Summarise tonight's session…">Entered Moria through the West Gate. Discovered Balin's tomb. Pipeweed found near the east bridge. Gandalf faced the Balrog on the Bridge of Khazad-dûm — outcome unknown.</textarea>
+        </div>
+
+        <div class="note-section">
+          <div class="note-hdr">
+            <span class="note-lbl">DM Notes (Private)</span>
+            <button class="note-chevron" onclick="this.closest('.note-section').classList.toggle('collapsed')">▾</button>
+          </div>
+          <textarea class="note-textarea" rows="3" placeholder="Private notes for this session…">Players were genuinely shocked by the Balrog. Lean into the aftermath next session — grief, uncertainty, no clear leader. Boromir starting to eye Frodo.</textarea>
+        </div>
+
+        <div class="note-section">
+          <div class="note-hdr">
+            <span class="note-lbl">Loot Given Out</span>
+            <button class="note-chevron" onclick="this.closest('.note-section').classList.toggle('collapsed')">▾</button>
+          </div>
+          <textarea class="note-textarea" rows="2" placeholder="Items handed out this session…">Nothing this session — no time to loot.</textarea>
+        </div>
+
+        <button class="add-note-btn">+ Add section</button>
+      </div>
+
+    </div><!-- /right-panel -->
+  </div><!-- /sheet-body -->
+</div><!-- /app -->
+
+<script>
+  // Tab switching
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.sidebar-tab').forEach(b => {
+      b.classList.remove('active');
+      b.classList.remove('dm-active');
+    });
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'encounter') {
+      btn.classList.add('dm-active');
+    } else {
+      btn.classList.add('active');
+    }
+  }
+
+  // Session clock — counts up
+  let seconds = 4 * 60 + 22;
+  let paused = false;
+  setInterval(() => {
+    if (!paused) {
+      seconds++;
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      document.getElementById('session-clock').textContent =
+        String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }
+  }, 1000);
+
+  function togglePause(btn) {
+    paused = !paused;
+    btn.textContent = paused ? '▶ Resume' : '⏸ Pause';
+  }
+
+  function confirmReset() {
+    if (confirm('Reset the session clock? This cannot be undone.')) {
+      seconds = 0;
+      document.getElementById('session-clock').textContent = '00:00';
+    }
+  }
+
+  // Attendance toggle on character reference cards
+  function toggleAttend(btn) {
+    if (btn.classList.contains('present')) {
+      btn.classList.remove('present');
+      btn.classList.add('absent');
+      btn.textContent = '✕';
+      btn.closest('.char-ref-card').classList.add('offline-card');
+    } else {
+      btn.classList.remove('absent');
+      btn.classList.add('present');
+      btn.textContent = '✓';
+      btn.closest('.char-ref-card').classList.remove('offline-card');
+    }
+  }
+</script>
+</body>
+</html>

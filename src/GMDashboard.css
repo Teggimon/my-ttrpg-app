@@ -1,0 +1,568 @@
+/* ── Dashboard shell ──────────────────────────────────────── */
+.gm-dash {
+  min-height: 100%;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  padding-bottom: 4rem;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+.gm-dash-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border-bottom: 0.5px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.gm-dash-back {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px 4px 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.gm-dash-back:hover { color: var(--text-primary); }
+
+.gm-dash-header-center {
+  flex: 1;
+  min-width: 0;
+}
+
+.gm-dash-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-dash-meta {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.gm-dash-warn-count {
+  color: var(--warning);
+}
+
+.gm-dash-add-btn {
+  flex-shrink: 0;
+  font-size: 13px;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+/* ── Sync indicator ──────────────────────────────────────── */
+.gm-dash-sync {
+  padding: 5px 16px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: right;
+  border-bottom: 0.5px solid var(--border);
+}
+
+/* ── Empty state ─────────────────────────────────────────── */
+.gm-dash-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 64px 24px 32px;
+  gap: 8px;
+}
+
+.gm-dash-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+
+.gm-dash-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.gm-dash-empty-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+/* ── Cards container ─────────────────────────────────────── */
+.gm-dash-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+/* ── Party Card ──────────────────────────────────────────── */
+.party-card {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, opacity 0.2s;
+}
+
+.party-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.party-card--warn {
+  border-color: #5a1a1a;
+  background: #160808;
+}
+
+.party-card--warn:hover {
+  border-color: #8b2020;
+}
+
+.party-card--inactive {
+  opacity: 0.45;
+}
+
+.party-card--loading {
+  cursor: default;
+}
+
+/* Loading skeleton */
+.party-card-skeleton-name {
+  height: 14px;
+  width: 140px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.party-card-skeleton-bar {
+  height: 7px;
+  width: 100%;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-full);
+  animation: shimmer 1.4s ease-in-out infinite 0.2s;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+/* Remove button */
+.party-card-remove {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  z-index: 2;
+}
+
+.party-card:hover .party-card-remove { opacity: 1; }
+.party-card-remove:hover { color: var(--danger); }
+
+/* Always show remove on touch */
+@media (hover: none) {
+  .party-card-remove { opacity: 0.6; }
+}
+
+/* ── Card header ─────────────────────────────────────────── */
+.party-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-right: 20px;
+}
+
+.party-card-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.party-card-name {
+  font-family: 'Outfit', var(--font-body);
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.party-card-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.party-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.party-card-warn-icon {
+  font-size: 14px;
+}
+
+.party-card-username {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* ── Status badge ────────────────────────────────────────── */
+.status-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.status-badge--active {
+  background: rgba(74, 222, 128, 0.12);
+  color: var(--hp-high);
+  border: 0.5px solid rgba(74, 222, 128, 0.3);
+}
+
+.status-badge--inactive {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 0.5px solid var(--border);
+}
+
+.status-badge--btn {
+  cursor: pointer;
+  border: none;
+  font-family: var(--font-body);
+  margin-bottom: 10px;
+  transition: opacity 0.15s;
+}
+
+.status-badge--btn:hover { opacity: 0.75; }
+
+/* ── HP bar ──────────────────────────────────────────────── */
+.party-card-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.party-card-hp-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  width: 18px;
+}
+
+.party-card-hp-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-inset);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.party-card-hp-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.35s ease-out;
+}
+
+.party-card-hp-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  min-width: 52px;
+  text-align: right;
+}
+
+/* ── Stat tiles ──────────────────────────────────────────── */
+.party-card-stats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stat-tile {
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  text-align: center;
+  min-width: 44px;
+}
+
+.stat-tile-val {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.stat-tile-lbl {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+/* ── Conditions ──────────────────────────────────────────── */
+.party-card-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.condition-pill {
+  background: var(--condition-bg);
+  color: var(--condition-text);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+}
+
+/* ── Add Player Modal ─────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+  animation: fade-in 0.15s ease;
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-sheet {
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%;
+  max-width: 540px;
+  padding: 0 20px 32px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: slide-up 0.2s ease;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(32px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+  margin: 12px auto 16px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.modal-title-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.modal-close:hover { color: var(--text-secondary); }
+
+/* Input row */
+.add-player-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.input {
+  flex: 1;
+  padding: 10px 12px;
+  background: var(--bg-inset);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.input::placeholder { color: var(--text-muted); }
+
+.add-player-error {
+  font-size: 12px;
+  color: var(--danger);
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.add-player-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+
+/* Character list */
+.add-player-char-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.add-player-char-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.add-player-char-row:hover {
+  border-color: var(--border-strong);
+}
+
+.add-player-char-row--selected {
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+}
+
+.add-player-char-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.add-player-char-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.add-player-char-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Modal actions */
+.modal-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+.btn {
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+  flex: 1;
+}
+
+.btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.btn--accent {
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.btn--accent:not(:disabled):hover { opacity: 0.85; }
+
+.btn--ghost {
+  background: var(--bg-inset);
+  border: 0.5px solid var(--border-strong);
+  color: var(--text-secondary);
+  flex: none;
+  padding: 10px 20px;
+}
+
+.btn--ghost:hover { color: var(--text-primary); }

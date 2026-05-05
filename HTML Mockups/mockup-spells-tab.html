@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Spells Tab Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Cinzel:wght@400;600;700&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root, [data-theme="dungeon"] {
+    --bg-base:              #0e0d1a;
+    --bg-surface:           #13122a;
+    --bg-elevated:          #1c1b35;
+    --bg-inset:             #0a0915;
+    --border:               #26244a;
+    --border-strong:        #36336a;
+    --text-primary:         #eeedf8;
+    --text-secondary:       #8885aa;
+    --text-muted:           #45426a;
+    --text-inverse:         #0e0d1a;
+    --accent:               #7c6ff5;
+    --accent-hover:         #9b90ff;
+    --accent-subtle:        rgba(124, 111, 245, 0.15);
+    --accent-secondary:     #5550cc;
+    --hp-high:              #4ade80;
+    --hp-mid:               #f59e0b;
+    --hp-low:               #f87171;
+    --hp-temp:              #67e8f9;
+    --spell-slot-filled:    #7c6ff5;
+    --spell-slot-empty:     #26244a;
+    --condition-bg:         rgba(239, 100, 60, 0.22);
+    --condition-text:       #f4845f;
+    --concentration-indicator: #67e8f9;
+    --success:              #4ade80;
+    --warning:              #f59e0b;
+    --danger:               #f87171;
+    --tab-active-bg:        #1c1b35;
+    --tab-active-text:      #eeedf8;
+    --tab-inactive-text:    #45426a;
+    --shadow-sm:            0 2px 8px rgba(0,0,0,0.5);
+    --shadow-md:            0 8px 32px rgba(0,0,0,0.7);
+    --font-display:         'Cinzel', Georgia, serif;
+    --font-body:            'Nunito', system-ui, sans-serif;
+    --font-mono:            'JetBrains Mono', monospace;
+    --radius-sm:            4px;
+    --radius-md:            8px;
+    --radius-lg:            12px;
+    --radius-full:          9999px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+
+  .mockup-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  /* ── App Shell ── */
+  .app {
+    width: 100%;
+    max-width: 1100px;
+    background: var(--bg-base);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ── Character Switcher ── */
+  .char-switcher {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    background: var(--bg-base);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .char-switcher::-webkit-scrollbar { display: none; }
+  .char-tab {
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    background: transparent;
+  }
+  .char-tab.active { background: var(--accent); color: var(--text-inverse); border-color: var(--accent); }
+  .char-tab.new-char { border: 1px solid var(--border-strong); color: var(--text-muted); }
+
+  /* ── Sheet body ── */
+  .sheet-body { display: flex; min-height: 700px; }
+
+  /* ── Left Panel ── */
+  .left-panel {
+    width: clamp(200px, 30%, 300px);
+    flex-shrink: 0;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .char-info { padding: 14px; border-bottom: 1px solid var(--border); }
+  .char-info-row { display: flex; align-items: flex-start; justify-content: space-between; }
+  .char-name { font-family: 'Outfit', var(--font-body); font-size: 22px; font-weight: 800; color: var(--text-primary); line-height: 1.1; letter-spacing: -0.01em; }
+  .char-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+  .icon-btn { width: 28px; height: 28px; border-radius: var(--radius-sm); background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+  .lock-icon { font-size: 13px; color: var(--text-muted); }
+
+  .hp-block { margin: 12px 14px 0; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; }
+  .hp-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+  .hp-row { display: flex; align-items: center; justify-content: space-between; }
+  .hp-value { font-family: var(--font-mono); font-size: 28px; font-weight: 500; line-height: 1; }
+  .hp-max { font-family: var(--font-mono); font-size: 16px; color: var(--text-secondary); }
+  .hp-controls { display: flex; gap: 6px; }
+  .hp-btn { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); background: var(--bg-inset); }
+  .hp-btn.plus { background: var(--accent); border-color: var(--accent); color: white; }
+  .hp-bar-track { height: 4px; background: var(--bg-inset); border-radius: var(--radius-full); margin-top: 8px; overflow: hidden; }
+  .hp-bar-fill { height: 100%; width: 80%; background: var(--hp-high); border-radius: var(--radius-full); }
+
+  .stat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px 14px 0; }
+  .stat-tile { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 8px 4px 6px; text-align: center; }
+  .stat-tile-value { font-family: var(--font-mono); font-size: 17px; font-weight: 500; line-height: 1; }
+  .stat-tile-label { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-top: 4px; }
+
+  .conditions-row { display: flex; align-items: center; gap: 6px; padding: 10px 14px 0; flex-wrap: wrap; }
+  .condition-pill { background: var(--condition-bg); color: var(--condition-text); font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: var(--radius-sm); border: 1px solid rgba(244,132,95,0.3); }
+  .add-condition { background: transparent; color: var(--text-muted); font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: var(--radius-sm); border: 1px dashed var(--border-strong); cursor: pointer; }
+
+  .xp-row { padding: 10px 14px 0; }
+  .xp-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-bottom: 5px; }
+  .xp-track { height: 3px; background: var(--bg-inset); border-radius: var(--radius-full); overflow: hidden; }
+  .xp-fill { height: 100%; width: 76%; background: var(--accent); border-radius: var(--radius-full); }
+
+  .saved-indicator { display: flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 11px; color: var(--success); font-weight: 600; }
+  .saved-dot { width: 7px; height: 7px; border-radius: var(--radius-full); background: var(--success); flex-shrink: 0; }
+
+  /* ── Sidebar Tabs — 2 columns ── */
+  .sidebar-tabs { flex: 1; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; align-content: start; border-top: 1px solid var(--border); }
+  .sidebar-tab { display: flex; align-items: center; gap: 8px; padding: 10px 10px; border-radius: var(--radius-md); cursor: pointer; color: var(--tab-inactive-text); font-size: 13px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; }
+  .sidebar-tab:hover { color: var(--text-secondary); background: var(--bg-elevated); }
+  .sidebar-tab.active { background: var(--tab-active-bg); color: var(--tab-active-text); border-color: var(--border); }
+  .tab-icon { font-size: 15px; line-height: 1; width: 18px; text-align: center; flex-shrink: 0; }
+
+  /* ── Right Panel ── */
+  .right-panel {
+    flex: 1;
+    background: var(--bg-base);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Spellcasting summary strip ── */
+  .spell-summary {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+  .spell-summary-cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 8px 9px;
+    border-right: 1px solid var(--border);
+    gap: 3px;
+  }
+  .spell-summary-cell:last-child { border-right: none; }
+  .spell-summary-val {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  /* Prepared count — colours when close to limit */
+  .spell-summary-val.prepared-ok  { color: var(--text-primary); }
+  .spell-summary-val.prepared-low { color: var(--warning); }
+  .spell-summary-val.prepared-full { color: var(--danger); }
+  .spell-summary-lbl {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .spell-summary-sub {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    text-align: center;
+  }
+
+  /* ── Filter Bar — sticky at top of right panel ── */
+  .filter-bar {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-base);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+    min-width: 48px;
+  }
+
+  .filter-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: transparent;
+    transition: all 150ms;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .chip:hover { border-color: var(--border-strong); color: var(--text-primary); }
+  .chip.active {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+    color: var(--accent-hover);
+  }
+
+  /* Divider between class and school rows */
+  .filter-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    flex-shrink: 0;
+    align-self: center;
+    display: none; /* only visible on wider layouts — handled by flex-wrap */
+  }
+
+  /* ── Spell List — scrollable ── */
+  .spell-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /* Level group heading */
+  .level-group-header {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .level-group-header .slot-status {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  .level-group-header .slot-pip-sm {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin: 0 1px;
+    vertical-align: middle;
+  }
+  .level-group-header .slot-pip-sm.filled { background: var(--spell-slot-filled); }
+  .level-group-header .slot-pip-sm.empty { background: transparent; border: 1px solid var(--border-strong); }
+
+  /* ── Spell Row ── */
+  .spell-row {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: border-color 150ms;
+    margin-bottom: 6px;
+  }
+  .spell-row:last-child { margin-bottom: 0; }
+  .spell-row.expanded { border-color: var(--border-strong); }
+
+  /* Collapsed row — same layout as combat card */
+  .spell-row-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 14px;
+    cursor: pointer;
+  }
+  .spell-row-head:hover { background: rgba(255,255,255,0.02); }
+
+  .spell-row-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex-shrink: 1;
+  }
+  .conc-dot {
+    width: 8px; height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--concentration-indicator);
+    flex-shrink: 0;
+    box-shadow: 0 0 6px var(--concentration-indicator);
+  }
+  .conc-dot-inactive {
+    width: 8px; height: 8px;
+    border-radius: var(--radius-full);
+    background: transparent;
+    border: 1.5px solid var(--text-muted);
+    flex-shrink: 0;
+  }
+  .spell-row-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .prepared-star {
+    font-size: 11px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .spell-row-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .spell-badge {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .spell-badge.muted { color: var(--text-secondary); }
+
+  /* Expand/collapse chevron button */
+  .expand-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 11px;
+    transition: all 150ms;
+    user-select: none;
+  }
+  .expand-btn:hover { border-color: var(--border-strong); color: var(--text-secondary); }
+  .spell-row.expanded .expand-btn {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: rotate(180deg);
+  }
+
+  /* Expanded detail panel */
+  .spell-detail {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-inset);
+  }
+  .spell-row.expanded .spell-detail { display: block; }
+
+  .spell-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    padding: 12px 0 10px;
+  }
+  .detail-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .detail-stat-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .detail-stat-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-primary);
+  }
+
+  .spell-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  .spell-detail-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .prepare-toggle {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    transition: all 150ms;
+  }
+  .prepare-toggle.prepared {
+    background: var(--accent-subtle);
+    border-color: var(--accent);
+    color: var(--accent-hover);
+  }
+  .prepare-toggle:hover { border-color: var(--accent); color: var(--accent-hover); }
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Spells Tab · Landscape Layout · ~667–1100px wide · Dungeon Theme</div>
+
+<div class="app">
+
+  <!-- Character Switcher -->
+  <div class="char-switcher">
+    <div class="char-tab active">Aragorn 10</div>
+    <div class="char-tab">Frodo 7</div>
+    <div class="char-tab">Gandalf 20</div>
+    <div class="char-tab new-char">+ New</div>
+  </div>
+
+  <div class="sheet-body">
+
+    <!-- ── Left Panel (identical to Combat tab) ── -->
+    <div class="left-panel">
+      <div class="char-info">
+        <div class="char-info-row">
+          <div>
+            <div class="char-name">Aragorn</div>
+            <div class="char-meta">Human · Ranger · Lv 10</div>
+          </div>
+          <div style="display:flex;gap:4px;align-items:flex-start;padding-top:2px;">
+            <span class="lock-icon">🔒</span>
+            <div class="icon-btn">↑</div>
+            <div class="icon-btn">⋯</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:0 14px;">
+        <div class="hp-block">
+          <div class="hp-label">Hit Points</div>
+          <div class="hp-row">
+            <div><span class="hp-value">72</span><span class="hp-max"> / 90</span></div>
+            <div class="hp-controls">
+              <div class="hp-btn">−</div>
+              <div class="hp-btn plus">+</div>
+            </div>
+          </div>
+          <div class="hp-bar-track"><div class="hp-bar-fill"></div></div>
+        </div>
+      </div>
+
+      <div class="stat-tiles">
+        <div class="stat-tile"><div class="stat-tile-value">16</div><div class="stat-tile-label">AC</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">+6</div><div class="stat-tile-label">Init</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">30ft</div><div class="stat-tile-label">Speed</div></div>
+      </div>
+
+      <div class="conditions-row">
+        <span class="condition-pill">Poisoned</span>
+        <span class="add-condition">+ Add</span>
+      </div>
+
+      <div class="xp-row">
+        <div class="xp-labels"><span>64,500 XP</span><span>Lv 11 at 85k</span></div>
+        <div class="xp-track"><div class="xp-fill"></div></div>
+      </div>
+
+      <div class="saved-indicator"><div class="saved-dot"></div>Saved</div>
+
+      <!-- Sidebar Tabs — 2 columns, Spells active -->
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab"><span class="tab-icon">✕</span> Combat</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎲</span> Stats</div>
+        <div class="sidebar-tab active"><span class="tab-icon">✨</span> Spells</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎒</span> Gear</div>
+        <div class="sidebar-tab"><span class="tab-icon">📝</span> Notes</div>
+      </div>
+    </div>
+
+    <!-- ── Right Panel — Spells Tab ── -->
+    <div class="right-panel">
+
+      <!-- Spellcasting summary strip -->
+      <div class="spell-summary">
+        <div class="spell-summary-cell">
+          <span class="spell-summary-val prepared-ok">5 / 7</span>
+          <span class="spell-summary-lbl">Prepared</span>
+        </div>
+        <div class="spell-summary-cell">
+          <span class="spell-summary-val">15</span>
+          <span class="spell-summary-lbl">Spell Save DC</span>
+          <span class="spell-summary-sub">8 + WIS + Prof</span>
+        </div>
+        <div class="spell-summary-cell">
+          <span class="spell-summary-val">+7</span>
+          <span class="spell-summary-lbl">Spell Attack</span>
+          <span class="spell-summary-sub">WIS + Prof</span>
+        </div>
+        <div class="spell-summary-cell">
+          <span class="spell-summary-val">WIS</span>
+          <span class="spell-summary-lbl">Casting Stat</span>
+          <span class="spell-summary-sub">Mod +3</span>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+
+        <!-- Row 1: Class filter -->
+        <div class="filter-row">
+          <span class="filter-label">Class</span>
+          <div class="filter-chips" id="classChips">
+            <div class="chip active" data-group="class" onclick="toggleChip(this)">All</div>
+            <div class="chip" data-group="class" onclick="toggleChip(this)">Ranger</div>
+            <div class="chip" data-group="class" onclick="toggleChip(this)">Druid</div>
+          </div>
+        </div>
+
+        <!-- Row 2: School filter -->
+        <div class="filter-row">
+          <span class="filter-label">School</span>
+          <div class="filter-chips" id="schoolChips">
+            <div class="chip active" data-group="school" onclick="toggleChip(this)">All</div>
+            <div class="chip" data-group="school" onclick="toggleChip(this)">Evocation</div>
+            <div class="chip" data-group="school" onclick="toggleChip(this)">Divination</div>
+            <div class="chip" data-group="school" onclick="toggleChip(this)">Enchantment</div>
+            <div class="chip" data-group="school" onclick="toggleChip(this)">Conjuration</div>
+            <div class="chip" data-group="school" onclick="toggleChip(this)">Transmutation</div>
+            <div class="chip" data-group="school" onclick="toggleChip(this)">Abjuration</div>
+          </div>
+        </div>
+
+      </div><!-- /filter-bar -->
+
+      <!-- Spell List -->
+      <div class="spell-list">
+
+        <!-- ── Cantrips ── -->
+        <div class="level-group">
+          <div class="level-group-header">Cantrips</div>
+
+          <div class="spell-row" id="row-firebolt">
+            <div class="spell-row-head" onclick="toggleExpand('row-firebolt')">
+              <div class="spell-row-left">
+                <div class="conc-dot-inactive"></div>
+                <span class="spell-row-name">Fire Bolt</span>
+                <span class="prepared-star" title="Prepared">★</span>
+              </div>
+              <div class="spell-row-right">
+                <span class="spell-badge">2d10 fire</span>
+                <span class="spell-badge">+7 to hit</span>
+                <span class="spell-badge muted">Evocation</span>
+                <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('row-firebolt')">▾</button>
+              </div>
+            </div>
+            <div class="spell-detail">
+              <div class="spell-detail-grid">
+                <div class="detail-stat"><span class="detail-stat-label">Casting Time</span><span class="detail-stat-value">1 Action</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Range</span><span class="detail-stat-value">120 ft</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Duration</span><span class="detail-stat-value">Instant</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Components</span><span class="detail-stat-value">V, S</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">School</span><span class="detail-stat-value">Evocation</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Class</span><span class="detail-stat-value">Ranger</span></div>
+              </div>
+              <div class="spell-description">
+                You hurl a mote of fire at a creature or object within range. Make a ranged spell attack against the target. On a hit, the target takes 2d10 fire damage. A flammable object hit by this spell ignites if it isn't being worn or carried.
+              </div>
+              <div class="spell-detail-actions">
+                <button class="prepare-toggle prepared">★ Prepared</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="spell-row" id="row-guidance">
+            <div class="spell-row-head" onclick="toggleExpand('row-guidance')">
+              <div class="spell-row-left">
+                <div class="conc-dot"></div>
+                <span class="spell-row-name">Guidance</span>
+                <span class="prepared-star" title="Prepared">★</span>
+              </div>
+              <div class="spell-row-right">
+                <span class="spell-badge">+1d4 bonus</span>
+                <span class="spell-badge muted">Divination</span>
+                <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('row-guidance')">▾</button>
+              </div>
+            </div>
+            <div class="spell-detail">
+              <div class="spell-detail-grid">
+                <div class="detail-stat"><span class="detail-stat-label">Casting Time</span><span class="detail-stat-value">1 Action</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Range</span><span class="detail-stat-value">Touch</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Duration</span><span class="detail-stat-value">Conc, 1 min</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Components</span><span class="detail-stat-value">V, S</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">School</span><span class="detail-stat-value">Divination</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Class</span><span class="detail-stat-value">Druid</span></div>
+              </div>
+              <div class="spell-description">
+                You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to one ability check of its choice. The spell then ends.
+              </div>
+              <div class="spell-detail-actions">
+                <button class="prepare-toggle prepared">★ Prepared</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Level 1 ── -->
+        <div class="level-group">
+          <div class="level-group-header">
+            Level 1
+            <span class="slot-status">
+              <span class="slot-pip-sm filled"></span>
+              <span class="slot-pip-sm filled"></span>
+              <span class="slot-pip-sm empty"></span>
+              <span class="slot-pip-sm empty"></span>
+            </span>
+          </div>
+
+          <div class="spell-row" id="row-huntersmark">
+            <div class="spell-row-head" onclick="toggleExpand('row-huntersmark')">
+              <div class="spell-row-left">
+                <div class="conc-dot"></div>
+                <span class="spell-row-name">Hunter's Mark</span>
+                <span class="prepared-star" title="Prepared">★</span>
+              </div>
+              <div class="spell-row-right">
+                <span class="spell-badge">1d6 bonus</span>
+                <span class="spell-badge muted">Divination · Conc</span>
+                <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('row-huntersmark')">▾</button>
+              </div>
+            </div>
+            <div class="spell-detail">
+              <div class="spell-detail-grid">
+                <div class="detail-stat"><span class="detail-stat-label">Casting Time</span><span class="detail-stat-value">1 Bonus</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Range</span><span class="detail-stat-value">90 ft</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Duration</span><span class="detail-stat-value">Conc, 1 hr</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Components</span><span class="detail-stat-value">V</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">School</span><span class="detail-stat-value">Divination</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Class</span><span class="detail-stat-value">Ranger</span></div>
+              </div>
+              <div class="spell-description">
+                You choose a creature you can see within range and mystically mark it as your quarry. Until the spell ends, you deal an extra 1d6 damage to the target whenever you hit it with a weapon attack. If the target drops to 0 HP before this spell ends, you can use a bonus action to mark a new creature.
+              </div>
+              <div class="spell-detail-actions">
+                <button class="prepare-toggle prepared">★ Prepared</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="spell-row" id="row-curewounds">
+            <div class="spell-row-head" onclick="toggleExpand('row-curewounds')">
+              <div class="spell-row-left">
+                <div class="conc-dot-inactive"></div>
+                <span class="spell-row-name">Cure Wounds</span>
+                <span class="prepared-star" title="Prepared">★</span>
+              </div>
+              <div class="spell-row-right">
+                <span class="spell-badge">1d8+4 heal</span>
+                <span class="spell-badge muted">Evocation</span>
+                <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('row-curewounds')">▾</button>
+              </div>
+            </div>
+            <div class="spell-detail">
+              <div class="spell-detail-grid">
+                <div class="detail-stat"><span class="detail-stat-label">Casting Time</span><span class="detail-stat-value">1 Action</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Range</span><span class="detail-stat-value">Touch</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Duration</span><span class="detail-stat-value">Instant</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Components</span><span class="detail-stat-value">V, S</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">School</span><span class="detail-stat-value">Evocation</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Class</span><span class="detail-stat-value">Ranger</span></div>
+              </div>
+              <div class="spell-description">
+                A creature you touch regains a number of hit points equal to 1d8 + your spellcasting ability modifier. This spell has no effect on undead or constructs. At higher levels, the healing increases by 1d8 for each slot level above 1st.
+              </div>
+              <div class="spell-detail-actions">
+                <button class="prepare-toggle prepared">★ Prepared</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Unprepared spell — hollow star, dimmed -->
+          <div class="spell-row" id="row-feystep" style="opacity:0.6;">
+            <div class="spell-row-head" onclick="toggleExpand('row-feystep')">
+              <div class="spell-row-left">
+                <div class="conc-dot-inactive"></div>
+                <span class="spell-row-name" style="color:var(--text-secondary)">Fey Step</span>
+                <span style="font-size:11px;color:var(--text-muted)" title="Available but not prepared">☆</span>
+              </div>
+              <div class="spell-row-right">
+                <span class="spell-badge muted">Conjuration</span>
+                <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('row-feystep')">▾</button>
+              </div>
+            </div>
+            <div class="spell-detail">
+              <div class="spell-detail-grid">
+                <div class="detail-stat"><span class="detail-stat-label">Casting Time</span><span class="detail-stat-value">1 Bonus</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Range</span><span class="detail-stat-value">Self</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Duration</span><span class="detail-stat-value">Instant</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Components</span><span class="detail-stat-value">V</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">School</span><span class="detail-stat-value">Conjuration</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Class</span><span class="detail-stat-value">Ranger</span></div>
+              </div>
+              <div class="spell-description">
+                As a bonus action, you can teleport up to 30 feet to an unoccupied space you can see. You can use this ability a number of times equal to your proficiency bonus, and you regain all expended uses when you finish a long rest.
+              </div>
+              <div class="spell-detail-actions">
+                <button class="prepare-toggle" onclick="this.classList.toggle('prepared'); this.textContent = this.classList.contains('prepared') ? '★ Prepared' : '☆ Add to prepared'">☆ Add to prepared</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Level 2 ── -->
+        <div class="level-group">
+          <div class="level-group-header">
+            Level 2
+            <span class="slot-status">
+              <span class="slot-pip-sm filled"></span>
+              <span class="slot-pip-sm empty"></span>
+              <span class="slot-pip-sm empty"></span>
+            </span>
+          </div>
+
+          <div class="spell-row" id="row-mistystep">
+            <div class="spell-row-head" onclick="toggleExpand('row-mistystep')">
+              <div class="spell-row-left">
+                <div class="conc-dot-inactive"></div>
+                <span class="spell-row-name">Misty Step</span>
+                <span class="prepared-star" title="Prepared">★</span>
+              </div>
+              <div class="spell-row-right">
+                <span class="spell-badge">Teleport 30ft</span>
+                <span class="spell-badge muted">Conjuration</span>
+                <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('row-mistystep')">▾</button>
+              </div>
+            </div>
+            <div class="spell-detail">
+              <div class="spell-detail-grid">
+                <div class="detail-stat"><span class="detail-stat-label">Casting Time</span><span class="detail-stat-value">1 Bonus</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Range</span><span class="detail-stat-value">Self</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Duration</span><span class="detail-stat-value">Instant</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Components</span><span class="detail-stat-value">V</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">School</span><span class="detail-stat-value">Conjuration</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Class</span><span class="detail-stat-value">Ranger</span></div>
+              </div>
+              <div class="spell-description">
+                Briefly surrounded by silvery mist, you teleport up to 30 feet to an unoccupied space that you can see.
+              </div>
+              <div class="spell-detail-actions">
+                <button class="prepare-toggle prepared">★ Prepared</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="spell-row" id="row-passwotrack">
+            <div class="spell-row-head" onclick="toggleExpand('row-passwotrack')">
+              <div class="spell-row-left">
+                <div class="conc-dot"></div>
+                <span class="spell-row-name">Pass Without Trace</span>
+                <span class="prepared-star" title="Prepared">★</span>
+              </div>
+              <div class="spell-row-right">
+                <span class="spell-badge">+10 Stealth</span>
+                <span class="spell-badge muted">Abjuration · Conc</span>
+                <button class="expand-btn" onclick="event.stopPropagation(); toggleExpand('row-passwotrack')">▾</button>
+              </div>
+            </div>
+            <div class="spell-detail">
+              <div class="spell-detail-grid">
+                <div class="detail-stat"><span class="detail-stat-label">Casting Time</span><span class="detail-stat-value">1 Action</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Range</span><span class="detail-stat-value">Self</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Duration</span><span class="detail-stat-value">Conc, 1 hr</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Components</span><span class="detail-stat-value">V, S, M</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">School</span><span class="detail-stat-value">Abjuration</span></div>
+                <div class="detail-stat"><span class="detail-stat-label">Class</span><span class="detail-stat-value">Ranger</span></div>
+              </div>
+              <div class="spell-description">
+                A veil of shadows and silence radiates from you, masking you and your companions from detection. Each creature you choose within 30 feet of you has a +10 bonus to Dexterity (Stealth) checks and can't be tracked except by magical means.
+              </div>
+              <div class="spell-detail-actions">
+                <button class="prepare-toggle prepared">★ Prepared</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /spell-list -->
+    </div><!-- /right-panel -->
+
+  </div><!-- /sheet-body -->
+</div><!-- /app -->
+
+<script>
+  function toggleExpand(id) {
+    const row = document.getElementById(id);
+    row.classList.toggle('expanded');
+  }
+
+  // Filter chips — each group is independent (class and school filter separately)
+  function toggleChip(chip) {
+    const group = chip.dataset.group;
+    const siblings = chip.parentElement.querySelectorAll('.chip');
+
+    if (chip.textContent === 'All') {
+      // Clicking All deselects everything else
+      siblings.forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    } else {
+      // Deselect All, toggle this chip
+      chip.parentElement.querySelector('[data-group="' + group + '"]').classList.remove('active');
+      chip.classList.toggle('active');
+
+      // If nothing selected, reselect All
+      const anyActive = [...siblings].some(c => c.classList.contains('active'));
+      if (!anyActive) {
+        chip.parentElement.querySelector('.chip').classList.add('active');
+      }
+    }
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Combat Tab v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --spell-slot-filled:#7c6ff5; --spell-slot-empty:#26244a;
+    --condition-bg:rgba(239,100,60,0.22); --condition-text:#f4845f;
+    --concentration-indicator:#67e8f9;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --tab-active-bg:#1c1b35; --tab-active-text:#eeedf8; --tab-inactive-text:#45426a;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --font-body:'Nunito',system-ui,sans-serif; --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-full:9999px;
+    --gold:#c9a227; --gold-subtle:rgba(201,162,39,0.1); --gold-border:rgba(201,162,39,0.38);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080712;color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px;}
+  .mockup-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;}
+  .app{width:100%;max-width:1100px;background:var(--bg-base);border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-md);}
+
+  /* Switcher */
+  .char-switcher{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+  .char-switcher::-webkit-scrollbar{display:none;}
+  .char-tab{padding:6px 14px;border-radius:var(--r-full);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid transparent;color:var(--text-secondary);}
+  .char-tab.active{background:var(--accent);color:var(--text-inverse);border-color:var(--accent);}
+  .char-tab.new-char{border:1px solid var(--border-strong);color:var(--text-muted);}
+
+  .sheet-body{display:flex;min-height:680px;}
+
+  /* Left panel */
+  .left-panel{width:clamp(200px,30%,300px);flex-shrink:0;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+  .char-info{padding:14px;border-bottom:1px solid var(--border);}
+  .char-info-row{display:flex;align-items:flex-start;justify-content:space-between;}
+  .char-name{font-family:'Outfit',var(--font-body);font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.01em;}
+  .char-meta{font-size:12px;color:var(--text-secondary);margin-top:3px;}
+  .icon-btn{width:28px;height:28px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;}
+  .hp-block{margin:12px 14px 0;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;}
+  .hp-label{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;}
+  .hp-row{display:flex;align-items:center;justify-content:space-between;}
+  .hp-value{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1;}
+  .hp-max{font-family:var(--font-mono);font-size:16px;color:var(--text-secondary);}
+  .hp-controls{display:flex;gap:6px;}
+  .hp-btn{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-strong);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg-inset);}
+  .hp-btn.plus{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .hp-bar-track{height:4px;background:var(--bg-inset);border-radius:var(--r-full);margin-top:8px;overflow:hidden;}
+  .hp-bar-fill{height:100%;width:80%;background:var(--hp-high);border-radius:var(--r-full);}
+  .stat-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 14px 0;}
+  .stat-tile{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 4px 6px;text-align:center;}
+  .stat-tile-value{font-family:var(--font-mono);font-size:17px;font-weight:500;line-height:1;}
+  .stat-tile-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:4px;}
+  .conditions-row{display:flex;align-items:center;gap:6px;padding:10px 14px 0;flex-wrap:wrap;}
+  .condition-pill{background:var(--condition-bg);color:var(--condition-text);font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--r-sm);border:1px solid rgba(244,132,95,0.3);}
+  .add-condition{background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-sm);border:1px dashed var(--border-strong);cursor:pointer;}
+  .xp-row{padding:10px 14px 0;}
+  .xp-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:5px;}
+  .xp-track{height:3px;background:var(--bg-inset);border-radius:var(--r-full);overflow:hidden;}
+  .xp-fill{height:100%;width:76%;background:var(--accent);border-radius:var(--r-full);}
+  .saved-indicator{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:11px;color:var(--success);font-weight:600;}
+  .saved-dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--success);}
+  .sidebar-tabs{flex:1;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;border-top:1px solid var(--border);}
+  .sidebar-tab{display:flex;align-items:center;gap:8px;padding:10px;border-radius:var(--r-md);cursor:pointer;color:var(--tab-inactive-text);font-size:13px;font-weight:600;border:1px solid transparent;white-space:nowrap;}
+  .sidebar-tab:hover{color:var(--text-secondary);background:var(--bg-elevated);}
+  .sidebar-tab.active{background:var(--tab-active-bg);color:var(--tab-active-text);border-color:var(--border);}
+  .tab-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+
+  /* Right panel */
+  .right-panel{flex:1;background:var(--bg-base);overflow-y:auto;padding:20px 18px 32px;display:flex;flex-direction:column;gap:22px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .section-header{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+
+  /* ── Two-line combat card ── */
+  .combat-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:6px;transition:border-color 150ms;}
+  .combat-card:last-child{margin-bottom:0;}
+  .combat-card:hover{border-color:var(--border-strong);}
+  .combat-card.magic{border-color:var(--gold-border);background:linear-gradient(90deg,rgba(201,162,39,0.05) 0%,var(--bg-surface) 55%);}
+  .combat-card.magic:hover{border-color:rgba(201,162,39,0.65);}
+
+  /* Line 1 — name */
+  .card-line1{display:flex;align-items:center;gap:7px;padding:10px 14px 3px;}
+  .card-name{font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+  .magic-gem{font-size:11px;color:var(--gold);filter:drop-shadow(0 0 4px rgba(201,162,39,0.6));flex-shrink:0;}
+
+  /* Line 2 — details + buttons */
+  .card-line2{display:flex;align-items:center;gap:6px;padding:0 14px 10px;flex-wrap:wrap;}
+  .card-spacer{flex:1;}
+
+  /* Badges */
+  .cbadge{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:4px 9px;font-family:var(--font-mono);font-size:12px;color:var(--text-primary);white-space:nowrap;}
+  .cbadge.dim{color:var(--text-secondary);}
+
+  /* Ammo badge */
+  .ammo-badge{border-radius:var(--r-sm);padding:4px 9px;font-family:var(--font-mono);font-size:12px;white-space:nowrap;border:1px solid;}
+  .ammo-ok{color:var(--text-secondary);background:var(--bg-elevated);border-color:var(--border-strong);}
+  .ammo-low{color:var(--warning);background:rgba(245,158,11,0.09);border-color:rgba(245,158,11,0.38);}
+  .ammo-crit{color:var(--danger);background:rgba(248,113,113,0.09);border-color:rgba(248,113,113,0.38);}
+  .ammo-empty{color:var(--danger);background:rgba(248,113,113,0.09);border-color:rgba(248,113,113,0.38);opacity:.75;}
+
+  /* Charge badge */
+  .charge-badge{display:inline-flex;align-items:center;gap:3px;background:var(--gold-subtle);border:1px solid var(--gold-border);border-radius:var(--r-sm);padding:4px 8px;font-family:var(--font-mono);font-size:12px;color:var(--gold);white-space:nowrap;}
+  .ctap{cursor:pointer;padding:0 3px;font-size:13px;font-weight:700;line-height:1;border-radius:3px;user-select:none;}
+  .ctap:hover{background:rgba(201,162,39,0.22);}
+
+  /* Buttons */
+  .roll-btn{background:var(--bg-elevated);color:var(--text-secondary);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:5px 12px;font-family:var(--font-body);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 150ms;}
+  .roll-btn:hover{color:var(--text-primary);}
+  .use-btn{background:var(--accent);color:#fff;border:none;border-radius:var(--r-sm);padding:5px 13px;font-family:var(--font-body);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background 150ms;}
+  .use-btn:hover{background:var(--accent-hover);}
+  .use-btn:disabled{opacity:.35;cursor:not-allowed;background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border);}
+
+  /* Spell slots */
+  .spell-slots-container{display:flex;flex-wrap:wrap;gap:8px;}
+  .spell-slot-group{display:inline-flex;align-items:center;gap:6px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:7px 12px;}
+  .slot-level{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary);min-width:10px;}
+  .slot-pips{display:flex;gap:4px;align-items:center;}
+  .pip{width:10px;height:10px;border-radius:var(--r-full);flex-shrink:0;cursor:pointer;}
+  .pip.filled{background:var(--spell-slot-filled);}
+  .pip.empty{background:transparent;border:1.5px solid var(--border-strong);}
+
+  /* Spell cards */
+  .spell-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:11px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px;transition:border-color 150ms;}
+  .spell-card:last-child{margin-bottom:0;}
+  .spell-card:hover{border-color:var(--border-strong);}
+  .spell-left{display:flex;align-items:center;gap:8px;min-width:0;flex-shrink:1;}
+  .spell-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .conc-dot{width:8px;height:8px;border-radius:var(--r-full);background:var(--concentration-indicator);flex-shrink:0;box-shadow:0 0 6px var(--concentration-indicator);}
+  .conc-dot-off{width:8px;height:8px;border-radius:var(--r-full);background:transparent;border:1.5px solid var(--text-muted);flex-shrink:0;}
+  .spell-badges{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+
+  /* Use counter badge */
+  .use-counter {
+    border-radius: var(--r-sm);
+    padding: 4px 9px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    white-space: nowrap;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 150ms;
+    user-select: none;
+  }
+  .use-counter.available {
+    color: var(--success);
+    background: rgba(74,222,128,0.08);
+    border-color: rgba(74,222,128,0.35);
+  }
+  .use-counter.spent {
+    color: var(--text-muted);
+    background: var(--bg-inset);
+    border-color: var(--border);
+  }
+
+  /* Class source label on card-line1 */
+  .class-source {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+  }font-size:11px;color:var(--text-muted);font-style:italic;padding:10px;text-align:center;border:1px dashed var(--border);border-radius:var(--r-md);background:var(--bg-inset);}
+
+  /* Modal */
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:100;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);}
+  .modal-backdrop.open{display:flex;}
+  .cast-modal{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:var(--r-lg) var(--r-lg) 0 0;padding:20px 20px 32px;width:100%;max-width:480px;box-shadow:var(--shadow-md);animation:slideUp 220ms ease-out;}
+  @keyframes slideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .modal-handle{width:36px;height:4px;background:var(--border-strong);border-radius:var(--r-full);margin:0 auto 16px;}
+  .modal-title{font-family:'Outfit',var(--font-body);font-size:17px;font-weight:800;margin-bottom:4px;}
+  .modal-sub{font-size:12px;color:var(--text-secondary);margin-bottom:18px;}
+  .modal-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;}
+  .level-options{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+  .level-option{display:flex;flex-direction:column;align-items:center;gap:3px;background:var(--bg-surface);border:1.5px solid var(--border);border-radius:var(--r-md);padding:10px 14px;cursor:pointer;transition:all 150ms;min-width:64px;}
+  .level-option:hover,.level-option.selected{border-color:var(--accent);background:var(--accent-subtle);}
+  .level-option.unavailable{opacity:.35;cursor:not-allowed;pointer-events:none;}
+  .lo-num{font-family:var(--font-mono);font-size:16px;font-weight:500;}
+  .lo-sub{font-size:10px;color:var(--text-secondary);white-space:nowrap;}
+  .pip-i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--spell-slot-filled);margin:0 1px;vertical-align:middle;}
+  .pip-i.e{background:transparent;border:1px solid var(--border-strong);}
+  .modal-actions{display:flex;gap:10px;}
+  .modal-ok{flex:1;background:var(--accent);color:#fff;border:none;border-radius:var(--r-md);padding:12px;font-family:var(--font-body);font-size:14px;font-weight:700;cursor:pointer;}
+  .modal-ok:hover{background:var(--accent-hover);}
+  .modal-cancel{background:var(--bg-surface);color:var(--text-secondary);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 18px;font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Combat Tab · v2 · Two-line cards · Use button · Ammo tracking · Magic Items</div>
+
+<div class="app">
+  <div class="char-switcher">
+    <div class="char-tab active">Aragorn 10</div>
+    <div class="char-tab">Frodo 7</div>
+    <div class="char-tab">Gandalf 20</div>
+    <div class="char-tab new-char">+ New</div>
+  </div>
+
+  <div class="sheet-body">
+
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <div class="char-info">
+        <div class="char-info-row">
+          <div><div class="char-name">Aragorn</div><div class="char-meta">Human · Ranger · Lv 10</div></div>
+          <div style="display:flex;gap:4px;align-items:flex-start;padding-top:2px;">
+            <span style="font-size:13px;color:var(--text-muted)">🔒</span>
+            <div class="icon-btn">↑</div>
+            <div class="icon-btn">⋯</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 14px;">
+        <div class="hp-block">
+          <div class="hp-label">Hit Points</div>
+          <div class="hp-row">
+            <div><span class="hp-value">72</span><span class="hp-max"> / 90</span></div>
+            <div class="hp-controls"><div class="hp-btn">−</div><div class="hp-btn plus">+</div></div>
+          </div>
+          <div class="hp-bar-track"><div class="hp-bar-fill"></div></div>
+        </div>
+      </div>
+      <div class="stat-tiles">
+        <div class="stat-tile"><div class="stat-tile-value">16</div><div class="stat-tile-label">AC</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">+6</div><div class="stat-tile-label">Init</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">30ft</div><div class="stat-tile-label">Speed</div></div>
+      </div>
+      <div class="conditions-row">
+        <span class="condition-pill">Poisoned</span>
+        <span class="add-condition">+ Add</span>
+      </div>
+      <div class="xp-row">
+        <div class="xp-labels"><span>64,500 XP</span><span>Lv 11 at 85k</span></div>
+        <div class="xp-track"><div class="xp-fill"></div></div>
+      </div>
+      <div class="saved-indicator"><div class="saved-dot"></div>Saved</div>
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab active"><span class="tab-icon">✕</span> Combat</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎲</span> Stats</div>
+        <div class="sidebar-tab"><span class="tab-icon">✨</span> Spells</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎒</span> Gear</div>
+        <div class="sidebar-tab"><span class="tab-icon">📝</span> Notes</div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+
+      <!-- ATTACKS -->
+      <div>
+        <div class="section-header">Attacks</div>
+
+        <!-- Melee — no ammo -->
+        <div class="combat-card">
+          <div class="card-line1"><span class="card-name">Longsword +1</span></div>
+          <div class="card-line2">
+            <span class="cbadge">+8 to hit</span>
+            <span class="cbadge">1d8+5 slashing</span>
+            <span class="cbadge dim">Versatile 1d10</span>
+            <div class="card-spacer"></div>
+            <button class="roll-btn">Roll</button>
+            <button class="use-btn">Use</button>
+          </div>
+        </div>
+
+        <!-- Ranged — ammo healthy -->
+        <div class="combat-card">
+          <div class="card-line1"><span class="card-name">Shortbow</span></div>
+          <div class="card-line2">
+            <span class="cbadge">+7 to hit</span>
+            <span class="cbadge">1d6+4 piercing</span>
+            <span class="ammo-badge ammo-ok" id="arrow-badge">↑ 38 arrows</span>
+            <div class="card-spacer"></div>
+            <button class="roll-btn">Roll</button>
+            <button class="use-btn" id="bow-btn" onclick="fireArrow()">Use</button>
+          </div>
+        </div>
+
+        <!-- Thrown — critically low -->
+        <div class="combat-card">
+          <div class="card-line1"><span class="card-name">Dagger (thrown)</span></div>
+          <div class="card-line2">
+            <span class="cbadge">+7 to hit</span>
+            <span class="cbadge">1d4+4 piercing</span>
+            <span class="ammo-badge ammo-crit" id="dagger-badge">↑ 3 daggers</span>
+            <div class="card-spacer"></div>
+            <button class="roll-btn">Roll</button>
+            <button class="use-btn" id="dag-btn" onclick="throwDagger()">Use</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAGIC ITEMS -->
+      <div>
+        <div class="section-header">Magic Items</div>
+
+        <div class="combat-card magic">
+          <div class="card-line1">
+            <span class="magic-gem">◆</span>
+            <span class="card-name">Wand of Magic Missile</span>
+          </div>
+          <div class="card-line2">
+            <span class="cbadge">3d4+3 force</span>
+            <span class="cbadge dim">120 ft · No attunem.</span>
+            <div class="charge-badge">
+              <span class="ctap" onclick="wandAdj(-1)">−</span>
+              <span id="wand-val">4</span>&thinsp;/&thinsp;7
+              <span class="ctap" onclick="wandAdj(1)">+</span>
+            </div>
+            <div class="card-spacer"></div>
+            <button class="use-btn" id="wand-btn" onclick="openModal('Wand of Magic Missile',-1)">Use</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLASS / RACE ABILITIES -->
+      <div>
+        <div class="section-header">Class &amp; Race Abilities</div>
+
+        <!-- Second Wind — 1/1 Short Rest, available -->
+        <div class="combat-card">
+          <div class="card-line1">
+            <span style="font-size:10px;color:var(--text-secondary);font-family:var(--font-mono);flex-shrink:0;">FIGHTER</span>
+            <span class="card-name">Second Wind</span>
+          </div>
+          <div class="card-line2">
+            <span class="cbadge">1d10+2 heal</span>
+            <span class="cbadge dim">Bonus Action</span>
+            <span class="use-counter available" id="sw-counter" onclick="useAbility('sw-counter',1,1,'SR')">1 / 1 SR</span>
+            <div class="card-spacer"></div>
+            <button class="use-btn" id="sw-btn" onclick="useAbility('sw-counter',1,1,'SR')">Use</button>
+          </div>
+        </div>
+
+        <!-- Action Surge — 1/1 Short Rest, available -->
+        <div class="combat-card">
+          <div class="card-line1">
+            <span style="font-size:10px;color:var(--text-secondary);font-family:var(--font-mono);flex-shrink:0;">FIGHTER</span>
+            <span class="card-name">Action Surge</span>
+          </div>
+          <div class="card-line2">
+            <span class="cbadge dim">Extra Action</span>
+            <span class="cbadge dim">This turn only</span>
+            <span class="use-counter available" id="as-counter" onclick="useAbility('as-counter',1,1,'SR')">1 / 1 SR</span>
+            <div class="card-spacer"></div>
+            <button class="use-btn" id="as-btn" onclick="useAbility('as-counter',1,1,'SR')">Use</button>
+          </div>
+        </div>
+
+        <!-- Favoured Enemy — passive, no counter -->
+        <div class="combat-card">
+          <div class="card-line1">
+            <span style="font-size:10px;color:var(--text-secondary);font-family:var(--font-mono);flex-shrink:0;">RANGER</span>
+            <span class="card-name">Favoured Enemy</span>
+          </div>
+          <div class="card-line2">
+            <span class="cbadge dim">Advantage — tracking Orcs</span>
+            <span class="cbadge dim">Passive</span>
+          </div>
+        </div>
+
+        <!-- Gloom Stalker — Dread Ambusher — 1/turn -->
+        <div class="combat-card">
+          <div class="card-line1">
+            <span style="font-size:10px;color:var(--text-secondary);font-family:var(--font-mono);flex-shrink:0;">RANGER</span>
+            <span class="card-name">Dread Ambusher</span>
+          </div>
+          <div class="card-line2">
+            <span class="cbadge">+1d8 damage</span>
+            <span class="cbadge dim">First turn only</span>
+            <span class="use-counter available" id="da-counter" onclick="useAbility('da-counter',1,1,'turn')">1 / 1 turn</span>
+            <div class="card-spacer"></div>
+            <button class="use-btn" id="da-btn" onclick="useAbility('da-counter',1,1,'turn')">Use</button>
+          </div>
+        </div>
+
+        <!-- Racial — Human variant — no special attack in this example, show a racial trait -->
+        <div class="combat-card">
+          <div class="card-line1">
+            <span style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);flex-shrink:0;">HUMAN</span>
+            <span class="card-name">Resourceful</span>
+          </div>
+          <div class="card-line2">
+            <span class="cbadge dim">Heroic Inspiration 1/LR</span>
+            <span class="use-counter available" id="ri-counter" onclick="useAbility('ri-counter',1,1,'LR')">1 / 1 LR</span>
+            <div class="card-spacer"></div>
+            <button class="use-btn" id="ri-btn" onclick="useAbility('ri-counter',1,1,'LR')">Use</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPELL SLOTS -->
+      <div>
+        <div class="section-header">Spell Slots</div>
+        <div class="spell-slots-container">
+          <div class="spell-slot-group"><span class="slot-level">I</span><div class="slot-pips"><div class="pip filled"></div><div class="pip filled"></div><div class="pip empty"></div><div class="pip empty"></div></div></div>
+          <div class="spell-slot-group"><span class="slot-level">II</span><div class="slot-pips"><div class="pip filled"></div><div class="pip empty"></div><div class="pip empty"></div></div></div>
+          <div class="spell-slot-group"><span class="slot-level">III</span><div class="slot-pips"><div class="pip empty"></div><div class="pip empty"></div></div></div>
+          <div class="spell-slot-group"><span class="slot-level">IV</span><div class="slot-pips"><div class="pip empty"></div></div></div>
+          <div class="spell-slot-group"><span class="slot-level">V</span><div class="slot-pips"><div class="pip filled"></div></div></div>
+        </div>
+      </div>
+
+      <!-- PREPARED SPELLS -->
+      <div>
+        <div class="section-header">Prepared Spells</div>
+
+        <div class="spell-card">
+          <div class="spell-left"><div class="conc-dot-off"></div><span class="spell-name">Fire Bolt</span></div>
+          <div class="spell-badges">
+            <span class="cbadge">2d10 fire</span><span class="cbadge">+7 to hit</span>
+            <button class="use-btn" onclick="openModal('Fire Bolt',0)">Cast</button>
+          </div>
+        </div>
+
+        <div class="spell-card">
+          <div class="spell-left"><div class="conc-dot"></div><span class="spell-name">Hunter's Mark</span></div>
+          <div class="spell-badges">
+            <span class="cbadge">1d6 bonus</span><span class="cbadge dim">Conc</span>
+            <button class="use-btn" onclick="openModal('Hunter\'s Mark',1)">Cast</button>
+          </div>
+        </div>
+
+        <div class="spell-card">
+          <div class="spell-left"><div class="conc-dot-off"></div><span class="spell-name">Cure Wounds</span></div>
+          <div class="spell-badges">
+            <span class="cbadge">1d8+4 heal</span><span class="cbadge dim">Lv 1</span>
+            <button class="use-btn" onclick="openModal('Cure Wounds',1)">Cast</button>
+          </div>
+        </div>
+
+        <div class="spell-card">
+          <div class="spell-left"><div class="conc-dot-off"></div><span class="spell-name">Misty Step</span></div>
+          <div class="spell-badges">
+            <span class="cbadge dim">Teleport 30ft</span><span class="cbadge dim">Lv 2</span>
+            <button class="use-btn" onclick="openModal('Misty Step',2)">Cast</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- DEATH SAVES -->
+      <div>
+        <div class="section-header">Death Saves</div>
+        <div class="death-note">💀 Death Saves appear here only when HP = 0</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="cast-modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="mTitle"></div>
+    <div class="modal-sub" id="mSub"></div>
+    <div class="modal-lbl" id="mLbl"></div>
+    <div class="level-options" id="mOpts"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-ok" onclick="confirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const slots={1:[true,true,false,false],2:[true,false,false],3:[false,false],4:[false],5:[true]};
+  let arrows=38, daggers=3, wand=4; const wandMax=7;
+  let selLv=1, minLv=1, isWand=false;
+
+  function setAmmo(id,count,label){
+    const el=document.getElementById(id);
+    const cls=count>10?'ammo-ok':count>3?'ammo-low':count>0?'ammo-crit':'ammo-empty';
+    el.className='ammo-badge '+cls;
+    el.textContent=count>0?'↑ '+count+' '+label:'No '+label;
+  }
+  function fireArrow(){if(arrows<=0)return;arrows--;setAmmo('arrow-badge',arrows,'arrows');if(arrows===0)document.getElementById('bow-btn').disabled=true;}
+  function throwDagger(){if(daggers<=0)return;daggers--;setAmmo('dagger-badge',daggers,'daggers');if(daggers===0)document.getElementById('dag-btn').disabled=true;}
+  function wandAdj(d){wand=Math.min(wandMax,Math.max(0,wand+d));document.getElementById('wand-val').textContent=wand;document.getElementById('wand-btn').disabled=wand===0;}
+
+  function avail(lv){return slots[lv]?slots[lv].filter(Boolean).length:0;}
+  function pipRow(lv){return(slots[lv]||[]).map(f=>`<span class="pip-i${f?'':' e'}"></span>`).join('');}
+
+  function openModal(name,min){
+    isWand=min===-1; minLv=isWand?1:min; selLv=minLv;
+    document.getElementById('mTitle').textContent=name;
+    if(isWand){
+      document.getElementById('mSub').textContent='Expend 1–3 charges. Higher charges = more damage.';
+      document.getElementById('mLbl').textContent='Charges to expend';
+      renderCharge();
+    } else if(min===0){
+      document.getElementById('mSub').textContent='Cantrip — no spell slot required';
+      document.getElementById('mLbl').textContent='';
+      document.getElementById('mOpts').innerHTML=`<div class="level-option selected"><span class="lo-num">—</span><span class="lo-sub">No slot</span></div>`;
+    } else {
+      document.getElementById('mSub').textContent='Minimum level '+min+' · choose a slot';
+      document.getElementById('mLbl').textContent='Spell Slot Level';
+      renderSlots();
+    }
+    document.getElementById('modal').classList.add('open');
+  }
+
+  function renderSlots(){
+    const c=document.getElementById('mOpts'); c.innerHTML='';
+    for(let lv=minLv;lv<=5;lv++){
+      const a=avail(lv); const d=document.createElement('div');
+      d.className='level-option'+(lv===selLv?' selected':'')+(a===0?' unavailable':'');
+      d.innerHTML=`<span class="lo-num">${lv}</span><span class="lo-sub">${pipRow(lv)}</span>`;
+      if(a>0)d.onclick=()=>{selLv=lv;renderSlots();};
+      c.appendChild(d);
+    }
+  }
+
+  function renderCharge(){
+    const c=document.getElementById('mOpts'); c.innerHTML='';
+    const dmgs=['3d4+3','4d4+4','5d4+5'];
+    for(let ch=1;ch<=3;ch++){
+      const ok=wand>=ch; const d=document.createElement('div');
+      d.className='level-option'+(ch===selLv?' selected':'')+(ok?'':' unavailable');
+      d.innerHTML=`<span class="lo-num">${ch}</span><span class="lo-sub">${dmgs[ch-1]} force</span>`;
+      if(ok)d.onclick=()=>{selLv=ch;renderCharge();};
+      c.appendChild(d);
+    }
+  }
+
+  function confirmAction(){
+    if(isWand){wandAdj(-selLv);}
+    else if(minLv>0&&selLv>0){
+      const s=slots[selLv]; const i=s.findIndex(x=>x); if(i!==-1)s[i]=false;
+      document.querySelectorAll('.spell-slot-group').forEach(g=>{
+        const m={'I':1,'II':2,'III':3,'IV':4,'V':5};
+        const lv=m[g.querySelector('.slot-level').textContent.trim()];
+        if(!lv||!slots[lv])return;
+        g.querySelector('.slot-pips').innerHTML=slots[lv].map(f=>`<div class="pip ${f?'filled':'empty'}"></div>`).join('');
+      });
+    }
+    closeModal();
+  }
+  // Ability use counters — keyed by counter element id
+  const abilityState = {};
+  function useAbility(counterId, current, max, recharge) {
+    if (!abilityState[counterId]) abilityState[counterId] = { used: 0, max };
+    const state = abilityState[counterId];
+    if (state.used >= state.max) return;
+    state.used++;
+    const remaining = state.max - state.used;
+    const el = document.getElementById(counterId);
+    el.textContent = remaining + ' / ' + state.max + ' ' + recharge;
+    if (remaining === 0) {
+      el.className = 'use-counter spent';
+      // find sibling use-btn and disable
+      const btn = el.parentElement.querySelector('.use-btn');
+      if (btn) btn.disabled = true;
+    }
+  }
+
+  function closeModal(){document.getElementById('modal').classList.remove('open');}
+</script>
+</body>
+</html>

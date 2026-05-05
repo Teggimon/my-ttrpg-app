@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Stats Tab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --condition-bg:rgba(239,100,60,0.22); --condition-text:#f4845f;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --tab-active-bg:#1c1b35; --tab-active-text:#eeedf8; --tab-inactive-text:#45426a;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --font-body:'Nunito',system-ui,sans-serif; --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-full:9999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080712;color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px;}
+  .mockup-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;}
+  .app{width:100%;max-width:1100px;background:var(--bg-base);border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-md);}
+
+  /* Switcher */
+  .char-switcher{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+  .char-switcher::-webkit-scrollbar{display:none;}
+  .char-tab{padding:6px 14px;border-radius:var(--r-full);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid transparent;color:var(--text-secondary);}
+  .char-tab.active{background:var(--accent);color:var(--text-inverse);border-color:var(--accent);}
+  .char-tab.new-char{border:1px solid var(--border-strong);color:var(--text-muted);}
+
+  .sheet-body{display:flex;min-height:760px;}
+
+  /* Left panel */
+  .left-panel{width:clamp(200px,30%,300px);flex-shrink:0;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+  .char-info{padding:14px;border-bottom:1px solid var(--border);}
+  .char-info-row{display:flex;align-items:flex-start;justify-content:space-between;}
+  .char-name{font-family:'Outfit',var(--font-body);font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.01em;}
+  .char-meta{font-size:12px;color:var(--text-secondary);margin-top:3px;}
+  .icon-btn{width:28px;height:28px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;}
+  .hp-block{margin:12px 14px 0;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;}
+  .hp-label{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;}
+  .hp-row{display:flex;align-items:center;justify-content:space-between;}
+  .hp-value{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1;}
+  .hp-max{font-family:var(--font-mono);font-size:16px;color:var(--text-secondary);}
+  .hp-controls{display:flex;gap:6px;}
+  .hp-btn{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-strong);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg-inset);}
+  .hp-btn.plus{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .hp-bar-track{height:4px;background:var(--bg-inset);border-radius:var(--r-full);margin-top:8px;overflow:hidden;}
+  .hp-bar-fill{height:100%;width:80%;background:var(--hp-high);border-radius:var(--r-full);}
+  .stat-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 14px 0;}
+  .stat-tile{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 4px 6px;text-align:center;}
+  .stat-tile-value{font-family:var(--font-mono);font-size:17px;font-weight:500;line-height:1;}
+  .stat-tile-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:4px;}
+  .conditions-row{display:flex;align-items:center;gap:6px;padding:10px 14px 0;flex-wrap:wrap;}
+  .condition-pill{background:var(--condition-bg);color:var(--condition-text);font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--r-sm);border:1px solid rgba(244,132,95,0.3);}
+  .add-condition{background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-sm);border:1px dashed var(--border-strong);cursor:pointer;}
+  .xp-row{padding:10px 14px 0;}
+  .xp-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:5px;}
+  .xp-track{height:3px;background:var(--bg-inset);border-radius:var(--r-full);overflow:hidden;}
+  .xp-fill{height:100%;width:76%;background:var(--accent);border-radius:var(--r-full);}
+  .saved-indicator{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:11px;color:var(--success);font-weight:600;}
+  .saved-dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--success);}
+  .sidebar-tabs{flex:1;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;border-top:1px solid var(--border);}
+  .sidebar-tab{display:flex;align-items:center;gap:8px;padding:10px;border-radius:var(--r-md);cursor:pointer;color:var(--tab-inactive-text);font-size:13px;font-weight:600;border:1px solid transparent;white-space:nowrap;}
+  .sidebar-tab:hover{color:var(--text-secondary);background:var(--bg-elevated);}
+  .sidebar-tab.active{background:var(--tab-active-bg);color:var(--tab-active-text);border-color:var(--border);}
+  .tab-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+
+  /* ── Right panel ── */
+  .right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* ── Summary row — sticky top ── */
+  .summary-row {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg-surface);
+  }
+  .summary-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px 10px;
+    border-right: 1px solid var(--border);
+    gap: 3px;
+  }
+  .summary-stat:last-child { border-right: none; }
+  .summary-val {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  .summary-lbl {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* ── Scrollable content ── */
+  .stats-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .section-header {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── Ability score grid — 6 cards ── */
+  .ability-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  @media (max-width: 700px) { .ability-grid { grid-template-columns: repeat(3,1fr); } }
+
+  .ability-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 12px 6px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    transition: border-color 150ms;
+    position: relative;
+  }
+  .ability-card:hover { border-color: var(--border-strong); }
+  .ability-card.active { border-color: var(--accent); background: var(--accent-subtle); }
+
+  .ability-mod {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+  .ability-score {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1;
+  }
+  .ability-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  /* Save proficiency indicator — bottom right corner */
+  .save-dot {
+    position: absolute;
+    bottom: 7px;
+    right: 8px;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--r-full);
+  }
+  .save-dot.prof { background: var(--accent); }
+  .save-dot.none { background: transparent; border: 1.5px solid var(--text-muted); }
+
+  /* ── Saving throws ── */
+  .save-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    margin-bottom: 5px;
+    transition: border-color 150ms;
+  }
+  .save-row:last-child { margin-bottom: 0; }
+  .save-row:hover { border-color: var(--border-strong); }
+  .save-left { display: flex; align-items: center; gap: 10px; }
+  .save-pip {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--r-full);
+    flex-shrink: 0;
+  }
+  .save-pip.prof { background: var(--accent); }
+  .save-pip.none { background: transparent; border: 1.5px solid var(--text-muted); }
+  .save-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .save-bonus {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .save-bonus.prof { color: var(--accent); }
+
+  /* ── Skills ── */
+  .skill-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    margin-bottom: 4px;
+    transition: border-color 150ms;
+    cursor: pointer;
+  }
+  .skill-row:last-child { margin-bottom: 0; }
+  .skill-row:hover { border-color: var(--border-strong); }
+
+  /* Three-state proficiency marker — clearly distinct */
+  .prof-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--r-full);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    line-height: 1;
+  }
+  /* Not proficient — hollow circle, muted */
+  .prof-marker.none {
+    background: transparent;
+    border: 1.5px solid var(--text-muted);
+    color: transparent;
+  }
+  /* Proficient — filled accent circle, single dot inside */
+  .prof-marker.prof {
+    background: var(--accent-subtle);
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+  }
+  .prof-marker.prof::after { content: '◆'; font-size: 8px; }
+
+  /* Expertise — solid filled accent, double chevron star, clearly different from prof */
+  .prof-marker.expert {
+    background: var(--accent);
+    border: 1.5px solid var(--accent);
+    color: #fff;
+  }
+  .prof-marker.expert::after { content: '★'; font-size: 10px; }
+
+  .skill-name { font-size: 13px; font-weight: 600; color: var(--text-primary); flex: 1; }
+  .skill-bonus {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 32px;
+    text-align: right;
+  }
+  .skill-bonus.prof { color: var(--accent); }
+  .skill-bonus.expert { color: var(--accent); }
+  .skill-attr {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    min-width: 28px;
+    text-align: right;
+  }
+
+  /* ── Magic item buff dot ── */
+  .magic-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold, #c9a227);
+    box-shadow: 0 0 5px rgba(201,162,39,0.75);
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+  }
+  /* On ability cards — top-right corner */
+  .ability-card .magic-dot {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+  }
+  /* On summary tiles — inline after value */
+  .summary-stat .magic-dot {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+  .summary-stat { position: relative; }
+
+  /* Tooltip — default opens upward */
+  .magic-dot:hover::after,
+  .magic-dot:focus::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-elevated, #1c1b35);
+    border: 1px solid rgba(201,162,39,0.4);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: var(--font-body, sans-serif);
+    color: var(--text-primary, #eeedf8);
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+    line-height: 1.5;
+  }
+
+  /* Summary row dots open DOWNWARD — avoids clipping under character switcher */
+  .summary-stat .magic-dot:hover::after,
+  .summary-stat .magic-dot:focus::after {
+    bottom: auto;
+    top: 130%;
+  }
+  :root { --gold: #c9a227; --gold-border: rgba(201,162,39,0.38); }
+  .prof-section { display: flex; flex-direction: column; gap: 14px; }
+  .prof-category { display: flex; flex-direction: column; gap: 6px; }
+  .prof-cat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .prof-cat-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .prof-cat-add {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color 150ms;
+  }
+  .prof-cat-add:hover { color: var(--accent); }
+  .prof-pills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .prof-pill {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-sm);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    cursor: default;
+  }
+  .prof-pill.half {
+    border-color: var(--warning);
+    color: var(--warning);
+    background: rgba(245,158,11,0.08);
+  }
+  /* Add pill — dashed, inline with other pills */
+  .prof-pill-add {
+    background: transparent;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r-sm);
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 150ms;
+  }
+  .prof-pill-add:hover { border-color: var(--accent); color: var(--accent); }
+  /* Add category button */
+  .add-category-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r-md);
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+    transition: all 150ms;
+  }
+  .add-category-btn:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Stats Tab · Dungeon Theme · Summary row · Ability scores · Saves · Skills · Proficiencies</div>
+
+<div class="app">
+  <div class="char-switcher">
+    <div class="char-tab active">Aragorn 10</div>
+    <div class="char-tab">Frodo 7</div>
+    <div class="char-tab">Gandalf 20</div>
+    <div class="char-tab new-char">+ New</div>
+  </div>
+
+  <div class="sheet-body">
+
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <div class="char-info">
+        <div class="char-info-row">
+          <div><div class="char-name">Aragorn</div><div class="char-meta">Human · Ranger · Lv 10</div></div>
+          <div style="display:flex;gap:4px;align-items:flex-start;padding-top:2px;">
+            <span style="font-size:13px;color:var(--text-muted)">🔒</span>
+            <div class="icon-btn">↑</div>
+            <div class="icon-btn">⋯</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 14px;">
+        <div class="hp-block">
+          <div class="hp-label">Hit Points</div>
+          <div class="hp-row">
+            <div><span class="hp-value">72</span><span class="hp-max"> / 90</span></div>
+            <div class="hp-controls"><div class="hp-btn">−</div><div class="hp-btn plus">+</div></div>
+          </div>
+          <div class="hp-bar-track"><div class="hp-bar-fill"></div></div>
+        </div>
+      </div>
+      <div class="stat-tiles">
+        <div class="stat-tile"><div class="stat-tile-value">16</div><div class="stat-tile-label">AC</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">+6</div><div class="stat-tile-label">Init</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">30ft</div><div class="stat-tile-label">Speed</div></div>
+      </div>
+      <div class="conditions-row">
+        <span class="condition-pill">Poisoned</span>
+        <span class="add-condition">+ Add</span>
+      </div>
+      <div class="xp-row">
+        <div class="xp-labels"><span>64,500 XP</span><span>Lv 11 at 85k</span></div>
+        <div class="xp-track"><div class="xp-fill"></div></div>
+      </div>
+      <div class="saved-indicator"><div class="saved-dot"></div>Saved</div>
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab"><span class="tab-icon">✕</span> Combat</div>
+        <div class="sidebar-tab active"><span class="tab-icon">🎲</span> Stats</div>
+        <div class="sidebar-tab"><span class="tab-icon">✨</span> Spells</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎒</span> Gear</div>
+        <div class="sidebar-tab"><span class="tab-icon">📝</span> Notes</div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+
+      <!-- Summary row -->
+      <div class="summary-row">
+        <div class="summary-stat">
+          <span class="summary-val">+4</span>
+          <span class="summary-lbl">Prof Bonus</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-val">+6</span>
+          <span class="summary-lbl">Initiative</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-val">15</span>
+          <span class="summary-lbl">Passive Perc</span>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-val">16</span>
+          <span class="summary-lbl">AC</span>
+          <div class="magic-dot" data-tip="◆ +1 AC · Ring of Protection (equipped · attuned)"></div>
+        </div>
+        <div class="summary-stat">
+          <span class="summary-val">30ft</span>
+          <span class="summary-lbl">Speed</span>
+        </div>
+      </div>
+
+      <div class="stats-scroll">
+
+        <!-- ABILITY SCORES -->
+        <div>
+          <div class="section-header">Ability Scores</div>
+          <div class="ability-grid">
+
+            <!-- STR — prof save -->
+            <div class="ability-card">
+              <div class="ability-mod">+2</div>
+              <div class="ability-score">14</div>
+              <div class="ability-label">STR</div>
+              <div class="save-dot prof" title="Saving throw proficiency"></div>
+            </div>
+
+            <!-- DEX — prof save -->
+            <div class="ability-card">
+              <div class="ability-mod">+4</div>
+              <div class="ability-score">18</div>
+              <div class="ability-label">DEX</div>
+              <div class="save-dot prof"></div>
+            </div>
+
+            <!-- CON — magic item buff active -->
+            <div class="ability-card">
+              <div class="ability-mod">+3</div>
+              <div class="ability-score">16</div>
+              <div class="ability-label">CON</div>
+              <div class="save-dot none"></div>
+              <div class="magic-dot" data-tip="◆ +2 CON · Amulet of Health (equipped · attuned)"></div>
+            </div>
+
+            <!-- INT -->
+            <div class="ability-card">
+              <div class="ability-mod">+1</div>
+              <div class="ability-score">12</div>
+              <div class="ability-label">INT</div>
+              <div class="save-dot none"></div>
+            </div>
+
+            <!-- WIS -->
+            <div class="ability-card">
+              <div class="ability-mod">+2</div>
+              <div class="ability-score">14</div>
+              <div class="ability-label">WIS</div>
+              <div class="save-dot none"></div>
+            </div>
+
+            <!-- CHA -->
+            <div class="ability-card">
+              <div class="ability-mod">+1</div>
+              <div class="ability-score">12</div>
+              <div class="ability-label">CHA</div>
+              <div class="save-dot none"></div>
+            </div>
+          </div>
+          <p style="font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right;">
+            ● bottom-right dot = saving throw proficiency
+          </p>
+        </div>
+
+        <!-- SAVING THROWS -->
+        <div>
+          <div class="section-header">Saving Throws</div>
+
+          <div class="save-row">
+            <div class="save-left">
+              <div class="save-pip prof"></div>
+              <span class="save-name">Strength</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="save-bonus prof">+6</span>
+              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+            </div>
+          </div>
+          <div class="save-row">
+            <div class="save-left">
+              <div class="save-pip prof"></div>
+              <span class="save-name">Dexterity</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="save-bonus prof">+8</span>
+              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+            </div>
+          </div>
+          <div class="save-row">
+            <div class="save-left">
+              <div class="save-pip none"></div>
+              <span class="save-name">Constitution</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="save-bonus">+3</span>
+              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+            </div>
+          </div>
+          <div class="save-row">
+            <div class="save-left">
+              <div class="save-pip none"></div>
+              <span class="save-name">Intelligence</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="save-bonus">+1</span>
+              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+            </div>
+          </div>
+          <div class="save-row">
+            <div class="save-left">
+              <div class="save-pip none"></div>
+              <span class="save-name">Wisdom</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="save-bonus">+2</span>
+              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+            </div>
+          </div>
+          <div class="save-row">
+            <div class="save-left">
+              <div class="save-pip none"></div>
+              <span class="save-name">Charisma</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="save-bonus">+1</span>
+              <div class="magic-dot" style="position:relative;top:0;right:0;" data-tip="◆ +1 all saves · Ring of Protection (equipped · attuned)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SKILLS -->
+        <div>
+          <div class="section-header">Skills</div>
+
+          <!-- ◇ none  ◆ proficient  ◈ expertise -->
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Acrobatics</span>
+            <span class="skill-bonus">+4</span>
+            <span class="skill-attr">DEX</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Animal Handling</span>
+            <span class="skill-bonus">+2</span>
+            <span class="skill-attr">WIS</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Arcana</span>
+            <span class="skill-bonus">+1</span>
+            <span class="skill-attr">INT</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker prof"></span>
+            <span class="skill-name">Athletics</span>
+            <span class="skill-bonus prof">+6</span>
+            <span class="skill-attr">STR</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Deception</span>
+            <span class="skill-bonus">+1</span>
+            <span class="skill-attr">CHA</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">History</span>
+            <span class="skill-bonus">+1</span>
+            <span class="skill-attr">INT</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Insight</span>
+            <span class="skill-bonus">+2</span>
+            <span class="skill-attr">WIS</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker prof"></span>
+            <span class="skill-name">Intimidation</span>
+            <span class="skill-bonus prof">+5</span>
+            <span class="skill-attr">CHA</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Investigation</span>
+            <span class="skill-bonus">+1</span>
+            <span class="skill-attr">INT</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Medicine</span>
+            <span class="skill-bonus">+2</span>
+            <span class="skill-attr">WIS</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Nature</span>
+            <span class="skill-bonus">+1</span>
+            <span class="skill-attr">INT</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker expert"></span>
+            <span class="skill-name">Perception</span>
+            <span class="skill-bonus expert">+10</span>
+            <span class="skill-attr">WIS</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Performance</span>
+            <span class="skill-bonus">+1</span>
+            <span class="skill-attr">CHA</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Persuasion</span>
+            <span class="skill-bonus">+1</span>
+            <span class="skill-attr">CHA</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker prof"></span>
+            <span class="skill-name">Religion</span>
+            <span class="skill-bonus prof">+5</span>
+            <span class="skill-attr">INT</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker none"></span>
+            <span class="skill-name">Sleight of Hand</span>
+            <span class="skill-bonus">+4</span>
+            <span class="skill-attr">DEX</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker expert"></span>
+            <span class="skill-name">Stealth</span>
+            <span class="skill-bonus expert">+12</span>
+            <span class="skill-attr">DEX</span>
+          </div>
+          <div class="skill-row">
+            <span class="prof-marker prof"></span>
+            <span class="skill-name">Survival</span>
+            <span class="skill-bonus prof">+6</span>
+            <span class="skill-attr">WIS</span>
+          </div>
+        </div>
+
+        <!-- OTHER PROFICIENCIES -->
+        <div>
+          <div class="section-header">Other Proficiencies</div>
+          <div class="prof-section">
+
+            <div class="prof-category">
+              <div class="prof-cat-header">
+                <span class="prof-cat-label">Armour</span>
+                <button class="prof-cat-add" title="Add armour proficiency">+ Add</button>
+              </div>
+              <div class="prof-pills">
+                <span class="prof-pill">Light Armour</span>
+                <span class="prof-pill">Medium Armour</span>
+                <span class="prof-pill">Shields</span>
+                <button class="prof-pill-add">+ Add</button>
+              </div>
+            </div>
+
+            <div class="prof-category">
+              <div class="prof-cat-header">
+                <span class="prof-cat-label">Weapons</span>
+                <button class="prof-cat-add" title="Add weapon proficiency">+ Add</button>
+              </div>
+              <div class="prof-pills">
+                <span class="prof-pill">Simple Weapons</span>
+                <span class="prof-pill">Martial Weapons</span>
+                <button class="prof-pill-add">+ Add</button>
+              </div>
+            </div>
+
+            <div class="prof-category">
+              <div class="prof-cat-header">
+                <span class="prof-cat-label">Tools</span>
+                <button class="prof-cat-add" title="Add tool proficiency">+ Add</button>
+              </div>
+              <div class="prof-pills">
+                <span class="prof-pill">Herbalism Kit</span>
+                <span class="prof-pill half">Navigator's Tools ½</span>
+                <button class="prof-pill-add">+ Add</button>
+              </div>
+            </div>
+
+            <div class="prof-category">
+              <div class="prof-cat-header">
+                <span class="prof-cat-label">Languages</span>
+                <button class="prof-cat-add" title="Add language">+ Add</button>
+              </div>
+              <div class="prof-pills">
+                <span class="prof-pill">Common</span>
+                <span class="prof-pill">Elvish</span>
+                <span class="prof-pill">Dwarvish</span>
+                <span class="prof-pill">Quenya</span>
+                <button class="prof-pill-add">+ Add</button>
+              </div>
+            </div>
+
+            <!-- Add entirely new category -->
+            <button class="add-category-btn">+ Add category</button>
+
+          </div>
+        </div>
+
+      </div><!-- /stats-scroll -->
+    </div><!-- /right-panel -->
+  </div><!-- /sheet-body -->
+</div><!-- /app -->
+
+</body>
+</html>

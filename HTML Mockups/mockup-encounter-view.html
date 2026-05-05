@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SheetForge — Encounter · Bridge of Khazad-dûm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --font-body:'Nunito',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
+    --dm:#e05252; --dm-hover:#f07070; --dm-subtle:rgba(224,82,82,0.12); --dm-border:rgba(224,82,82,0.38);
+    --player-accent:#7c6ff5; --enemy-accent:#e05252;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080712;color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px;}
+  .mockup-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;}
+
+  .app{width:100%;max-width:1100px;background:var(--bg-base);border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--dm-border);box-shadow:0 0 0 1px var(--dm-border),var(--shadow-md);display:flex;flex-direction:column;}
+
+  /* ── Top bar ── */
+  .top-bar{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;background:linear-gradient(90deg,rgba(224,82,82,0.08),var(--bg-surface) 55%);border-bottom:1px solid var(--dm-border);gap:12px;flex-shrink:0;}
+  .top-left{display:flex;align-items:center;gap:12px;}
+  .back-btn{font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;transition:color 150ms;white-space:nowrap;}
+  .back-btn:hover{color:var(--dm-hover);}
+  .enc-title{font-family:'Outfit',var(--font-body);font-size:15px;font-weight:800;letter-spacing:-.01em;}
+  .enc-sub{font-size:11px;color:var(--text-muted);}
+
+  /* Round + in-game time in top bar */
+  .top-clock{display:flex;align-items:center;gap:16px;}
+  .clock-pill{display:flex;flex-direction:column;align-items:center;gap:1px;}
+  .clock-pill-val{font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--text-primary);line-height:1;}
+  .clock-pill-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .clock-divider{width:1px;height:28px;background:var(--border);}
+
+  .top-right{display:flex;align-items:center;gap:8px;}
+  .end-enc-btn{background:transparent;color:var(--dm);border:1px solid var(--dm-border);border-radius:var(--r-md);padding:6px 12px;font-family:var(--font-body);font-size:12px;font-weight:700;cursor:pointer;transition:all 150ms;white-space:nowrap;}
+  .end-enc-btn:hover{background:var(--dm-subtle);}
+
+  /* ── Next Turn bar ── */
+  .turn-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 18px;
+    background:var(--bg-surface);
+    border-bottom:1px solid var(--border);
+    gap:16px;
+    flex-shrink:0;
+  }
+  .current-turn{display:flex;align-items:center;gap:10px;}
+  .turn-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .turn-name{font-size:15px;font-weight:800;font-family:'Outfit',var(--font-body);}
+  .turn-type-pip{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .turn-type-pip.player{background:var(--player-accent);}
+  .turn-type-pip.enemy{background:var(--enemy-accent);}
+  .turn-init{font-family:var(--font-mono);font-size:12px;color:var(--text-muted);}
+
+  .next-turn-btn{
+    background:var(--dm);color:#fff;border:none;
+    border-radius:var(--r-md);padding:9px 22px;
+    font-family:var(--font-body);font-size:13px;font-weight:700;
+    cursor:pointer;transition:background 150ms;
+    white-space:nowrap;flex-shrink:0;
+    box-shadow:0 0 12px rgba(224,82,82,0.3);
+  }
+  .next-turn-btn:hover{background:var(--dm-hover);}
+
+  /* ── Main columns ── */
+  .encounter-body{
+    display:grid;
+    grid-template-columns:1fr 3fr;
+    gap:0;
+    min-height:580px;
+  }
+
+  /* Column headers */
+  .col-header{
+    padding:10px 16px;
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    background:var(--bg-surface);
+  }
+  .col-header.players-col{
+    border-right:1px solid var(--border);
+    color:var(--player-accent);
+  }
+  .col-header.enemies-col{color:var(--enemy-accent);}
+  .col-count{font-family:var(--font-mono);font-size:11px;opacity:.7;}
+  .add-enemy-btn{font-size:11px;font-weight:700;color:var(--dm);background:var(--dm-subtle);border:1px solid var(--dm-border);border-radius:var(--r-sm);padding:3px 9px;cursor:pointer;transition:all 150ms;}
+  .add-enemy-btn:hover{background:var(--dm);color:#fff;}
+
+  /* Column scroll areas */
+  .col-scroll{
+    overflow-y:auto;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    scrollbar-width:thin;
+    scrollbar-color:var(--border) transparent;
+  }
+  .col-scroll.players-col{border-right:1px solid var(--border);}
+
+  /* ── Combatant rows ── */
+  .combatant{
+    border-radius:var(--r-md);
+    overflow:hidden;
+    border:1px solid var(--border);
+    background:var(--bg-surface);
+    transition:border-color 150ms;
+  }
+  .combatant.active-turn{
+    border-color:var(--dm);
+    box-shadow:0 0 0 1px var(--dm-border);
+  }
+  .combatant.active-turn .comb-head{background:var(--dm-subtle);}
+  .combatant.downed{opacity:0.5;border-style:dashed;}
+
+  /* Player combatant — accent border on left */
+  .combatant.player-comb{border-left:3px solid var(--player-accent);}
+  .combatant.player-comb.active-turn{border-left-color:var(--dm);}
+
+  /* Enemy combatant — accent border on left */
+  .combatant.enemy-comb{border-left:3px solid var(--enemy-accent);}
+
+  .comb-head{
+    display:flex;align-items:center;gap:10px;
+    padding:10px 12px;
+    cursor:pointer;
+    transition:background 150ms;
+  }
+  .comb-head:hover{background:rgba(255,255,255,0.02);}
+
+  /* Initiative badge */
+  .init-badge{
+    font-family:var(--font-mono);font-size:13px;font-weight:700;
+    width:30px;height:30px;border-radius:var(--r-md);
+    background:var(--bg-elevated);border:1px solid var(--border-strong);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;color:var(--text-primary);
+  }
+  .combatant.active-turn .init-badge{background:var(--dm);border-color:var(--dm);color:#fff;}
+
+  .comb-portrait{font-size:18px;flex-shrink:0;}
+  .comb-info{flex:1;min-width:0;}
+  .comb-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .comb-sub{font-size:10px;color:var(--text-secondary);margin-top:1px;}
+
+  /* HP display — players (read only) */
+  .comb-hp-readonly{
+    display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;
+  }
+  .comb-hp-val{font-family:var(--font-mono);font-size:14px;font-weight:500;color:var(--text-primary);}
+  .comb-hp-bar-sm{width:60px;height:3px;background:var(--bg-inset);border-radius:var(--r-full);overflow:hidden;}
+  .comb-hp-fill{height:100%;border-radius:var(--r-full);}
+
+  /* HP stepper — enemies (DM controlled) */
+  .enemy-hp-block{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+  .hp-stepper{display:flex;align-items:center;background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-sm);overflow:hidden;}
+  .hs-btn{width:26px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--text-secondary);cursor:pointer;user-select:none;transition:background 100ms;}
+  .hs-btn:hover{background:var(--border);color:var(--text-primary);}
+  .hs-btn.minus:hover{color:var(--danger);}
+  .hs-btn.plus:hover{color:var(--success);}
+  .hs-val{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-primary);min-width:36px;text-align:center;line-height:28px;}
+  .hs-max{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);white-space:nowrap;}
+
+  /* Expand chevron */
+  .comb-chevron{font-size:10px;color:var(--text-muted);flex-shrink:0;transition:transform 150ms;user-select:none;}
+  .combatant.expanded .comb-chevron{transform:rotate(180deg);}
+
+  /* Expanded detail */
+  .comb-detail{display:none;padding:0 12px 12px;border-top:1px solid var(--border);background:var(--bg-inset);}
+  .combatant.expanded .comb-detail{display:block;}
+
+  /* Condition pills */
+  .comb-conditions{display:flex;flex-wrap:wrap;gap:5px;padding:8px 0 6px;}
+  .cond-pill{background:rgba(239,100,60,0.2);color:#f4845f;font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-sm);border:1px solid rgba(244,132,95,0.3);}
+  .add-cond-pill{background:transparent;color:var(--text-muted);font-size:10px;font-weight:600;padding:2px 7px;border-radius:var(--r-sm);border:1px dashed var(--border-strong);cursor:pointer;transition:all 150ms;}
+  .add-cond-pill:hover{border-color:var(--dm);color:var(--dm);}
+
+  /* Enemy detail stats */
+  .enemy-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;padding-top:6px;}
+  .esg-cell{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);padding:5px 4px;text-align:center;}
+  .esg-val{font-family:var(--font-mono);font-size:13px;font-weight:500;}
+  .esg-lbl{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-top:1px;}
+
+  /* DM note on combatant */
+  .comb-note{width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text-secondary);font-family:var(--font-body);font-size:11px;line-height:1.5;padding:5px 8px;resize:none;outline:none;min-height:36px;}
+  .comb-note:focus{border-color:var(--dm);color:var(--text-primary);}
+  .comb-note::placeholder{color:var(--text-muted);font-style:italic;}
+
+  /* Concentration marker */
+  .conc-dot{width:7px;height:7px;border-radius:50%;background:#67e8f9;box-shadow:0 0 5px rgba(103,232,249,0.6);flex-shrink:0;}
+
+  /* Player column compact in narrow 1/4 view */
+  .col-scroll.players-col .comb-portrait { font-size:15px; }
+  .col-scroll.players-col .comb-name { font-size:12px; }
+  .col-scroll.players-col .comb-sub { font-size:9px; }
+  .col-scroll.players-col .comb-hp-val { font-size:12px; }
+  .col-scroll.players-col .comb-hp-bar-sm { width:44px; }
+  .col-scroll.players-col .init-badge { width:26px; height:26px; font-size:11px; }
+  .actions-section { display: flex; flex-direction: column; gap: 5px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .actions-lbl { font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
+
+  .action-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 5px 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    flex-wrap: wrap;
+  }
+  .action-name {
+    font-size: 12px; font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .action-detail {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    flex: 1;
+  }
+  .action-badges { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; flex: 1; }
+  .action-badge {
+    background: var(--bg-inset);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-sm);
+    padding: 2px 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .action-badge.dim { color: var(--text-muted); }
+
+  /* Conditions label */
+  .cond-section-lbl {
+    font-size: 9px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text-muted); margin-right: 4px;
+    align-self: center;
+  }
+  .init-overlay{
+    display:none;position:fixed;inset:0;
+    background:rgba(0,0,0,0.8);
+    z-index:200;align-items:center;justify-content:center;
+    backdrop-filter:blur(6px);
+  }
+  .init-overlay.open{display:flex;}
+  .init-modal{
+    background:var(--bg-elevated);
+    border:1px solid var(--border-strong);
+    border-radius:var(--r-xl);
+    padding:28px 24px 32px;
+    width:100%;max-width:480px;
+    box-shadow:var(--shadow-md);
+    animation:popIn 200ms ease-out;
+    display:flex;flex-direction:column;gap:18px;
+  }
+  @keyframes popIn{from{transform:scale(0.94);opacity:0;}to{transform:scale(1);opacity:1;}}
+  .init-modal-title{font-family:'Outfit',var(--font-body);font-size:18px;font-weight:800;}
+  .init-modal-sub{font-size:12px;color:var(--text-secondary);margin-top:-10px;line-height:1.5;}
+  .init-list{display:flex;flex-direction:column;gap:8px;}
+  .init-row{display:flex;align-items:center;gap:12px;}
+  .init-portrait{font-size:20px;width:34px;height:34px;border-radius:var(--r-md);background:var(--bg-surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .init-name{flex:1;font-size:13px;font-weight:700;}
+  .init-sub{font-size:11px;color:var(--text-secondary);}
+  .init-input{
+    width:64px;background:var(--bg-inset);border:1px solid var(--border-strong);
+    border-radius:var(--r-sm);color:var(--text-primary);font-family:var(--font-mono);
+    font-size:15px;font-weight:600;padding:6px 8px;text-align:center;outline:none;
+    transition:border-color 150ms;
+  }
+  .init-input:focus{border-color:var(--dm);}
+  .init-reroll{width:22px;height:22px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;flex-shrink:0;transition:color 150ms;}
+  .init-reroll:hover{color:var(--text-primary);}
+  .init-section-label{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding-bottom:4px;border-bottom:1px solid var(--border);}
+  .init-actions{display:flex;gap:10px;}
+  .init-start-btn{flex:1;background:var(--dm);color:#fff;border:none;border-radius:var(--r-md);padding:12px;font-family:var(--font-body);font-size:14px;font-weight:700;cursor:pointer;transition:background 150ms;}
+  .init-start-btn:hover{background:var(--dm-hover);}
+  .init-cancel-btn{background:var(--bg-surface);color:var(--text-secondary);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 18px;font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Encounter View · Full screen · Two-column initiative · Bridge of Khazad-dûm</div>
+
+<div class="app">
+
+  <!-- ── Top bar ── -->
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="back-btn" onclick="alert('Returns to Session view')">← Session 14</div>
+      <div>
+        <div class="enc-title">Orc Pursuit — Bridge of Khazad-dûm</div>
+        <div class="enc-sub">Encounter 3 · Session 14 · The Fellowship</div>
+      </div>
+    </div>
+
+    <!-- Round + in-game time -->
+    <div class="top-clock">
+      <div class="clock-pill">
+        <div class="clock-pill-val" id="round-display">8</div>
+        <div class="clock-pill-lbl">Round</div>
+      </div>
+      <div class="clock-divider"></div>
+      <div class="clock-pill">
+        <div class="clock-pill-val" id="ingame-display">0:48</div>
+        <div class="clock-pill-lbl">In-game</div>
+      </div>
+      <div class="clock-divider"></div>
+      <div class="clock-pill">
+        <div class="clock-pill-val">3</div>
+        <div class="clock-pill-lbl">Enemies left</div>
+      </div>
+    </div>
+
+    <div class="top-right">
+      <button class="end-enc-btn" onclick="alert('Ends encounter, returns to session')">■ End Encounter</button>
+    </div>
+  </div>
+
+  <!-- ── Current Turn bar ── -->
+  <div class="turn-bar">
+    <div class="current-turn">
+      <span class="turn-label">Active Turn</span>
+      <div class="turn-type-pip enemy"></div>
+      <span class="turn-name">Orc Warchief</span>
+      <span class="turn-init">Init 18</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);">
+      <span>Up next:</span>
+      <div class="turn-type-pip player" style="width:6px;height:6px;border-radius:50%;background:var(--player-accent);"></div>
+      <span style="color:var(--text-secondary);font-weight:600;">Legolas</span>
+      <span style="color:var(--text-muted);">Init 16</span>
+      <span style="margin:0 4px;">·</span>
+      <div class="turn-type-pip enemy" style="width:6px;height:6px;border-radius:50%;background:var(--enemy-accent);"></div>
+      <span style="color:var(--text-secondary);font-weight:600;">Goblin ×2</span>
+      <span style="color:var(--text-muted);">Init 14</span>
+    </div>
+    <button class="next-turn-btn" onclick="nextTurn()">Next Turn →</button>
+  </div>
+
+  <!-- ── Two column encounter ── -->
+  <div style="display:grid;grid-template-columns:1fr 3fr;">
+
+    <!-- Players column header -->
+    <div class="col-header players-col">
+      <span>Players <span class="col-count">4</span></span>
+      <span style="font-size:10px;color:var(--text-muted);font-style:italic;">HP synced from player sheets</span>
+    </div>
+    <!-- Enemies column header -->
+    <div class="col-header enemies-col">
+      <span>Enemies <span class="col-count">3 / 6 remaining</span></span>
+      <button class="add-enemy-btn" onclick="alert('Add enemy from NPC library or quick-add')">+ Add</button>
+    </div>
+
+  </div>
+
+  <div class="encounter-body">
+
+    <!-- ══ PLAYERS COLUMN ══ -->
+    <div class="col-scroll players-col">
+
+      <!-- Aragorn — healthy, not active turn -->
+      <div class="combatant player-comb" id="c-aragorn">
+        <div class="comb-head" onclick="togCombatant('c-aragorn')">
+          <div class="init-badge">22</div>
+          <div class="comb-portrait">🧙</div>
+          <div class="comb-info">
+            <div class="comb-name">Aragorn</div>
+            <div class="comb-sub">Ranger/Fighter · AC 16</div>
+          </div>
+          <div class="comb-hp-readonly">
+            <span class="comb-hp-val">72 / 90</span>
+            <div class="comb-hp-bar-sm"><div class="comb-hp-fill" style="width:80%;background:var(--hp-high);"></div></div>
+          </div>
+          <span class="comb-chevron">▾</span>
+        </div>
+        <div class="comb-detail">
+          <div class="comb-conditions">
+            <span class="cond-section-lbl">Conditions</span>
+            <span class="add-cond-pill">+ Add</span>
+          </div>
+          
+        </div>
+      </div>
+
+      <!-- Frodo — wounded, poisoned, concentration -->
+      <div class="combatant player-comb" id="c-frodo">
+        <div class="comb-head" onclick="togCombatant('c-frodo')">
+          <div class="init-badge">17</div>
+          <div class="comb-portrait">🧝</div>
+          <div class="comb-info">
+            <div class="comb-name" style="display:flex;align-items:center;gap:6px;">Frodo <div class="conc-dot" title="Concentrating on a spell"></div></div>
+            <div class="comb-sub">Rogue · AC 13 · <span style="color:#f4845f;font-weight:700;">Poisoned</span></div>
+          </div>
+          <div class="comb-hp-readonly">
+            <span class="comb-hp-val" style="color:var(--hp-mid);">19 / 35</span>
+            <div class="comb-hp-bar-sm"><div class="comb-hp-fill" style="width:54%;background:var(--hp-mid);"></div></div>
+          </div>
+          <span class="comb-chevron">▾</span>
+        </div>
+        <div class="comb-detail">
+          <div class="comb-conditions">
+            <span class="cond-section-lbl">Conditions</span>
+            <span class="cond-pill">Poisoned</span>
+            <span class="add-cond-pill">+ Add</span>
+          </div>
+          <textarea class="comb-note" placeholder="DM note…" rows="2">Watch the Ring — Frodo's mental state deteriorating.</textarea>
+        </div>
+      </div>
+
+      <!-- Legolas — healthy -->
+      <div class="combatant player-comb" id="c-legolas">
+        <div class="comb-head" onclick="togCombatant('c-legolas')">
+          <div class="init-badge">16</div>
+          <div class="comb-portrait">🧝‍♂️</div>
+          <div class="comb-info">
+            <div class="comb-name">Legolas</div>
+            <div class="comb-sub">Ranger · AC 15</div>
+          </div>
+          <div class="comb-hp-readonly">
+            <span class="comb-hp-val">63 / 70</span>
+            <div class="comb-hp-bar-sm"><div class="comb-hp-fill" style="width:90%;background:var(--hp-high);"></div></div>
+          </div>
+          <span class="comb-chevron">▾</span>
+        </div>
+        <div class="comb-detail">
+          <div class="comb-conditions">
+            <span class="cond-section-lbl">Conditions</span>
+            <span class="add-cond-pill">+ Add</span>
+          </div>
+          
+        </div>
+      </div>
+
+      <!-- Gimli — full HP -->
+      <div class="combatant player-comb" id="c-gimli">
+        <div class="comb-head" onclick="togCombatant('c-gimli')">
+          <div class="init-badge">11</div>
+          <div class="comb-portrait">🧔</div>
+          <div class="comb-info">
+            <div class="comb-name">Gimli</div>
+            <div class="comb-sub">Fighter · AC 18</div>
+          </div>
+          <div class="comb-hp-readonly">
+            <span class="comb-hp-val">88 / 88</span>
+            <div class="comb-hp-bar-sm"><div class="comb-hp-fill" style="width:100%;background:var(--hp-high);"></div></div>
+          </div>
+          <span class="comb-chevron">▾</span>
+        </div>
+        <div class="comb-detail">
+          <div class="comb-conditions">
+            <span class="cond-section-lbl">Conditions</span>
+            <span class="add-cond-pill">+ Add</span>
+          </div>
+          
+        </div>
+      </div>
+
+    </div><!-- /players col -->
+
+    <!-- ══ ENEMIES COLUMN ══ -->
+    <div class="col-scroll">
+
+      <!-- Orc Warchief — active turn, expanded -->
+      <div class="combatant enemy-comb active-turn expanded" id="c-warchief">
+        <div class="comb-head" onclick="togCombatant('c-warchief')">
+          <div class="init-badge">18</div>
+          <div class="comb-portrait">👺</div>
+          <div class="comb-info">
+            <div class="comb-name">Orc Warchief</div>
+            <div class="comb-sub">CR 4 · AC 16</div>
+          </div>
+          <div class="enemy-hp-block">
+            <div class="hp-stepper" onclick="event.stopPropagation()">
+              <div class="hs-btn minus" onclick="adjHP('warchief-hp', -1)">−</div>
+              <div class="hs-val" id="warchief-hp">34</div>
+              <div class="hs-btn plus" onclick="adjHP('warchief-hp', 1)">+</div>
+            </div>
+            <div class="hs-max">/ 60</div>
+          </div>
+          <span class="comb-chevron">▾</span>
+        </div>
+        <div class="comb-detail">
+          <div class="enemy-stat-grid">
+            <div class="esg-cell"><div class="esg-val">+5</div><div class="esg-lbl">Atk bonus</div></div>
+            <div class="esg-cell"><div class="esg-val">16</div><div class="esg-lbl">AC</div></div>
+            <div class="esg-cell"><div class="esg-val">13</div><div class="esg-lbl">Save DC</div></div>
+          </div>
+          <div class="comb-conditions">
+            <span class="cond-section-lbl">Conditions</span>
+            <span class="add-cond-pill">+ Add</span>
+          </div>
+          <div class="actions-section">
+            <div class="actions-lbl">Actions</div>
+            <div class="action-row">
+              <div class="action-name">Multiattack</div>
+              <div class="action-detail">Makes 2 Greataxe attacks per turn</div>
+            </div>
+            <div class="action-row">
+              <div class="action-name">Greataxe</div>
+              <div class="action-badges">
+                <span class="action-badge">+5 to hit</span>
+                <span class="action-badge">1d12+3 slashing</span>
+              </div>
+            </div>
+            <div class="action-row">
+              <div class="action-name">Javelin</div>
+              <div class="action-badges">
+                <span class="action-badge">+5 to hit</span>
+                <span class="action-badge">1d6+3 piercing</span>
+                <span class="action-badge dim">Range 30/120ft</span>
+              </div>
+            </div>
+          </div>
+          <div class="actions-section" style="margin-top:6px;">
+            <div class="actions-lbl">Traits</div>
+            <div class="action-row">
+              <div class="action-name">Aggressive</div>
+              <div class="action-detail">Bonus action to move up to speed toward a hostile creature</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Goblin group — two remaining -->
+      <div class="combatant enemy-comb" id="c-goblins">
+        <div class="comb-head" onclick="togCombatant('c-goblins')">
+          <div class="init-badge">14</div>
+          <div class="comb-portrait">👺</div>
+          <div class="comb-info">
+            <div class="comb-name">Goblins ×2</div>
+            <div class="comb-sub">CR ¼ each · AC 15</div>
+          </div>
+          <div class="enemy-hp-block">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <div style="display:flex;align-items:center;gap:4px;">
+                <div style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);width:14px;">A</div>
+                <div class="hp-stepper" onclick="event.stopPropagation()">
+                  <div class="hs-btn minus" onclick="adjHP('gob-a-hp', -1)">−</div>
+                  <div class="hs-val" id="gob-a-hp" style="min-width:28px;">5</div>
+                  <div class="hs-btn plus" onclick="adjHP('gob-a-hp', 1)">+</div>
+                </div>
+                <div class="hs-max">/ 7</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <div style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);width:14px;">B</div>
+                <div class="hp-stepper" onclick="event.stopPropagation()">
+                  <div class="hs-btn minus" onclick="adjHP('gob-b-hp', -1)">−</div>
+                  <div class="hs-val" id="gob-b-hp" style="min-width:28px;">7</div>
+                  <div class="hs-btn plus" onclick="adjHP('gob-b-hp', 1)">+</div>
+                </div>
+                <div class="hs-max">/ 7</div>
+              </div>
+            </div>
+          </div>
+          <span class="comb-chevron">▾</span>
+        </div>
+        <div class="comb-detail">
+          <div class="enemy-stat-grid">
+            <div class="esg-cell"><div class="esg-val">+4</div><div class="esg-lbl">Atk bonus</div></div>
+            <div class="esg-cell"><div class="esg-val">15</div><div class="esg-lbl">AC</div></div>
+            <div class="esg-cell"><div class="esg-val">8</div><div class="esg-lbl">Save DC</div></div>
+          </div>
+          <div class="comb-conditions">
+            <span class="cond-section-lbl">Conditions</span>
+            <span class="add-cond-pill">+ Add</span>
+          </div>
+          <div class="actions-section">
+            <div class="actions-lbl">Actions</div>
+            <div class="action-row">
+              <div class="action-name">Scimitar</div>
+              <div class="action-badges">
+                <span class="action-badge">+4 to hit</span>
+                <span class="action-badge">1d6+2 slashing</span>
+              </div>
+            </div>
+            <div class="action-row">
+              <div class="action-name">Shortbow</div>
+              <div class="action-badges">
+                <span class="action-badge">+4 to hit</span>
+                <span class="action-badge">1d6+2 piercing</span>
+                <span class="action-badge dim">Range 80/320ft</span>
+              </div>
+            </div>
+          </div>
+          <div class="actions-section" style="margin-top:6px;">
+            <div class="actions-lbl">Traits</div>
+            <div class="action-row">
+              <div class="action-name">Nimble Escape</div>
+              <div class="action-detail">Disengage or Hide as a bonus action each turn</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Downed enemies -->
+      <div style="font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:4px 2px;margin-top:4px;">Defeated</div>
+
+      <div class="combatant enemy-comb downed" id="c-goblin-dead1">
+        <div class="comb-head">
+          <div class="init-badge" style="opacity:0.4;">12</div>
+          <div class="comb-portrait" style="opacity:0.4;">👺</div>
+          <div class="comb-info">
+            <div class="comb-name" style="color:var(--text-muted);text-decoration:line-through;">Goblin C</div>
+            <div class="comb-sub">Defeated round 5</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">0 / 7</div>
+        </div>
+      </div>
+
+      <div class="combatant enemy-comb downed">
+        <div class="comb-head">
+          <div class="init-badge" style="opacity:0.4;">10</div>
+          <div class="comb-portrait" style="opacity:0.4;">👺</div>
+          <div class="comb-info">
+            <div class="comb-name" style="color:var(--text-muted);text-decoration:line-through;">Goblin D</div>
+            <div class="comb-sub">Defeated round 3</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">0 / 7</div>
+        </div>
+      </div>
+
+      <div class="combatant enemy-comb downed">
+        <div class="comb-head">
+          <div class="init-badge" style="opacity:0.4;">9</div>
+          <div class="comb-portrait" style="opacity:0.4;">👺</div>
+          <div class="comb-info">
+            <div class="comb-name" style="color:var(--text-muted);text-decoration:line-through;">Goblin E</div>
+            <div class="comb-sub">Defeated round 2</div>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);">0 / 7</div>
+        </div>
+      </div>
+
+    </div><!-- /enemies col -->
+
+  </div><!-- /encounter-body -->
+</div><!-- /app -->
+
+<!-- ── Initiative setup overlay (shown at encounter start) ── -->
+<div class="init-overlay" id="initOverlay">
+  <div class="init-modal">
+    <div class="init-modal-title">⚔️ Set Initiative</div>
+    <div class="init-modal-sub">Auto-rolled values shown — edit any before starting. Players can enter their own or use the auto-rolled value.</div>
+
+    <div class="init-list">
+      <div class="init-section-label">Players</div>
+
+      <div class="init-row">
+        <div class="init-portrait">🧙</div>
+        <div style="flex:1;">
+          <div class="init-name">Aragorn</div>
+          <div class="init-sub">DEX +4 · rolled 18</div>
+        </div>
+        <input class="init-input" type="number" value="22">
+        <button class="init-reroll" title="Re-roll">🎲</button>
+      </div>
+
+      <div class="init-row">
+        <div class="init-portrait">🧝</div>
+        <div style="flex:1;">
+          <div class="init-name">Frodo</div>
+          <div class="init-sub">DEX +3 · rolled 14</div>
+        </div>
+        <input class="init-input" type="number" value="17">
+        <button class="init-reroll" title="Re-roll">🎲</button>
+      </div>
+
+      <div class="init-row">
+        <div class="init-portrait">🧝‍♂️</div>
+        <div style="flex:1;">
+          <div class="init-name">Legolas</div>
+          <div class="init-sub">DEX +5 · rolled 11</div>
+        </div>
+        <input class="init-input" type="number" value="16">
+        <button class="init-reroll" title="Re-roll">🎲</button>
+      </div>
+
+      <div class="init-row">
+        <div class="init-portrait">🧔</div>
+        <div style="flex:1;">
+          <div class="init-name">Gimli</div>
+          <div class="init-sub">DEX +1 · rolled 10</div>
+        </div>
+        <input class="init-input" type="number" value="11">
+        <button class="init-reroll" title="Re-roll">🎲</button>
+      </div>
+
+      <div class="init-section-label" style="margin-top:6px;">Enemies</div>
+
+      <div class="init-row">
+        <div class="init-portrait">👺</div>
+        <div style="flex:1;">
+          <div class="init-name">Orc Warchief</div>
+          <div class="init-sub">DEX +2 · rolled 16</div>
+        </div>
+        <input class="init-input" type="number" value="18">
+        <button class="init-reroll" title="Re-roll">🎲</button>
+      </div>
+
+      <div class="init-row">
+        <div class="init-portrait">👺</div>
+        <div style="flex:1;">
+          <div class="init-name">Goblins ×5</div>
+          <div class="init-sub">DEX +2 · rolled 12</div>
+        </div>
+        <input class="init-input" type="number" value="14">
+        <button class="init-reroll" title="Re-roll">🎲</button>
+      </div>
+    </div>
+
+    <div class="init-actions">
+      <button class="init-cancel-btn" onclick="closeInit()">Cancel</button>
+      <button class="init-start-btn" onclick="closeInit()">Start Encounter →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Show initiative overlay demo button -->
+<div style="margin-top:16px;">
+  <button onclick="document.getElementById('initOverlay').classList.add('open')"
+    style="background:var(--dm-subtle);color:var(--dm-hover);border:1px solid var(--dm-border);border-radius:var(--r-md);padding:8px 16px;font-family:var(--font-body);font-size:12px;font-weight:700;cursor:pointer;">
+    👁 Preview: Initiative Setup Screen (shown at encounter start)
+  </button>
+</div>
+
+<script>
+  // Expand/collapse combatant
+  function togCombatant(id) {
+    document.getElementById(id).classList.toggle('expanded');
+  }
+
+  // HP stepper for enemies
+  function adjHP(id, delta) {
+    const el = document.getElementById(id);
+    const current = parseInt(el.textContent, 10);
+    const next = Math.max(0, current + delta);
+    el.textContent = next;
+    // Turn red at 0
+    if (next === 0) el.style.color = 'var(--danger)';
+    else el.style.color = '';
+  }
+
+  // Next turn cycling
+  const turnOrder = [
+    { name: 'Aragorn', type: 'player', init: 22 },
+    { name: 'Orc Warchief', type: 'enemy', init: 18 },
+    { name: 'Frodo', type: 'player', init: 17 },
+    { name: 'Legolas', type: 'player', init: 16 },
+    { name: 'Goblins ×2', type: 'enemy', init: 14 },
+    { name: 'Gimli', type: 'player', init: 11 },
+  ];
+  let currentTurn = 1; // starts on Orc Warchief
+  let round = 8;
+
+  function nextTurn() {
+    currentTurn = (currentTurn + 1) % turnOrder.length;
+    if (currentTurn === 0) {
+      round++;
+      const ingame = round * 6;
+      const m = Math.floor(ingame / 60);
+      const s = ingame % 60;
+      document.getElementById('round-display').textContent = round;
+      document.getElementById('ingame-display').textContent = m + ':' + String(s).padStart(2,'0');
+    }
+    const curr = turnOrder[currentTurn];
+    const next = turnOrder[(currentTurn + 1) % turnOrder.length];
+    document.querySelector('.turn-name').textContent = curr.name;
+    document.querySelector('.turn-init').textContent = 'Init ' + curr.init;
+    document.querySelector('.turn-type-pip.enemy, .turn-type-pip.player').className =
+      'turn-type-pip ' + curr.type;
+  }
+
+  // Initiative overlay
+  function closeInit() {
+    document.getElementById('initOverlay').classList.remove('open');
+  }
+  document.getElementById('initOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeInit();
+  });
+</script>
+</body>
+</html>

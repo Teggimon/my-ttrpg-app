@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Gear Tab v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --condition-bg:rgba(239,100,60,0.22); --condition-text:#f4845f;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --tab-active-bg:#1c1b35; --tab-active-text:#eeedf8; --tab-inactive-text:#45426a;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --font-body:'Nunito',system-ui,sans-serif; --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-full:9999px;
+    --gold:#c9a227; --gold-subtle:rgba(201,162,39,0.1); --gold-border:rgba(201,162,39,0.38);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080712;color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px;}
+  .mockup-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;}
+  .app{width:100%;max-width:1100px;background:var(--bg-base);border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-md);}
+
+  .char-switcher{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+  .char-switcher::-webkit-scrollbar{display:none;}
+  .char-tab{padding:6px 14px;border-radius:var(--r-full);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid transparent;color:var(--text-secondary);}
+  .char-tab.active{background:var(--accent);color:var(--text-inverse);border-color:var(--accent);}
+  .char-tab.new-char{border:1px solid var(--border-strong);color:var(--text-muted);}
+
+  .sheet-body{display:flex;min-height:760px;}
+
+  /* Left panel — identical across all tabs */
+  .left-panel{width:clamp(200px,30%,300px);flex-shrink:0;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+  .char-info{padding:14px;border-bottom:1px solid var(--border);}
+  .char-info-row{display:flex;align-items:flex-start;justify-content:space-between;}
+  .char-name{font-family:'Outfit',var(--font-body);font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.01em;}
+  .char-meta{font-size:12px;color:var(--text-secondary);margin-top:3px;}
+  .icon-btn{width:28px;height:28px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;}
+  .hp-block{margin:12px 14px 0;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;}
+  .hp-label{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;}
+  .hp-row{display:flex;align-items:center;justify-content:space-between;}
+  .hp-value{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1;}
+  .hp-max{font-family:var(--font-mono);font-size:16px;color:var(--text-secondary);}
+  .hp-controls{display:flex;gap:6px;}
+  .hp-btn{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-strong);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg-inset);}
+  .hp-btn.plus{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .hp-bar-track{height:4px;background:var(--bg-inset);border-radius:var(--r-full);margin-top:8px;overflow:hidden;}
+  .hp-bar-fill{height:100%;width:80%;background:var(--hp-high);border-radius:var(--r-full);}
+  .stat-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 14px 0;}
+  .stat-tile{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 4px 6px;text-align:center;}
+  .stat-tile-value{font-family:var(--font-mono);font-size:17px;font-weight:500;line-height:1;}
+  .stat-tile-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:4px;}
+  .conditions-row{display:flex;align-items:center;gap:6px;padding:10px 14px 0;flex-wrap:wrap;}
+  .condition-pill{background:var(--condition-bg);color:var(--condition-text);font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--r-sm);border:1px solid rgba(244,132,95,0.3);}
+  .add-condition{background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-sm);border:1px dashed var(--border-strong);cursor:pointer;}
+  .xp-row{padding:10px 14px 0;}
+  .xp-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:5px;}
+  .xp-track{height:3px;background:var(--bg-inset);border-radius:var(--r-full);overflow:hidden;}
+  .xp-fill{height:100%;width:76%;background:var(--accent);border-radius:var(--r-full);}
+  .saved-indicator{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:11px;color:var(--success);font-weight:600;}
+  .saved-dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--success);}
+  .sidebar-tabs{flex:1;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;border-top:1px solid var(--border);}
+  .sidebar-tab{display:flex;align-items:center;gap:8px;padding:10px;border-radius:var(--r-md);cursor:pointer;color:var(--tab-inactive-text);font-size:13px;font-weight:600;border:1px solid transparent;white-space:nowrap;}
+  .sidebar-tab:hover{color:var(--text-secondary);background:var(--bg-elevated);}
+  .sidebar-tab.active{background:var(--tab-active-bg);color:var(--tab-active-text);border-color:var(--border);}
+  .tab-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+
+  /* Right panel */
+  .right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* Carry bar */
+  .carry-bar{padding:12px 18px 10px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:14px;}
+  .carry-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap;}
+  .carry-track{flex:1;height:5px;background:var(--bg-inset);border-radius:var(--r-full);overflow:hidden;}
+  .carry-fill{height:100%;width:42%;background:var(--hp-high);border-radius:var(--r-full);}
+  .carry-value{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);white-space:nowrap;flex-shrink:0;}
+  .carry-value span{color:var(--text-primary);}
+
+  /* Scroll area */
+  .gear-scroll{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:24px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+
+  /* Section header row */
+  .section-hrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .section-title{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding-bottom:6px;border-bottom:1px solid var(--border);flex:1;margin-right:12px;}
+  .add-btn{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-subtle);border:1px solid var(--accent);border-radius:var(--r-sm);padding:4px 10px;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-bottom:6px;}
+  .add-btn:hover{background:var(--accent);color:#fff;}
+
+  /* Category label row */
+  .cat-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;margin-top:14px;}
+  .cat-row:first-child{margin-top:0;}
+  .cat-label{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted);opacity:.75;}
+
+  /* Currency weight toggle — sits beside category label */
+  .toggle-wrap{display:flex;align-items:center;gap:6px;}
+  .toggle-lbl{font-size:10px;color:var(--text-muted);}
+  .toggle{position:relative;width:28px;height:16px;flex-shrink:0;cursor:pointer;}
+  .toggle input{opacity:0;width:0;height:0;position:absolute;}
+  .toggle-track{position:absolute;inset:0;background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-full);transition:all 200ms;}
+  .toggle input:checked+.toggle-track{background:var(--accent);border-color:var(--accent);}
+  .toggle-knob{position:absolute;top:2px;left:2px;width:10px;height:10px;background:#fff;border-radius:50%;transition:transform 200ms;pointer-events:none;}
+  .toggle input:checked~.toggle-knob{transform:translateX(12px);}
+
+  /* Attunement sub-header */
+  .attune-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .attune-label{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);opacity:.9;}
+  .attune-slots{display:flex;gap:5px;align-items:center;}
+  .attune-pip{width:10px;height:10px;border-radius:var(--r-full);border:1.5px solid var(--gold);}
+  .attune-pip.used{background:var(--gold);}
+  .attune-count{font-family:var(--font-mono);font-size:10px;color:var(--gold);margin-left:4px;opacity:.8;}
+
+  /* Gear row */
+  .gear-row{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:5px;transition:border-color 150ms;}
+  .gear-row:last-child{margin-bottom:0;}
+  .gear-row.expanded{border-color:var(--border-strong);}
+  .gear-row.attuned{border-color:var(--gold-border);background:linear-gradient(90deg,rgba(201,162,39,0.05) 0%,var(--bg-surface) 55%);}
+  .gear-row.attuned.expanded{border-color:rgba(201,162,39,0.6);}
+
+  .gear-head{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;}
+  .gear-head:hover{background:rgba(255,255,255,0.02);}
+
+  /* Equip circle */
+  .equip-circle{width:18px;height:18px;border-radius:var(--r-full);border:2px solid var(--border-strong);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 150ms;}
+  .equip-circle.on{background:var(--accent);border-color:var(--accent);}
+  .equip-circle.on::after{content:'✓';font-size:10px;color:#fff;font-weight:700;line-height:1;}
+  .equip-circle.hidden{visibility:hidden;}
+
+  .attune-gem{font-size:11px;color:var(--gold);filter:drop-shadow(0 0 4px rgba(201,162,39,0.6));flex-shrink:0;}
+  .gear-name{font-size:14px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gear-badges{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+
+  .gbadge{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:3px 9px;font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);white-space:nowrap;}
+  .gbadge.stat{color:var(--text-primary);}
+
+  /* Charge badge on gear row */
+  .charge-badge{display:inline-flex;align-items:center;gap:3px;background:var(--gold-subtle);border:1px solid var(--gold-border);border-radius:var(--r-sm);padding:3px 8px;font-family:var(--font-mono);font-size:12px;color:var(--gold);white-space:nowrap;}
+  .ctap{cursor:pointer;padding:0 3px;font-size:13px;font-weight:700;line-height:1;border-radius:3px;user-select:none;}
+  .ctap:hover{background:rgba(201,162,39,0.22);}
+
+  /* Qty stepper */
+  .qty-ctrl{display:flex;align-items:center;background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:var(--r-sm);overflow:hidden;flex-shrink:0;}
+  .qbtn{width:24px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--text-secondary);cursor:pointer;user-select:none;}
+  .qbtn:hover{background:var(--border);color:var(--text-primary);}
+  .qval{font-family:var(--font-mono);font-size:12px;color:var(--text-primary);min-width:26px;text-align:center;line-height:26px;}
+
+  /* Expand btn */
+  .xbtn{width:26px;height:26px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:10px;transition:all 150ms;user-select:none;}
+  .xbtn:hover{border-color:var(--border-strong);color:var(--text-secondary);}
+  .gear-row.expanded .xbtn{background:var(--accent-subtle);border-color:var(--accent);color:var(--accent);transform:rotate(180deg);}
+
+  /* Detail panel */
+  .gear-detail{display:none;padding:12px 14px 14px;border-top:1px solid var(--border);background:var(--bg-inset);}
+  .gear-row.expanded .gear-detail{display:block;}
+  .detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:10px;}
+  .ds{display:flex;flex-direction:column;gap:2px;}
+  .ds-lbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .ds-val{font-family:var(--font-mono);font-size:12px;color:var(--text-primary);}
+  .gear-desc{font-size:13px;color:var(--text-secondary);line-height:1.6;padding-top:8px;border-top:1px solid var(--border);margin-bottom:10px;}
+  .detail-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .dact{font-size:12px;font-weight:700;padding:6px 14px;border-radius:var(--r-sm);cursor:pointer;border:1px solid var(--border-strong);background:var(--bg-elevated);color:var(--text-secondary);transition:all 150ms;}
+  .dact:hover{color:var(--text-primary);}
+  .dact.accent{background:var(--accent-subtle);border-color:var(--accent);color:var(--accent-hover);}
+  .dact.danger{color:var(--danger);border-color:rgba(248,113,113,0.3);}
+  .dact.danger:hover{background:rgba(248,113,113,0.1);border-color:var(--danger);}
+  .dact.gold{color:var(--gold);border-color:var(--gold-border);}
+  .dact.gold:hover{background:var(--gold-subtle);}
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Gear Tab · v2 · Attunement · Wand under Weapons · Currency weight toggle</div>
+
+<div class="app">
+  <div class="char-switcher">
+    <div class="char-tab active">Aragorn 10</div>
+    <div class="char-tab">Frodo 7</div>
+    <div class="char-tab">Gandalf 20</div>
+    <div class="char-tab new-char">+ New</div>
+  </div>
+
+  <div class="sheet-body">
+
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <div class="char-info">
+        <div class="char-info-row">
+          <div><div class="char-name">Aragorn</div><div class="char-meta">Human · Ranger · Lv 10</div></div>
+          <div style="display:flex;gap:4px;align-items:flex-start;padding-top:2px;">
+            <span style="font-size:13px;color:var(--text-muted)">🔒</span>
+            <div class="icon-btn">↑</div>
+            <div class="icon-btn">⋯</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 14px;">
+        <div class="hp-block">
+          <div class="hp-label">Hit Points</div>
+          <div class="hp-row">
+            <div><span class="hp-value">72</span><span class="hp-max"> / 90</span></div>
+            <div class="hp-controls"><div class="hp-btn">−</div><div class="hp-btn plus">+</div></div>
+          </div>
+          <div class="hp-bar-track"><div class="hp-bar-fill"></div></div>
+        </div>
+      </div>
+      <div class="stat-tiles">
+        <div class="stat-tile"><div class="stat-tile-value">16</div><div class="stat-tile-label">AC</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">+6</div><div class="stat-tile-label">Init</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">30ft</div><div class="stat-tile-label">Speed</div></div>
+      </div>
+      <div class="conditions-row">
+        <span class="condition-pill">Poisoned</span>
+        <span class="add-condition">+ Add</span>
+      </div>
+      <div class="xp-row">
+        <div class="xp-labels"><span>64,500 XP</span><span>Lv 11 at 85k</span></div>
+        <div class="xp-track"><div class="xp-fill"></div></div>
+      </div>
+      <div class="saved-indicator"><div class="saved-dot"></div>Saved</div>
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab"><span class="tab-icon">✕</span> Combat</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎲</span> Stats</div>
+        <div class="sidebar-tab"><span class="tab-icon">✨</span> Spells</div>
+        <div class="sidebar-tab active"><span class="tab-icon">🎒</span> Gear</div>
+        <div class="sidebar-tab"><span class="tab-icon">📝</span> Notes</div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+
+      <!-- Carry bar -->
+      <div class="carry-bar">
+        <span class="carry-label">Carried</span>
+        <div class="carry-track"><div class="carry-fill"></div></div>
+        <span class="carry-value"><span>47.5</span> / 115 lb</span>
+      </div>
+
+      <div class="gear-scroll">
+
+        <!-- ══ EQUIPPED ══ -->
+        <div>
+          <div class="section-hrow">
+            <div class="section-title">Equipped</div>
+            <button class="add-btn">+ Add item</button>
+          </div>
+
+          <!-- Attuned sub-section -->
+          <div style="margin-bottom:14px;">
+            <div class="attune-header">
+              <span class="attune-label">⬡ Attuned</span>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div class="attune-slots">
+                  <div class="attune-pip used"></div>
+                  <div class="attune-pip"></div>
+                  <div class="attune-pip"></div>
+                </div>
+                <span class="attune-count">1 / 3</span>
+              </div>
+            </div>
+
+            <!-- Ring of Protection — attuned, no charges -->
+            <div class="gear-row attuned" id="r-ring">
+              <div class="gear-head" onclick="tog('r-ring')">
+                <div class="equip-circle on"></div>
+                <span class="attune-gem">◆</span>
+                <span class="gear-name">Ring of Protection</span>
+                <div class="gear-badges">
+                  <span class="gbadge stat">+1 AC</span>
+                  <span class="gbadge stat">+1 saves</span>
+                  <button class="xbtn" onclick="event.stopPropagation();tog('r-ring')">▾</button>
+                </div>
+              </div>
+              <div class="gear-detail">
+                <div class="detail-grid">
+                  <div class="ds"><span class="ds-lbl">AC Bonus</span><span class="ds-val">+1</span></div>
+                  <div class="ds"><span class="ds-lbl">Save Bonus</span><span class="ds-val">+1 all</span></div>
+                  <div class="ds"><span class="ds-lbl">Weight</span><span class="ds-val">—</span></div>
+                  <div class="ds"><span class="ds-lbl">Attunement</span><span class="ds-val" style="color:var(--gold)">Required ◆</span></div>
+                </div>
+                <div class="gear-desc">You gain a +1 bonus to AC and saving throws while wearing this ring.</div>
+                <div class="detail-actions">
+                  <button class="dact gold">◆ Unatune</button>
+                  <button class="dact accent">⇄ Unequip</button>
+                  <button class="dact">✎ Edit</button>
+                  <button class="dact danger">✕ Remove</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weapons category -->
+          <div class="cat-row"><span class="cat-label">Weapons</span></div>
+
+          <!-- Longsword -->
+          <div class="gear-row" id="r-sword">
+            <div class="gear-head" onclick="tog('r-sword')">
+              <div class="equip-circle on"></div>
+              <span class="gear-name">Longsword +1</span>
+              <div class="gear-badges">
+                <span class="gbadge stat">1d8+1</span>
+                <span class="gbadge">3 lb</span>
+                <button class="xbtn" onclick="event.stopPropagation();tog('r-sword')">▾</button>
+              </div>
+            </div>
+            <div class="gear-detail">
+              <div class="detail-grid">
+                <div class="ds"><span class="ds-lbl">Damage</span><span class="ds-val">1d8 slashing</span></div>
+                <div class="ds"><span class="ds-lbl">Versatile</span><span class="ds-val">1d10</span></div>
+                <div class="ds"><span class="ds-lbl">Weight</span><span class="ds-val">3 lb</span></div>
+                <div class="ds"><span class="ds-lbl">Value</span><span class="ds-val">315 gp</span></div>
+                <div class="ds"><span class="ds-lbl">Properties</span><span class="ds-val">Versatile · +1 magic</span></div>
+                <div class="ds"><span class="ds-lbl">Attunement</span><span class="ds-val">Not required</span></div>
+              </div>
+              <div class="gear-desc">A finely-crafted longsword with a faint magical sheen. The +1 bonus applies to attack and damage rolls.</div>
+              <div class="detail-actions">
+                <button class="dact accent">⇄ Unequip</button>
+                <button class="dact">✎ Edit</button>
+                <button class="dact danger">✕ Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wand of Magic Missile — under Weapons, no attunement -->
+          <div class="gear-row" id="r-wand">
+            <div class="gear-head" onclick="tog('r-wand')">
+              <div class="equip-circle on"></div>
+              <span class="gear-name">Wand of Magic Missile</span>
+              <div class="gear-badges">
+                <!-- Charge badge with live +/- -->
+                <div class="charge-badge" onclick="event.stopPropagation()">
+                  <span class="ctap" onclick="wandAdj(-1)">−</span>
+                  <span id="wand-gear-val">4</span>&thinsp;/&thinsp;7
+                  <span class="ctap" onclick="wandAdj(1)">+</span>
+                </div>
+                <button class="xbtn" onclick="event.stopPropagation();tog('r-wand')">▾</button>
+              </div>
+            </div>
+            <div class="gear-detail">
+              <div class="detail-grid">
+                <div class="ds"><span class="ds-lbl">Charges</span><span class="ds-val" id="wand-detail-val">4 / 7</span></div>
+                <div class="ds"><span class="ds-lbl">Recharge</span><span class="ds-val">1d6+1 at dawn</span></div>
+                <div class="ds"><span class="ds-lbl">Damage</span><span class="ds-val">3d4+3 force</span></div>
+                <div class="ds"><span class="ds-lbl">Range</span><span class="ds-val">120 ft</span></div>
+                <div class="ds"><span class="ds-lbl">Weight</span><span class="ds-val">1 lb</span></div>
+                <div class="ds"><span class="ds-lbl">Attunement</span><span class="ds-val">Not required</span></div>
+              </div>
+              <div class="gear-desc">This wand has 7 charges. You can expend 1 to 3 charges to cast Magic Missile. The wand regains 1d6+1 charges daily at dawn. If the last charge is expended, roll a d20 — on a 1, the wand is destroyed.</div>
+              <div class="detail-actions">
+                <button class="dact accent">⇄ Unequip</button>
+                <button class="dact">✎ Edit</button>
+                <button class="dact danger">✕ Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Shortbow -->
+          <div class="gear-row" id="r-bow">
+            <div class="gear-head" onclick="tog('r-bow')">
+              <div class="equip-circle on"></div>
+              <span class="gear-name">Shortbow</span>
+              <div class="gear-badges">
+                <span class="gbadge stat">1d6</span>
+                <span class="gbadge">2 lb</span>
+                <button class="xbtn" onclick="event.stopPropagation();tog('r-bow')">▾</button>
+              </div>
+            </div>
+            <div class="gear-detail">
+              <div class="detail-grid">
+                <div class="ds"><span class="ds-lbl">Damage</span><span class="ds-val">1d6 piercing</span></div>
+                <div class="ds"><span class="ds-lbl">Range</span><span class="ds-val">80 / 320 ft</span></div>
+                <div class="ds"><span class="ds-lbl">Weight</span><span class="ds-val">2 lb</span></div>
+                <div class="ds"><span class="ds-lbl">Ammo type</span><span class="ds-val">Arrow</span></div>
+              </div>
+              <div class="detail-actions">
+                <button class="dact accent">⇄ Unequip</button>
+                <button class="dact">✎ Edit</button>
+                <button class="dact danger">✕ Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Armour category -->
+          <div class="cat-row" style="margin-top:16px;"><span class="cat-label">Armour</span></div>
+
+          <div class="gear-row" id="r-mail">
+            <div class="gear-head" onclick="tog('r-mail')">
+              <div class="equip-circle on"></div>
+              <span class="gear-name">Chain Mail</span>
+              <div class="gear-badges">
+                <span class="gbadge stat">AC 16</span>
+                <span class="gbadge">55 lb</span>
+                <button class="xbtn" onclick="event.stopPropagation();tog('r-mail')">▾</button>
+              </div>
+            </div>
+            <div class="gear-detail">
+              <div class="detail-grid">
+                <div class="ds"><span class="ds-lbl">AC</span><span class="ds-val">16</span></div>
+                <div class="ds"><span class="ds-lbl">Stealth</span><span class="ds-val">Disadvantage</span></div>
+                <div class="ds"><span class="ds-lbl">Str req.</span><span class="ds-val">13</span></div>
+                <div class="ds"><span class="ds-lbl">Weight</span><span class="ds-val">55 lb</span></div>
+              </div>
+              <div class="detail-actions">
+                <button class="dact accent">⇄ Unequip</button>
+                <button class="dact">✎ Edit</button>
+                <button class="dact danger">✕ Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ BAG ══ -->
+        <div>
+          <div class="section-hrow">
+            <div class="section-title">Bag</div>
+            <button class="add-btn">+ Add item</button>
+          </div>
+
+          <!-- Ammunition -->
+          <div class="cat-row"><span class="cat-label">Ammunition</span></div>
+
+          <div class="gear-row" id="r-arrows">
+            <div class="gear-head" onclick="tog('r-arrows')">
+              <div class="equip-circle"></div>
+              <span class="gear-name">Arrows</span>
+              <div class="gear-badges">
+                <span class="gbadge">0.05 lb ea</span>
+                <div class="qty-ctrl" onclick="event.stopPropagation()">
+                  <div class="qbtn" onclick="adjQty('arr-q',-1)">−</div>
+                  <div class="qval" id="arr-q">38</div>
+                  <div class="qbtn" onclick="adjQty('arr-q',1)">+</div>
+                </div>
+                <button class="xbtn" onclick="event.stopPropagation();tog('r-arrows')">▾</button>
+              </div>
+            </div>
+            <div class="gear-detail">
+              <div class="detail-grid">
+                <div class="ds"><span class="ds-lbl">Ammo type</span><span class="ds-val">Arrow</span></div>
+                <div class="ds"><span class="ds-lbl">Weight ea.</span><span class="ds-val">0.05 lb</span></div>
+                <div class="ds"><span class="ds-lbl">Value ea.</span><span class="ds-val">0.05 gp</span></div>
+              </div>
+              <p style="font-size:12px;color:var(--text-muted);padding-top:6px;">Auto-deducted when Shortbow is fired in the Combat tab.</p>
+              <div class="detail-actions" style="margin-top:10px;">
+                <button class="dact">✎ Edit</button>
+                <button class="dact danger">✕ Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Adventuring Gear -->
+          <div class="cat-row" style="margin-top:16px;"><span class="cat-label">Adventuring Gear</span></div>
+
+          <div class="gear-row" id="r-rope">
+            <div class="gear-head" onclick="tog('r-rope')">
+              <div class="equip-circle"></div>
+              <span class="gear-name">Hempen Rope (50 ft)</span>
+              <div class="gear-badges">
+                <span class="gbadge">10 lb</span>
+                <div class="qty-ctrl" onclick="event.stopPropagation()">
+                  <div class="qbtn" onclick="adjQty('rope-q',-1)">−</div>
+                  <div class="qval" id="rope-q">1</div>
+                  <div class="qbtn" onclick="adjQty('rope-q',1)">+</div>
+                </div>
+                <button class="xbtn" onclick="event.stopPropagation();tog('r-rope')">▾</button>
+              </div>
+            </div>
+            <div class="gear-detail">
+              <div class="detail-grid">
+                <div class="ds"><span class="ds-lbl">Weight</span><span class="ds-val">10 lb</span></div>
+                <div class="ds"><span class="ds-lbl">Value</span><span class="ds-val">1 gp</span></div>
+              </div>
+              <div class="gear-desc">2 HP. Can be burst with a DC 17 Strength check.</div>
+              <div class="detail-actions">
+                <button class="dact">✎ Edit</button>
+                <button class="dact danger">✕ Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Currency — with weight toggle -->
+          <div class="cat-row" style="margin-top:16px;">
+            <span class="cat-label">Currency</span>
+            <!-- Weight toggle -->
+            <div class="toggle-wrap">
+              <span class="toggle-lbl" id="toggle-lbl">Don't count weight</span>
+              <label class="toggle">
+                <input type="checkbox" id="currency-weight-toggle" onchange="toggleCurrWeight()">
+                <div class="toggle-track"></div>
+                <div class="toggle-knob"></div>
+              </label>
+            </div>
+          </div>
+
+          <div class="gear-row" id="r-gold">
+            <div class="gear-head" onclick="tog('r-gold')">
+              <div class="equip-circle hidden"></div>
+              <span class="gear-name">Gold Pieces</span>
+              <div class="gear-badges">
+                <span class="gbadge" id="gold-wt-badge" style="opacity:0.35">0.02 lb ea</span>
+                <div class="qty-ctrl" onclick="event.stopPropagation()">
+                  <div class="qbtn" onclick="adjQty('gold-q',-1)">−</div>
+                  <div class="qval" id="gold-q">240</div>
+                  <div class="qbtn" onclick="adjQty('gold-q',1)">+</div>
+                </div>
+                <button class="xbtn" onclick="event.stopPropagation();tog('r-gold')">▾</button>
+              </div>
+            </div>
+            <div class="gear-detail">
+              <div class="detail-grid">
+                <div class="ds"><span class="ds-lbl">Total weight</span><span class="ds-val" id="gold-wt-detail" style="opacity:0.4">4.8 lb (not counted)</span></div>
+              </div>
+              <div class="detail-actions">
+                <button class="dact">✎ Edit</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="gear-row" id="r-silver">
+            <div class="gear-head" onclick="tog('r-silver')">
+              <div class="equip-circle hidden"></div>
+              <span class="gear-name">Silver Pieces</span>
+              <div class="gear-badges">
+                <span class="gbadge" id="silver-wt-badge" style="opacity:0.35">0.02 lb ea</span>
+                <div class="qty-ctrl" onclick="event.stopPropagation()">
+                  <div class="qbtn" onclick="adjQty('silver-q',-1)">−</div>
+                  <div class="qval" id="silver-q">85</div>
+                  <div class="qbtn" onclick="adjQty('silver-q',1)">+</div>
+                </div>
+                <button class="xbtn" onclick="event.stopPropagation();tog('r-silver')">▾</button>
+              </div>
+            </div>
+            <div class="gear-detail">
+              <div class="detail-grid">
+                <div class="ds"><span class="ds-lbl">Total weight</span><span class="ds-val" id="silver-wt-detail" style="opacity:0.4">1.7 lb (not counted)</span></div>
+              </div>
+              <div class="detail-actions">
+                <button class="dact">✎ Edit</button>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /bag -->
+      </div><!-- /gear-scroll -->
+    </div><!-- /right-panel -->
+  </div><!-- /sheet-body -->
+</div><!-- /app -->
+
+<script>
+  function tog(id){ document.getElementById(id).classList.toggle('expanded'); }
+
+  function adjQty(id, d){
+    const el=document.getElementById(id);
+    el.textContent=Math.max(0,parseInt(el.textContent,10)+d);
+  }
+
+  let wandCharges=4; const wandMax=7;
+  function wandAdj(d){
+    wandCharges=Math.min(wandMax,Math.max(0,wandCharges+d));
+    document.getElementById('wand-gear-val').textContent=wandCharges;
+    document.getElementById('wand-detail-val').textContent=wandCharges+' / '+wandMax;
+  }
+
+  function toggleCurrWeight(){
+    const on=document.getElementById('currency-weight-toggle').checked;
+    document.getElementById('toggle-lbl').textContent=on?'Counting weight':'Don\'t count weight';
+    const op=on?'1':'0.35';
+    ['gold-wt-badge','silver-wt-badge'].forEach(id=>document.getElementById(id).style.opacity=op);
+    document.getElementById('gold-wt-detail').style.opacity=on?'1':'0.4';
+    document.getElementById('gold-wt-detail').textContent=on?'4.8 lb':'4.8 lb (not counted)';
+    document.getElementById('silver-wt-detail').style.opacity=on?'1':'0.4';
+    document.getElementById('silver-wt-detail').textContent=on?'1.7 lb':'1.7 lb (not counted)';
+  }
+</script>
+</body>
+</html>

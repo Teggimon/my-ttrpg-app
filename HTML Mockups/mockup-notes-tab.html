@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Notes Tab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --condition-bg:rgba(239,100,60,0.22); --condition-text:#f4845f;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --tab-active-bg:#1c1b35; --tab-active-text:#eeedf8; --tab-inactive-text:#45426a;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --font-body:'Nunito',system-ui,sans-serif; --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-full:9999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080712;color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px;}
+  .mockup-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;}
+  .app{width:100%;max-width:1100px;background:var(--bg-base);border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-md);}
+
+  .char-switcher{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+  .char-switcher::-webkit-scrollbar{display:none;}
+  .char-tab{padding:6px 14px;border-radius:var(--r-full);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid transparent;color:var(--text-secondary);}
+  .char-tab.active{background:var(--accent);color:var(--text-inverse);border-color:var(--accent);}
+  .char-tab.new-char{border:1px solid var(--border-strong);color:var(--text-muted);}
+
+  .sheet-body{display:flex;min-height:720px;}
+
+  /* Left panel */
+  .left-panel{width:clamp(200px,30%,300px);flex-shrink:0;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+  .char-info{padding:14px;border-bottom:1px solid var(--border);}
+  .char-info-row{display:flex;align-items:flex-start;justify-content:space-between;}
+  .char-name{font-family:'Outfit',var(--font-body);font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.01em;}
+  .char-meta{font-size:12px;color:var(--text-secondary);margin-top:3px;}
+  .icon-btn{width:28px;height:28px;border-radius:var(--r-sm);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;}
+  .hp-block{margin:12px 14px 0;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;}
+  .hp-label{font-size:10px;font-weight:700;letter-spacing:.1em;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;}
+  .hp-row{display:flex;align-items:center;justify-content:space-between;}
+  .hp-value{font-family:var(--font-mono);font-size:28px;font-weight:500;line-height:1;}
+  .hp-max{font-family:var(--font-mono);font-size:16px;color:var(--text-secondary);}
+  .hp-controls{display:flex;gap:6px;}
+  .hp-btn{width:32px;height:32px;border-radius:var(--r-sm);border:1px solid var(--border-strong);font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--bg-inset);}
+  .hp-btn.plus{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .hp-bar-track{height:4px;background:var(--bg-inset);border-radius:var(--r-full);margin-top:8px;overflow:hidden;}
+  .hp-bar-fill{height:100%;width:80%;background:var(--hp-high);border-radius:var(--r-full);}
+  .stat-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 14px 0;}
+  .stat-tile{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-md);padding:8px 4px 6px;text-align:center;}
+  .stat-tile-value{font-family:var(--font-mono);font-size:17px;font-weight:500;line-height:1;}
+  .stat-tile-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:4px;}
+  .conditions-row{display:flex;align-items:center;gap:6px;padding:10px 14px 0;flex-wrap:wrap;}
+  .condition-pill{background:var(--condition-bg);color:var(--condition-text);font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--r-sm);border:1px solid rgba(244,132,95,0.3);}
+  .add-condition{background:transparent;color:var(--text-muted);font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-sm);border:1px dashed var(--border-strong);cursor:pointer;}
+  .xp-row{padding:10px 14px 0;}
+  .xp-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:5px;}
+  .xp-track{height:3px;background:var(--bg-inset);border-radius:var(--r-full);overflow:hidden;}
+  .xp-fill{height:100%;width:76%;background:var(--accent);border-radius:var(--r-full);}
+  .saved-indicator{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:11px;color:var(--success);font-weight:600;}
+  .saved-dot{width:7px;height:7px;border-radius:var(--r-full);background:var(--success);}
+  .sidebar-tabs{flex:1;padding:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;border-top:1px solid var(--border);}
+  .sidebar-tab{display:flex;align-items:center;gap:8px;padding:10px;border-radius:var(--r-md);cursor:pointer;color:var(--tab-inactive-text);font-size:13px;font-weight:600;border:1px solid transparent;white-space:nowrap;}
+  .sidebar-tab:hover{color:var(--text-secondary);background:var(--bg-elevated);}
+  .sidebar-tab.active{background:var(--tab-active-bg);color:var(--tab-active-text);border-color:var(--border);}
+  .tab-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+
+  /* ── Right panel ── */
+  .right-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* ── Notes scroll area ── */
+  .notes-scroll{
+    flex:1;
+    overflow-y:auto;
+    padding:18px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    scrollbar-width:thin;
+    scrollbar-color:var(--border) transparent;
+  }
+
+  /* ── Note section card ── */
+  .note-section {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    transition: border-color 150ms;
+  }
+  .note-section:focus-within {
+    border-color: var(--border-strong);
+  }
+
+  /* Section header row */
+  .note-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px 0;
+  }
+
+  /* Default section label — locked, can't edit */
+  .note-label-locked {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    flex: 1;
+    user-select: none;
+  }
+
+  /* Custom section — editable name input inline */
+  .note-label-input {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    outline: none;
+    flex: 1;
+    font-family: var(--font-body);
+    padding: 0;
+    min-width: 0;
+  }
+  .note-label-input::placeholder { color: var(--text-muted); }
+  .note-label-input:focus { color: var(--text-primary); }
+
+  /* Lock icon — shown on default sections to signal permanence */
+  .note-lock {
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    user-select: none;
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  /* Delete button — only on custom sections */
+  .note-delete {
+    width: 24px; height: 24px;
+    border-radius: var(--r-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    flex-shrink: 0;
+    transition: all 150ms;
+  }
+  .note-delete:hover {
+    color: var(--danger);
+    border-color: rgba(248,113,113,0.35);
+    background: rgba(248,113,113,0.08);
+  }
+
+  /* Collapse chevron */
+  .note-chevron {
+    width: 24px; height: 24px;
+    border-radius: var(--r-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 10px;
+    flex-shrink: 0;
+    transition: all 150ms;
+    user-select: none;
+  }
+  .note-chevron:hover { color: var(--text-secondary); }
+  .note-section.collapsed .note-chevron { transform: rotate(-90deg); }
+
+  /* Textarea */
+  .note-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 8px 14px 14px;
+    min-height: 100px;
+    display: block;
+    transition: color 150ms;
+  }
+  .note-textarea:focus { color: var(--text-primary); }
+  .note-textarea::placeholder { color: var(--text-muted); font-style: italic; }
+
+  /* Collapsed state — textarea hidden */
+  .note-section.collapsed .note-textarea { display: none; }
+
+  /* Character count — subtle, bottom right of each section */
+  .note-footer {
+    display: none; /* only shown on focus */
+    padding: 0 14px 6px;
+    text-align: right;
+  }
+  .note-section:focus-within .note-footer { display: block; }
+  .note-char-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  /* ── Add section button ── */
+  .add-section-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--r-md);
+    padding: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 100%;
+    transition: all 150ms;
+    margin-top: 4px;
+  }
+  .add-section-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Delete confirm overlay ── */
+  .delete-confirm {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+  }
+  .delete-confirm.open { display: flex; }
+  .delete-dialog {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-lg);
+    padding: 24px;
+    max-width: 340px;
+    width: 90%;
+    box-shadow: var(--shadow-md);
+    animation: popIn 180ms ease-out;
+  }
+  @keyframes popIn { from{transform:scale(0.94);opacity:0;} to{transform:scale(1);opacity:1;} }
+  .delete-dialog-title {
+    font-family: 'Outfit', var(--font-body);
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .delete-dialog-body {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+  .delete-dialog-actions { display: flex; gap: 10px; }
+  .dialog-cancel {
+    flex: 1;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .dialog-delete {
+    flex: 1;
+    background: rgba(248,113,113,0.12);
+    color: var(--danger);
+    border: 1px solid rgba(248,113,113,0.4);
+    border-radius: var(--r-md);
+    padding: 10px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 150ms;
+  }
+  .dialog-delete:hover { background: rgba(248,113,113,0.22); }
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Notes Tab · Default locked sections · User-managed custom sections · Collapsible</div>
+
+<div class="app">
+  <div class="char-switcher">
+    <div class="char-tab active">Aragorn 10</div>
+    <div class="char-tab">Frodo 7</div>
+    <div class="char-tab">Gandalf 20</div>
+    <div class="char-tab new-char">+ New</div>
+  </div>
+
+  <div class="sheet-body">
+
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <div class="char-info">
+        <div class="char-info-row">
+          <div><div class="char-name">Aragorn</div><div class="char-meta">Human · Ranger · Lv 10</div></div>
+          <div style="display:flex;gap:4px;align-items:flex-start;padding-top:2px;">
+            <span style="font-size:13px;color:var(--text-muted)">🔒</span>
+            <div class="icon-btn">↑</div>
+            <div class="icon-btn">⋯</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 14px;">
+        <div class="hp-block">
+          <div class="hp-label">Hit Points</div>
+          <div class="hp-row">
+            <div><span class="hp-value">72</span><span class="hp-max"> / 90</span></div>
+            <div class="hp-controls"><div class="hp-btn">−</div><div class="hp-btn plus">+</div></div>
+          </div>
+          <div class="hp-bar-track"><div class="hp-bar-fill"></div></div>
+        </div>
+      </div>
+      <div class="stat-tiles">
+        <div class="stat-tile"><div class="stat-tile-value">16</div><div class="stat-tile-label">AC</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">+6</div><div class="stat-tile-label">Init</div></div>
+        <div class="stat-tile"><div class="stat-tile-value">30ft</div><div class="stat-tile-label">Speed</div></div>
+      </div>
+      <div class="conditions-row">
+        <span class="condition-pill">Poisoned</span>
+        <span class="add-condition">+ Add</span>
+      </div>
+      <div class="xp-row">
+        <div class="xp-labels"><span>64,500 XP</span><span>Lv 11 at 85k</span></div>
+        <div class="xp-track"><div class="xp-fill"></div></div>
+      </div>
+      <div class="saved-indicator"><div class="saved-dot"></div>Saved</div>
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab"><span class="tab-icon">✕</span> Combat</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎲</span> Stats</div>
+        <div class="sidebar-tab"><span class="tab-icon">✨</span> Spells</div>
+        <div class="sidebar-tab"><span class="tab-icon">🎒</span> Gear</div>
+        <div class="sidebar-tab"><span class="tab-icon">📖</span> Background</div>
+        <div class="sidebar-tab active"><span class="tab-icon">📝</span> Notes</div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <div class="notes-scroll" id="notes-container">
+
+        <!-- ── DEFAULT SECTIONS — locked, permanent ── -->
+
+        <!-- Backstory -->
+        <div class="note-section" id="ns-backstory">
+          <div class="note-header">
+            <span class="note-lock" title="Default section — cannot be removed">🔒</span>
+            <span class="note-label-locked">Backstory</span>
+            <button class="note-chevron" onclick="toggleSection('ns-backstory')" title="Collapse">▾</button>
+          </div>
+          <textarea class="note-textarea" placeholder="Write your character's backstory…" oninput="updateCount(this,'bc-count')" rows="5">Born Aragorn II, son of Arathorn, he was raised in Rivendell under the name Estel. Kept ignorant of his heritage until his twentieth year, he has since spent decades ranging the wilds of Eriador under the name Strider.</textarea>
+          <div class="note-footer"><span class="note-char-count" id="bc-count">212 chars</span></div>
+        </div>
+
+        <!-- Session Notes -->
+        <div class="note-section" id="ns-session">
+          <div class="note-header">
+            <span class="note-lock" title="Default section — cannot be removed">🔒</span>
+            <span class="note-label-locked">Session Notes</span>
+            <button class="note-chevron" onclick="toggleSection('ns-session')" title="Collapse">▾</button>
+          </div>
+          <textarea class="note-textarea" placeholder="Notes from this session…" oninput="updateCount(this,'sn-count')" rows="5">Session 14 — Crossed the Bruinen. Glorfindel met us on the road. Frodo barely conscious. Reached Rivendell at dusk. Council called for tomorrow morning. Bilbo was there — older than I remembered.</textarea>
+          <div class="note-footer"><span class="note-char-count" id="sn-count">196 chars</span></div>
+        </div>
+
+        <!-- NPCs -->
+        <div class="note-section" id="ns-npcs">
+          <div class="note-header">
+            <span class="note-lock" title="Default section — cannot be removed">🔒</span>
+            <span class="note-label-locked">NPCs</span>
+            <button class="note-chevron" onclick="toggleSection('ns-npcs')" title="Collapse">▾</button>
+          </div>
+          <textarea class="note-textarea" placeholder="Track NPCs you've met…" oninput="updateCount(this,'npc-count')" rows="5">Glorfindel — Elf lord of Rivendell. Trusted. Gave Frodo his horse.
+Butterbur — Innkeeper at Prancing Pony. Bree. Forgetful but friendly.
+Bill Ferny — Suspicious. Sold us a pony. Watched us leave Bree.
+Saruman — Head of the White Council. Something feels off.</textarea>
+          <div class="note-footer"><span class="note-char-count" id="npc-count">218 chars</span></div>
+        </div>
+
+        <!-- Party Notes -->
+        <div class="note-section" id="ns-party">
+          <div class="note-header">
+            <span class="note-lock" title="Default section — cannot be removed">🔒</span>
+            <span class="note-label-locked">Party Notes</span>
+            <button class="note-chevron" onclick="toggleSection('ns-party')" title="Collapse">▾</button>
+          </div>
+          <textarea class="note-textarea" placeholder="Notes about your party…" oninput="updateCount(this,'pn-count')" rows="4">Frodo — Ring-bearer. Needs protecting at all costs.
+Gandalf — Missing since Moria. Assumed dead.
+Legolas — Excellent eyes. Reliable in a fight.
+Gimli — Stubborn but steadfast. Growing on me.</textarea>
+          <div class="note-footer"><span class="note-char-count" id="pn-count">183 chars</span></div>
+        </div>
+
+        <!-- ── CUSTOM SECTION EXAMPLE — user-created ── -->
+        <div class="note-section" id="ns-custom-1">
+          <div class="note-header">
+            <!-- Editable name — no lock icon -->
+            <input class="note-label-input" value="QUEST LOG" placeholder="SECTION NAME" maxlength="32"
+              onchange="this.value=this.value.toUpperCase()">
+            <button class="note-delete" onclick="confirmDelete('ns-custom-1','Quest Log')" title="Delete this section">✕</button>
+            <button class="note-chevron" onclick="toggleSection('ns-custom-1')" title="Collapse">▾</button>
+          </div>
+          <textarea class="note-textarea" placeholder="Your notes here…" oninput="updateCount(this,'q1-count')" rows="4">[ ] Attend the Council of Elrond
+[✓] Deliver Frodo to Rivendell
+[ ] Learn more about the nine Nazgûl
+[ ] Find out what Saruman is hiding</textarea>
+          <div class="note-footer"><span class="note-char-count" id="q1-count">119 chars</span></div>
+        </div>
+
+        <!-- ── ADD SECTION BUTTON ── -->
+        <button class="add-section-btn" onclick="addSection()">+ Add section</button>
+
+      </div><!-- /notes-scroll -->
+    </div><!-- /right-panel -->
+  </div><!-- /sheet-body -->
+</div><!-- /app -->
+
+<!-- Delete confirm dialog -->
+<div class="delete-confirm" id="delete-confirm">
+  <div class="delete-dialog">
+    <div class="delete-dialog-title" id="dialog-title">Delete section?</div>
+    <div class="delete-dialog-body" id="dialog-body">This will permanently delete this section and all its notes. This cannot be undone.</div>
+    <div class="delete-dialog-actions">
+      <button class="dialog-cancel" onclick="closeDeleteConfirm()">Cancel</button>
+      <button class="dialog-delete" id="dialog-confirm-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Collapse / expand ──
+  function toggleSection(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+  }
+
+  // ── Character count ──
+  function updateCount(textarea, countId) {
+    const el = document.getElementById(countId);
+    if (el) el.textContent = textarea.value.length + ' chars';
+  }
+
+  // ── Add custom section ──
+  let customCount = 2;
+  function addSection() {
+    const id = 'ns-custom-' + customCount++;
+    const section = document.createElement('div');
+    section.className = 'note-section';
+    section.id = id;
+    section.innerHTML = `
+      <div class="note-header">
+        <input class="note-label-input" placeholder="SECTION NAME" maxlength="32"
+          onchange="this.value=this.value.toUpperCase()">
+        <button class="note-delete" onclick="confirmDelete('${id}','this section')" title="Delete this section">✕</button>
+        <button class="note-chevron" onclick="toggleSection('${id}')" title="Collapse">▾</button>
+      </div>
+      <textarea class="note-textarea" placeholder="Your notes here…" rows="4"></textarea>
+      <div class="note-footer"><span class="note-char-count">0 chars</span></div>
+    `;
+    // Insert before the Add button
+    const addBtn = document.querySelector('.add-section-btn');
+    addBtn.parentElement.insertBefore(section, addBtn);
+    // Focus the name input
+    section.querySelector('.note-label-input').focus();
+    // Wire up char count
+    const ta = section.querySelector('.note-textarea');
+    const cc = section.querySelector('.note-char-count');
+    ta.addEventListener('input', () => { cc.textContent = ta.value.length + ' chars'; });
+  }
+
+  // ── Delete confirm ──
+  let sectionToDelete = null;
+  function confirmDelete(id, name) {
+    sectionToDelete = id;
+    document.getElementById('dialog-title').textContent = 'Delete "' + name + '"?';
+    document.getElementById('dialog-body').textContent =
+      'This will permanently delete this section and all its notes. This cannot be undone.';
+    document.getElementById('dialog-confirm-btn').onclick = () => {
+      const el = document.getElementById(sectionToDelete);
+      if (el) el.remove();
+      closeDeleteConfirm();
+    };
+    document.getElementById('delete-confirm').classList.add('open');
+  }
+  function closeDeleteConfirm() {
+    document.getElementById('delete-confirm').classList.remove('open');
+    sectionToDelete = null;
+  }
+  // Close on backdrop click
+  document.getElementById('delete-confirm').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteConfirm();
+  });
+</script>
+</body>
+</html>

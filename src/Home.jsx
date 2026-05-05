@@ -1,10 +1,145 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
+import './Home.css'
 
-function Home({ token, user, isGM, onCreateCharacter, onSelectCharacter }) {
+function hpPercent(char) {
+  if (!char.combat?.hpMax) return 0
+  return Math.min(100, Math.round((char.combat.hpCurrent / char.combat.hpMax) * 100))
+}
+
+function hpColour(pct) {
+  if (pct > 50) return 'var(--hp-high)'
+  if (pct > 25) return 'var(--hp-mid)'
+  return 'var(--hp-low)'
+}
+
+// ─── Character Card ───────────────────────────────────────────────────────────
+
+function CharCard({ char, onClick, onDelete }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const pct = hpPercent(char)
+  const cls = char.identity.class?.[0]
+  const subtitle = [char.identity.race, cls ? `${cls.name} ${cls.level}` : ''].filter(Boolean).join(' · ')
+
+  return (
+    <div className="char-card" onClick={onClick}>
+      {/* Portrait area */}
+      <div className="char-card-portrait">
+        {char.identity.portrait
+          ? <img src={char.identity.portrait} alt={char.identity.name} className="char-card-img" />
+          : <span className="char-card-placeholder">⚔️</span>
+        }
+      </div>
+
+      {/* Info */}
+      <div className="char-card-body">
+        <div className="char-card-name">{char.identity.name}</div>
+        <div className="char-card-sub">{subtitle}</div>
+
+        {/* HP bar */}
+        <div className="char-card-hp-row">
+          <span className="char-card-hp-val" style={{ fontFamily: 'var(--font-mono)' }}>
+            {char.combat.hpCurrent}/{char.combat.hpMax}
+          </span>
+          <span className="char-card-ac">AC {char.combat.ac}</span>
+        </div>
+        <div className="char-card-hp-track">
+          <div className="char-card-hp-fill" style={{ width: `${pct}%`, background: hpColour(pct) }} />
+        </div>
+
+        {/* Conditions */}
+        {char.combat?.conditions?.length > 0 && (
+          <div className="char-card-conditions">
+            {char.combat.conditions.slice(0, 2).map(c => (
+              <span key={c} className="condition-pill">{c}</span>
+            ))}
+            {char.combat.conditions.length > 2 && (
+              <span className="condition-pill">+{char.combat.conditions.length - 2}</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Context menu button */}
+      <button
+        className="char-card-menu-btn"
+        onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}
+        aria-label="Character options"
+      >⋮</button>
+
+      {menuOpen && (
+        <div className="char-card-menu" onClick={e => e.stopPropagation()}>
+          <button className="char-menu-item" onClick={() => { setMenuOpen(false); onClick() }}>
+            ✏️ Edit Character
+          </button>
+          <button className="char-menu-item danger" onClick={() => { setMenuOpen(false); onDelete(char) }}>
+            🗑️ Delete
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── New Character Card ───────────────────────────────────────────────────────
+
+function NewCharCard({ onClick }) {
+  return (
+    <div className="char-card char-card--new" onClick={onClick}>
+      <div className="char-card-new-inner">
+        <span className="char-card-new-icon">+</span>
+        <span className="char-card-new-label">New Character</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
+
+function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+        <p className="modal-title">Delete {char.identity.name}?</p>
+        <p className="modal-body">
+          This removes the character from your repo. This cannot be undone.
+        </p>
+        <div className="modal-actions">
+          <button className="btn btn--ghost" onClick={onCancel}>Cancel</button>
+          <button className="btn btn--danger" onClick={onConfirm} disabled={loading}>
+            {loading ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── GM Strip (home page preview) ────────────────────────────────────────────
+
+function GMStrip({ onOpen }) {
+  return (
+    <div className="gm-strip" onClick={onOpen}>
+      <div className="gm-strip-left">
+        <span className="gm-strip-icon">⚔️</span>
+        <div>
+          <div className="gm-strip-title">Party Dashboard</div>
+          <div className="gm-strip-sub">Track your party live · GM mode</div>
+        </div>
+      </div>
+      <span className="gm-strip-arrow">→</span>
+    </div>
+  )
+}
+
+// ─── Main Home ────────────────────────────────────────────────────────────────
+
+export default function Home({ token, user, isGM, onCreateCharacter, onSelectCharacter, onOpenGMDashboard }) {
   const [characters, setCharacters] = useState([])
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [gmMode, setGmMode] = useState(isGM)
 
   const octokit = new Octokit({ auth: token })
   const repoName = localStorage.getItem('character_repo')
@@ -21,153 +156,123 @@ function Home({ token, user, isGM, onCreateCharacter, onSelectCharacter }) {
         repo: repoName,
         path: 'characters',
       })
-
-      const characterFiles = await Promise.all(
+      const files = await Promise.all(
         data
           .filter(f => f.name.endsWith('.json'))
           .map(async f => {
-            const { data: fileData } = await octokit.repos.getContent({
+            const { data: fd } = await octokit.repos.getContent({
               owner: user.login,
               repo: repoName,
               path: f.path,
             })
-            const content = JSON.parse(atob(fileData.content))
-            return { ...content, _fileName: f.name }
+            return { ...JSON.parse(atob(fd.content)), _fileName: f.name }
           })
       )
-
-      setCharacters(characterFiles)
-    } catch (err) {
+      setCharacters(files)
+    } catch {
       setCharacters([])
     }
     setLoading(false)
   }
 
-  const deleteCharacter = async (char) => {
+  const deleteCharacter = async () => {
+    if (!confirmDelete) return
+    setDeleteLoading(true)
     try {
-      const { data: fileData } = await octokit.repos.getContent({
+      const { data: fd } = await octokit.repos.getContent({
         owner: user.login,
         repo: repoName,
-        path: `characters/${char._fileName}`,
+        path: `characters/${confirmDelete._fileName}`,
       })
-
       await octokit.repos.deleteFile({
         owner: user.login,
         repo: repoName,
-        path: `characters/${char._fileName}`,
-        message: `Delete character: ${char.identity.name}`,
-        sha: fileData.sha,
+        path: `characters/${confirmDelete._fileName}`,
+        message: `Delete character: ${confirmDelete.identity.name}`,
+        sha: fd.sha,
       })
-
-      setCharacters(prev => prev.filter(c => c.meta.characterId !== char.meta.characterId))
+      setCharacters(prev => prev.filter(c => c.meta.characterId !== confirmDelete.meta.characterId))
       setConfirmDelete(null)
-    } catch (err) {
+    } catch {
       alert('Failed to delete character.')
     }
+    setDeleteLoading(false)
+  }
+
+  const toggleGM = () => {
+    const next = !gmMode
+    setGmMode(next)
+    localStorage.setItem('is_gm', next)
   }
 
   return (
-    <div style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0 }}>⚔️ TTRPG Sheet</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <img src={user.avatar_url} width={32} style={{ borderRadius: '50%' }} />
-          <span>{user.login}</span>
+    <div className="home">
+      {/* ── Header ── */}
+      <header className="home-header">
+        <div className="home-header-left">
+          <span className="home-logo">⚔️</span>
+          <span className="home-title">TTRPG Sheet</span>
         </div>
-      </div>
-
-      <h2>My Characters</h2>
-
-      {/* Delete confirmation modal */}
-      {confirmDelete && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
-        }}>
-          <div style={{ background: '#1a1a2e', padding: '2rem', borderRadius: '8px', maxWidth: '320px', textAlign: 'center' }}>
-            <h3>Delete {confirmDelete.identity.name}?</h3>
-            <p style={{ color: '#aaa', fontSize: '0.9rem' }}>This will permanently delete the character file from your GitHub repo.</p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
-              <button
-                onClick={() => deleteCharacter(confirmDelete)}
-                style={{ background: '#8b0000', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                Delete
-              </button>
-              <button
-                onClick={() => setConfirmDelete(null)}
-                style={{ background: '#333', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
+        <div className="home-header-right">
+          <div className="gm-toggle-wrap">
+            <span className="gm-toggle-label">GM</span>
+            <button
+              className={`gm-toggle ${gmMode ? 'gm-toggle--on' : ''}`}
+              onClick={toggleGM}
+              aria-label="Toggle GM mode"
+            >
+              <span className="gm-toggle-knob" />
+            </button>
           </div>
+          <div className="home-avatar">
+            {user.avatar_url
+              ? <img src={user.avatar_url} alt={user.login} className="avatar-img" />
+              : <span>{user.login[0].toUpperCase()}</span>
+            }
+          </div>
+        </div>
+      </header>
+
+      {/* ── GM Dashboard strip ── */}
+      {gmMode && (
+        <div className="home-section">
+          <GMStrip onOpen={onOpenGMDashboard} />
         </div>
       )}
 
-      {loading ? (
-        <p>Loading characters...</p>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem' }}>
-          {characters.map(char => (
-            <div
-              key={char.meta.characterId}
-              style={{
-                border: '1px solid #444',
-                borderRadius: '8px',
-                padding: '1rem',
-                background: '#1a1a2e',
-                position: 'relative',
-              }}
-            >
-              <div
-                onClick={() => onSelectCharacter(char)}
-                style={{ cursor: 'pointer' }}
-              >
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚔️</div>
-                <strong>{char.identity.name}</strong>
-                <div style={{ fontSize: '0.85rem', color: '#aaa' }}>
-                  {char.identity.race} · {char.identity.class[0].name} {char.identity.class[0].level}
-                </div>
-                <div style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                  HP {char.combat.hpCurrent}/{char.combat.hpMax} · AC {char.combat.ac}
-                </div>
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setConfirmDelete(char) }}
-                style={{
-                  position: 'absolute', top: '0.5rem', right: '0.5rem',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  color: '#666', fontSize: '1rem'
-                }}
-              >
-                🗑️
-              </button>
-            </div>
-          ))}
+      {/* ── My Characters ── */}
+      <div className="home-section">
+        <h2 className="home-section-title">My Characters</h2>
 
-          <div
-            onClick={onCreateCharacter}
-            style={{
-              border: '2px dashed #444',
-              borderRadius: '8px',
-              padding: '1rem',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '120px',
-              color: '#aaa',
-            }}
-          >
-            <div style={{ fontSize: '2rem' }}>+</div>
-            <div>New Character</div>
+        {loading ? (
+          <div className="home-loading">
+            <div className="home-loading-spinner" />
+            <span>Loading characters…</span>
           </div>
-        </div>
+        ) : (
+          <div className="char-grid">
+            {characters.map(char => (
+              <CharCard
+                key={char.meta.characterId}
+                char={char}
+                onClick={() => onSelectCharacter(char)}
+                onDelete={setConfirmDelete}
+              />
+            ))}
+            <NewCharCard onClick={onCreateCharacter} />
+          </div>
+        )}
+      </div>
+
+      {/* ── Delete confirm ── */}
+      {confirmDelete && (
+        <ConfirmDelete
+          char={confirmDelete}
+          onConfirm={deleteCharacter}
+          onCancel={() => setConfirmDelete(null)}
+          loading={deleteLoading}
+        />
       )}
     </div>
   )
 }
-
-export default Home

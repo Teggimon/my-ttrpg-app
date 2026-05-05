@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Secondary Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --font-body:'Nunito',system-ui,sans-serif; --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
+    --dm:#e05252; --dm-hover:#f07070; --dm-subtle:rgba(224,82,82,0.12); --dm-border:rgba(224,82,82,0.38);
+    --gold:#c9a227; --gold-subtle:rgba(201,162,39,0.1); --gold-border:rgba(201,162,39,0.38);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#080712;color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;padding:24px 16px 48px;}
+
+  h1{font-family:'Outfit',var(--font-body);font-size:22px;font-weight:800;margin-bottom:6px;color:var(--text-primary);}
+  .page-sub{font-size:12px;color:var(--text-muted);margin-bottom:32px;font-family:var(--font-mono);}
+
+  /* Screen grid */
+  .screens-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:24px;max-width:1100px;margin:0 auto;}
+  .screen-block{display:flex;flex-direction:column;gap:8px;}
+  .screen-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;}
+  .screen-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-xl);overflow:hidden;box-shadow:var(--shadow-md);}
+
+  /* Shared modal inner styles */
+  .modal-inner{padding:20px 20px 24px;display:flex;flex-direction:column;gap:16px;}
+  .modal-handle{width:36px;height:4px;background:var(--border-strong);border-radius:var(--r-full);margin:0 auto 4px;}
+  .modal-title{font-family:'Outfit',var(--font-body);font-size:17px;font-weight:800;line-height:1.1;}
+  .modal-sub{font-size:12px;color:var(--text-secondary);margin-top:-8px;line-height:1.5;}
+  .modal-actions{display:flex;gap:8px;margin-top:4px;}
+  .btn-primary{flex:1;background:var(--accent);color:#fff;border:none;border-radius:var(--r-md);padding:11px;font-family:var(--font-body);font-size:13px;font-weight:700;cursor:pointer;}
+  .btn-primary.dm{background:var(--dm);}
+  .btn-primary.gold{background:var(--gold);color:#0e0d1a;}
+  .btn-secondary{background:var(--bg-surface);color:var(--text-secondary);border:1px solid var(--border);border-radius:var(--r-md);padding:11px 16px;font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+
+  /* Section label */
+  .sec-lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+
+  /* Selectable option cards */
+  .option-grid{display:grid;gap:6px;}
+  .option-card{background:var(--bg-surface);border:1.5px solid var(--border);border-radius:var(--r-md);padding:10px 12px;cursor:pointer;transition:all 150ms;display:flex;align-items:flex-start;gap:10px;}
+  .option-card:hover{border-color:var(--border-strong);}
+  .option-card.selected{border-color:var(--accent);background:var(--accent-subtle);}
+  .option-card.selected.gold-sel{border-color:var(--gold);background:var(--gold-subtle);}
+  .option-radio{width:16px;height:16px;border-radius:50%;border:2px solid var(--border-strong);flex-shrink:0;margin-top:2px;transition:all 150ms;}
+  .option-card.selected .option-radio{background:var(--accent);border-color:var(--accent);}
+  .option-card.selected.gold-sel .option-radio{background:var(--gold);border-color:var(--gold);}
+  .option-name{font-size:13px;font-weight:700;color:var(--text-primary);}
+  .option-desc{font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.4;}
+
+  /* Step indicator */
+  .step-indicator{display:flex;align-items:center;gap:6px;justify-content:center;}
+  .step-dot{width:8px;height:8px;border-radius:50%;background:var(--border-strong);transition:background 150ms;}
+  .step-dot.active{background:var(--accent);box-shadow:0 0 6px rgba(124,111,245,0.5);}
+  .step-dot.done{background:var(--success);}
+
+  /* Feature pills */
+  .feature-list{display:flex;flex-direction:column;gap:5px;}
+  .feature-row{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;}
+  .feature-name{font-size:12px;font-weight:700;color:var(--text-primary);}
+  .feature-desc{font-size:11px;color:var(--text-secondary);margin-top:2px;line-height:1.4;}
+  .feature-tag{display:inline-block;font-size:9px;font-weight:700;padding:1px 6px;border-radius:var(--r-full);margin-left:6px;}
+  .tag-new{background:rgba(74,222,128,0.15);color:var(--success);border:1px solid rgba(74,222,128,0.3);}
+  .tag-choice{background:var(--gold-subtle);color:var(--gold);border:1px solid var(--gold-border);}
+
+  /* Skill checkboxes */
+  .skill-pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+  .skill-pick{display:flex;align-items:center;gap:8px;background:var(--bg-surface);border:1.5px solid var(--border);border-radius:var(--r-sm);padding:7px 10px;cursor:pointer;transition:all 150ms;}
+  .skill-pick:hover{border-color:var(--border-strong);}
+  .skill-pick.picked{border-color:var(--accent);background:var(--accent-subtle);}
+  .skill-pick-box{width:14px;height:14px;border-radius:3px;border:2px solid var(--border-strong);flex-shrink:0;transition:all 150ms;}
+  .skill-pick.picked .skill-pick-box{background:var(--accent);border-color:var(--accent);}
+  .skill-pick-name{font-size:12px;font-weight:600;color:var(--text-primary);}
+  .pick-count{font-size:11px;color:var(--text-muted);text-align:right;margin-top:-4px;}
+
+  /* Rest screens */
+  .rest-summary{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+  .rest-row{display:flex;align-items:center;justify-content:space-between;}
+  .rest-label{font-size:12px;color:var(--text-secondary);}
+  .rest-val{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--text-primary);}
+  .rest-val.green{color:var(--success);}
+  .rest-val.gold{color:var(--gold);}
+  .hit-dice-row{display:flex;align-items:center;gap:8px;}
+  .hd-stepper{display:flex;align-items:center;background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-sm);overflow:hidden;}
+  .hd-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+  .hd-btn:hover{background:var(--border);color:var(--text-primary);}
+  .hd-val{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--text-primary);min-width:28px;text-align:center;line-height:28px;}
+  .hd-info{font-size:11px;color:var(--text-muted);}
+  .rest-divider{height:1px;background:var(--border);}
+
+  /* Add/Create item */
+  .search-input{width:100%;background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-md);color:var(--text-primary);font-family:var(--font-body);font-size:13px;padding:9px 12px;outline:none;}
+  .search-input::placeholder{color:var(--text-muted);font-style:italic;}
+  .search-input:focus{border-color:var(--accent);}
+  .search-result{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;cursor:pointer;transition:all 150ms;display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .search-result:hover{border-color:var(--border-strong);}
+  .sr-name{font-size:13px;font-weight:600;flex:1;}
+  .sr-type{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .form-field{display:flex;flex-direction:column;gap:4px;}
+  .form-field.full{grid-column:1/-1;}
+  .field-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+  .field-input{background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-sm);color:var(--text-primary);font-family:var(--font-body);font-size:12px;padding:7px 9px;outline:none;}
+  .field-input:focus{border-color:var(--accent);}
+  .field-input::placeholder{color:var(--text-muted);}
+  .tab-pills{display:flex;gap:4px;background:var(--bg-inset);border-radius:var(--r-full);padding:3px;}
+  .tab-pill{flex:1;text-align:center;padding:5px 8px;border-radius:var(--r-full);font-size:11px;font-weight:700;cursor:pointer;color:var(--text-muted);transition:all 150ms;}
+  .tab-pill.active{background:var(--bg-elevated);color:var(--text-primary);box-shadow:0 1px 4px rgba(0,0,0,0.3);}
+
+  /* Multiclass display */
+  .char-header-demo{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px;display:flex;align-items:center;gap:10px;}
+  .char-name-demo{font-family:'Outfit',var(--font-body);font-size:20px;font-weight:800;}
+  .char-meta-demo{font-size:12px;color:var(--text-secondary);}
+  .multiclass-badge{font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-subtle);border:1px solid rgba(124,111,245,0.3);border-radius:var(--r-full);padding:2px 8px;cursor:pointer;white-space:nowrap;transition:all 150ms;}
+  .multiclass-badge:hover{background:var(--accent);color:#fff;}
+
+  /* Class use counter — no reset button */
+  .use-counter-demo{display:flex;align-items:center;gap:8px;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;}
+  .uc-name{font-size:13px;font-weight:700;flex:1;}
+  .uc-badge{border-radius:var(--r-sm);padding:4px 9px;font-family:var(--font-mono);font-size:12px;border:1px solid;}
+  .uc-available{color:var(--success);background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.35);}
+  .uc-spent{color:var(--text-muted);background:var(--bg-inset);border-color:var(--border);}
+  .uc-note{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);}
+
+  /* DM encounter builder */
+  .encounter-slot{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+  .enc-slot-name{font-size:13px;font-weight:600;flex:1;}
+  .enc-slot-count{display:flex;align-items:center;background:var(--bg-inset);border:1px solid var(--border-strong);border-radius:var(--r-sm);overflow:hidden;}
+  .esc-btn{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+  .esc-btn:hover{background:var(--border);color:var(--text-primary);}
+  .esc-val{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-primary);min-width:20px;text-align:center;}
+  .enc-del{color:var(--danger);background:transparent;border:none;font-size:14px;cursor:pointer;padding:0 2px;}
+  .cr-badge{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);white-space:nowrap;}
+  .add-monster-row{background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-sm);padding:8px 10px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);transition:all 150ms;width:100%;}
+  .add-monster-row:hover{border-color:var(--dm);color:var(--dm);background:var(--dm-subtle);}
+  .cr-total{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 10px;display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);}
+  .cr-total span{font-family:var(--font-mono);color:var(--text-primary);font-weight:600;}
+</style>
+</head>
+<body>
+
+<h1>Secondary Screens & Pop-ups</h1>
+<p class="page-sub">All modals · Click through to see each screen · Reference for programmer</p>
+
+<div class="screens-grid">
+
+  <!-- ══════════════════════════════
+       1. LEVEL UP — SIMPLE LEVEL
+       (no choices, just features)
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Level Up — Simple Level (e.g. Ranger Lv 6)</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div class="step-indicator">
+          <div class="step-dot done"></div>
+          <div class="step-dot active"></div>
+          <div class="step-dot"></div>
+        </div>
+        <div>
+          <div class="modal-title">⬆ Level Up — Ranger 6</div>
+          <div class="modal-sub">No choices required at this level. You gain the following features automatically.</div>
+        </div>
+        <div class="feature-list">
+          <div class="feature-row">
+            <div class="feature-name">Extra Attack <span class="feature-tag tag-new">New</span></div>
+            <div class="feature-desc">You can attack twice, instead of once, whenever you take the Attack action on your turn.</div>
+          </div>
+          <div class="feature-row">
+            <div class="feature-name">Hit Points</div>
+            <div class="feature-desc">Max HP increases by 1d10 + CON modifier. Auto-applied: <strong style="color:var(--success)">+8 HP</strong> (rolled 5 + CON +3)</div>
+          </div>
+          <div class="feature-row">
+            <div class="feature-name">Proficiency Bonus</div>
+            <div class="feature-desc">Unchanged at this level. Remains <strong style="color:var(--text-primary)">+3</strong>.</div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">← Back</button>
+          <button class="btn-primary">Confirm Level Up →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       2. LEVEL UP — FEAT/ASI CHOICE
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Level Up — Feat or ASI Choice (e.g. Fighter Lv 4)</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div class="step-indicator">
+          <div class="step-dot done"></div>
+          <div class="step-dot active"></div>
+          <div class="step-dot"></div>
+        </div>
+        <div>
+          <div class="modal-title">⬆ Level 4 — Improvement</div>
+          <div class="modal-sub">Choose between an Ability Score Improvement or a Feat.</div>
+        </div>
+        <div class="option-grid">
+          <div class="option-card selected gold-sel" onclick="this.classList.add('selected','gold-sel');document.querySelectorAll('.asi-opt').forEach(x=>x.classList.remove('selected','gold-sel'));this.classList.add('selected','gold-sel')">
+            <div class="option-radio"></div>
+            <div>
+              <div class="option-name">Ability Score Improvement</div>
+              <div class="option-desc">Increase one ability score by +2, or two ability scores by +1 each. Maximum 20.</div>
+            </div>
+          </div>
+          <div class="option-card asi-opt" onclick="document.querySelectorAll('.asi-opt,.option-card').forEach(x=>x.classList.remove('selected','gold-sel'));this.classList.add('selected','gold-sel')">
+            <div class="option-radio"></div>
+            <div>
+              <div class="option-name">Feat</div>
+              <div class="option-desc">Gain a feat from the feat list. Some feats have prerequisites.</div>
+            </div>
+          </div>
+        </div>
+        <!-- ASI selector shown when ASI chosen -->
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;">
+          <div class="sec-lbl">Choose stat increases — 2 points total</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+            <div style="background:var(--bg-elevated);border:1.5px solid var(--gold);border-radius:var(--r-sm);padding:7px;text-align:center;cursor:pointer;">
+              <div style="font-family:var(--font-mono);font-size:15px;font-weight:600;">STR</div>
+              <div style="font-size:10px;color:var(--gold);font-weight:700;">+1 ●</div>
+            </div>
+            <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);padding:7px;text-align:center;cursor:pointer;opacity:.6;">
+              <div style="font-family:var(--font-mono);font-size:15px;font-weight:600;">DEX</div>
+              <div style="font-size:10px;color:var(--text-muted);">+0</div>
+            </div>
+            <div style="background:var(--bg-elevated);border:1.5px solid var(--gold);border-radius:var(--r-sm);padding:7px;text-align:center;cursor:pointer;">
+              <div style="font-family:var(--font-mono);font-size:15px;font-weight:600;">CON</div>
+              <div style="font-size:10px;color:var(--gold);font-weight:700;">+1 ●</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">← Back</button>
+          <button class="btn-primary gold">Confirm Choice →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       3. LEVEL UP — SKILL PROFICIENCY
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Level Up — Skill Proficiency Pick</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div>
+          <div class="modal-title">Choose Skills</div>
+          <div class="modal-sub">Pick 2 skills to become proficient in. Already proficient skills are greyed out.</div>
+        </div>
+        <div>
+          <div class="pick-count" style="text-align:left;margin-bottom:6px;font-size:11px;color:var(--text-muted);">1 / 2 selected</div>
+          <div class="skill-pick-grid">
+            <div class="skill-pick picked"><div class="skill-pick-box"></div><div class="skill-pick-name">Athletics</div></div>
+            <div class="skill-pick"><div class="skill-pick-box"></div><div class="skill-pick-name">Perception</div></div>
+            <div class="skill-pick"><div class="skill-pick-box"></div><div class="skill-pick-name">Stealth</div></div>
+            <div class="skill-pick"><div class="skill-pick-box"></div><div class="skill-pick-name">Nature</div></div>
+            <div class="skill-pick" style="opacity:.35;pointer-events:none;"><div class="skill-pick-box" style="background:var(--border);border-color:var(--border);"></div><div class="skill-pick-name" style="color:var(--text-muted);">Survival ✓</div></div>
+            <div class="skill-pick"><div class="skill-pick-box"></div><div class="skill-pick-name">Insight</div></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">← Back</button>
+          <button class="btn-primary">Confirm Skills →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       4. LEVEL UP — ARCHETYPE / SUBCLASS
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Level Up — Archetype / Subclass Choice (e.g. Ranger Lv 3)</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div>
+          <div class="modal-title">Choose Your Archetype</div>
+          <div class="modal-sub">Ranger — Level 3. This choice is permanent.</div>
+        </div>
+        <div class="option-grid">
+          <div class="option-card selected" onclick="document.querySelectorAll('.arch-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected')">
+            <div class="option-radio"></div>
+            <div>
+              <div class="option-name">Gloom Stalker</div>
+              <div class="option-desc">Masters of ambush who are terrifying to those who rely on darkness.</div>
+            </div>
+          </div>
+          <div class="option-card arch-opt" onclick="document.querySelectorAll('.arch-opt,.option-card').forEach(x=>x.classList.remove('selected'));this.classList.add('selected')">
+            <div class="option-radio"></div>
+            <div>
+              <div class="option-name">Hunter</div>
+              <div class="option-desc">Focuses on specific enemies and mastering techniques to hunt them.</div>
+            </div>
+          </div>
+          <div class="option-card arch-opt" onclick="document.querySelectorAll('.arch-opt,.option-card').forEach(x=>x.classList.remove('selected'));this.classList.add('selected')">
+            <div class="option-radio"></div>
+            <div>
+              <div class="option-name">Beast Master</div>
+              <div class="option-desc">Forms a bond with an animal companion that aids in combat.</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">← Back</button>
+          <button class="btn-primary">Confirm Archetype →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       5. SHORT REST
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Short Rest</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div>
+          <div class="modal-title">🌙 Short Rest</div>
+          <div class="modal-sub">Spend Hit Dice to recover HP. A short rest takes 1 hour.</div>
+        </div>
+        <div class="rest-summary">
+          <div class="rest-row">
+            <span class="rest-label">Current HP</span>
+            <span class="rest-val">19 / 90</span>
+          </div>
+          <div class="rest-divider"></div>
+          <div class="rest-row">
+            <span class="rest-label">Hit Dice available</span>
+            <span class="rest-val">6 / 10 (d10)</span>
+          </div>
+          <div class="hit-dice-row">
+            <span class="hd-info">Spend Hit Dice:</span>
+            <div class="hd-stepper">
+              <div class="hd-btn">−</div>
+              <div class="hd-val">3</div>
+              <div class="hd-btn">+</div>
+            </div>
+            <span class="hd-info" style="color:var(--text-muted);">× d10+3</span>
+          </div>
+          <div class="rest-divider"></div>
+          <div class="rest-row">
+            <span class="rest-label">Estimated recovery</span>
+            <span class="rest-val green">~21 HP</span>
+          </div>
+          <div class="rest-row">
+            <span class="rest-label">Abilities restored</span>
+            <span class="rest-val gold">Second Wind · Action Surge</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">Cancel</button>
+          <button class="btn-primary">Take Short Rest</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       6. LONG REST
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Long Rest</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div>
+          <div class="modal-title">🌑 Long Rest</div>
+          <div class="modal-sub">A long rest of at least 8 hours fully restores HP, spell slots, and most abilities.</div>
+        </div>
+        <div class="rest-summary">
+          <div class="rest-row"><span class="rest-label">HP restored</span><span class="rest-val green">72 → 90 HP (+18)</span></div>
+          <div class="rest-divider"></div>
+          <div class="rest-row"><span class="rest-label">Spell slots restored</span><span class="rest-val green">All slots</span></div>
+          <div class="rest-row"><span class="rest-label">Hit Dice restored</span><span class="rest-val green">+5 HD (half max)</span></div>
+          <div class="rest-row"><span class="rest-label">Abilities restored</span><span class="rest-val green">All SR + LR abilities</span></div>
+          <div class="rest-row"><span class="rest-label">Death saves cleared</span><span class="rest-val green">Reset to 0</span></div>
+          <div class="rest-divider"></div>
+          <div class="rest-row"><span class="rest-label" style="color:var(--warning);">⚠ Concentration</span><span class="rest-val" style="color:var(--warning);">Hunter's Mark ends</span></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">Cancel</button>
+          <button class="btn-primary">Take Long Rest</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       7. ADD ITEM — Search or Create
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Add Item — Search Database or Create Custom</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add Item</div>
+        <div class="tab-pills">
+          <div class="tab-pill active">Search Database</div>
+          <div class="tab-pill">Create Custom</div>
+        </div>
+        <input class="search-input" placeholder="Search SRD items… e.g. Longsword, Potion…" value="Health">
+        <div>
+          <div class="search-result">
+            <div style="font-size:18px;">🧪</div>
+            <div style="flex:1;"><div class="sr-name">Potion of Healing</div><div class="sr-type">Potion · Consumable · 50 gp · 0.5 lb</div></div>
+            <div style="font-size:11px;color:var(--success);font-weight:700;">+ Add</div>
+          </div>
+          <div class="search-result">
+            <div style="font-size:18px;">🧪</div>
+            <div style="flex:1;"><div class="sr-name">Potion of Greater Healing</div><div class="sr-type">Potion · Consumable · 150 gp · 0.5 lb</div></div>
+            <div style="font-size:11px;color:var(--success);font-weight:700;">+ Add</div>
+          </div>
+          <div class="search-result">
+            <div style="font-size:18px;">🧪</div>
+            <div style="flex:1;"><div class="sr-name">Potion of Superior Healing</div><div class="sr-type">Potion · Consumable · 450 gp · 0.5 lb</div></div>
+            <div style="font-size:11px;color:var(--success);font-weight:700;">+ Add</div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       8. CREATE CUSTOM ITEM
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Create Custom Item</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Create Item</div>
+        <div class="form-row">
+          <div class="form-field full"><div class="field-label">Item Name</div><input class="field-input" placeholder="e.g. Strider's Cloak" value="Strider's Cloak"></div>
+          <div class="form-field"><div class="field-label">Category</div>
+            <select class="field-input" style="cursor:pointer;">
+              <option>Armour</option>
+              <option selected>Adventuring Gear</option>
+              <option>Weapon</option>
+              <option>Ammunition</option>
+              <option>Currency</option>
+              <option>Magic Item</option>
+            </select>
+          </div>
+          <div class="form-field"><div class="field-label">Weight (lb)</div><input class="field-input" type="number" value="2"></div>
+          <div class="form-field"><div class="field-label">Value (gp)</div><input class="field-input" type="number" value="0"></div>
+          <div class="form-field"><div class="field-label">Quantity</div><input class="field-input" type="number" value="1"></div>
+          <div class="form-field"><div class="field-label">Requires Attunement</div>
+            <select class="field-input" style="cursor:pointer;"><option>No</option><option>Yes</option></select>
+          </div>
+          <div class="form-field full"><div class="field-label">Description</div><textarea class="field-input" rows="2" placeholder="Optional description…">A worn Ranger's cloak that grants +2 to Stealth checks in natural environments.</textarea></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">Cancel</button>
+          <button class="btn-primary">Add to Gear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       9. MULTICLASS DISPLAY
+       Character tab + left panel name
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Multiclass Display — Character Header + Tab</div>
+    <div class="screen-card">
+      <div class="modal-inner" style="gap:12px;">
+        <div class="modal-title" style="font-size:14px;">Left panel — name area</div>
+        <div class="char-header-demo">
+          <div style="flex:1;">
+            <div class="char-name-demo">Aragorn</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+              <div class="char-meta-demo">Human · Ranger · Lv 10</div>
+              <!-- +1 badge = one multiclass -->
+              <div class="multiclass-badge" title="Ranger 8 / Fighter 2 — tap to see full class breakdown">+1</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.5;">
+          The <strong style="color:var(--text-secondary);">+1</strong> badge means 1 multiclass. Tapping it navigates to the Background tab → Class section. A character with 2 multiclasses shows <strong style="color:var(--text-secondary);">+2</strong>, and so on. Primary class is always shown in the subtitle.
+        </div>
+        <div class="modal-title" style="font-size:14px;margin-top:4px;">Examples</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;font-size:12px;">Single class: <strong>Human · Wizard · Lv 8</strong> — no badge</div>
+          <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;font-size:12px;">2 classes: <strong>Human · Ranger · Lv 10</strong> <span class="multiclass-badge" style="font-size:10px;">+1</span></div>
+          <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;font-size:12px;">3 classes: <strong>Elf · Rogue · Lv 12</strong> <span class="multiclass-badge" style="font-size:10px;">+2</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       10. CLASS/RACE ABILITY — NO RESET BUTTON
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">Class/Race Abilities — Use Counter (No Reset)</div>
+    <div class="screen-card">
+      <div class="modal-inner" style="gap:10px;">
+        <div class="modal-title" style="font-size:14px;">Combat tab — Class &amp; Race Abilities</div>
+        <div class="modal-sub" style="margin-top:-4px;">Use counters decrement on tap. No reset button — resets are handled automatically by Short/Long Rest. Manual override available in a future update via the DM initiative tracker.</div>
+        <div class="use-counter-demo">
+          <div style="flex:1;">
+            <div class="uc-name">Second Wind</div>
+            <div class="uc-note">FIGHTER · Resets on SR/LR</div>
+          </div>
+          <span class="uc-badge uc-available">1 / 1 SR</span>
+        </div>
+        <div class="use-counter-demo">
+          <div style="flex:1;">
+            <div class="uc-name">Action Surge</div>
+            <div class="uc-note">FIGHTER · Resets on SR/LR</div>
+          </div>
+          <span class="uc-badge uc-spent">0 / 1 SR</span>
+        </div>
+        <div class="use-counter-demo">
+          <div style="flex:1;">
+            <div class="uc-name">Dread Ambusher</div>
+            <div class="uc-note">RANGER · Resets each combat round</div>
+          </div>
+          <span class="uc-badge uc-available">1 / 1 turn</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);line-height:1.5;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;">
+          ℹ️ Taking a Short or Long Rest automatically resets SR and LR abilities. Per-turn abilities (e.g. Dread Ambusher) reset when the encounter ends or a new session starts.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       11. DM — BUILD FUTURE ENCOUNTER
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">DM — Build / Plan Encounter</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div>
+          <div class="modal-title">Build Encounter</div>
+          <div class="modal-sub">Plan an encounter. Each enemy instance has its own HP — auto-rolled from the stat block, editable before starting.</div>
+        </div>
+        <div class="form-field full">
+          <div class="field-label">Encounter Name</div>
+          <input class="field-input" value="Ambush at Weathertop">
+        </div>
+
+        <div>
+          <div class="sec-lbl">Enemies</div>
+
+          <!-- Nazgûl — 3 instances, Nazgûl style with individual ✕ -->
+          <div style="background:var(--bg-surface);border:1px solid var(--dm-border);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="font-size:16px;">🗡️</div>
+              <div style="flex:1;font-size:13px;font-weight:700;">Nazgûl (Ringwraith)</div>
+              <div class="cr-badge">CR 13</div>
+              <button class="enc-del">✕ Remove all</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;padding-left:4px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">A</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="104" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;" title="Re-roll">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">B</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="98" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">C</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="112" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding-top:2px;">
+                <button style="font-size:11px;font-weight:700;color:var(--dm);background:var(--dm-subtle);border:1px solid var(--dm-border);border-radius:var(--r-sm);padding:3px 10px;cursor:pointer;font-family:var(--font-body);">+ Add instance</button>
+                <span style="font-size:10px;color:var(--text-muted);">Avg HP: 104.7 · Hit die: 10d10+20</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Orc Scout — same layout as Nazgûl, individual ✕ per instance -->
+          <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="font-size:16px;">👺</div>
+              <div style="flex:1;font-size:13px;font-weight:700;">Orc Scout</div>
+              <div class="cr-badge">CR ½</div>
+              <button class="enc-del">✕ Remove all</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;padding-left:4px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">A</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="11" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">B</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="9" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">C</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="13" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">D</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="15" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">E</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="8" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);width:16px;">F</div>
+                <div style="font-size:11px;color:var(--text-secondary);">Max HP:</div>
+                <input class="field-input" type="number" value="12" style="width:64px;padding:4px 6px;font-family:var(--font-mono);font-size:12px;text-align:center;flex-shrink:0;">
+                <button style="font-size:13px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;">🎲</button>
+                <div style="flex:1;"></div>
+                <button style="font-size:11px;color:var(--danger);background:transparent;border:1px solid rgba(248,113,113,0.25);border-radius:var(--r-sm);padding:2px 7px;cursor:pointer;font-family:var(--font-body);transition:all 150ms;" onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">✕</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding-top:2px;">
+                <button style="font-size:11px;font-weight:700;color:var(--dm);background:var(--dm-subtle);border:1px solid var(--dm-border);border-radius:var(--r-sm);padding:3px 10px;cursor:pointer;font-family:var(--font-body);">+ Add instance</button>
+                <button style="font-size:11px;font-weight:700;color:var(--text-muted);background:transparent;border:1px solid var(--border);border-radius:var(--r-sm);padding:3px 10px;cursor:pointer;font-family:var(--font-body);">🎲 Re-roll all</button>
+                <span style="font-size:10px;color:var(--text-muted);">Avg: 11.3</span>
+              </div>
+            </div>
+          </div>
+
+          <button class="add-monster-row">+ Add enemy from NPC library or SRD</button>
+        </div>
+
+        <div class="cr-total">
+          <span>Estimated difficulty</span>
+          <span>Deadly · Total XP ~7,200</span>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">Cancel</button>
+          <button class="btn-primary dm">Save Encounter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       12. DM — ADD NPC/ENEMY TO CAMPAIGN
+  ══════════════════════════════ -->
+  <div class="screen-block">
+    <div class="screen-label">DM — Add NPC / Enemy to Campaign</div>
+    <div class="screen-card">
+      <div class="modal-inner">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Add NPC / Enemy</div>
+        <div class="tab-pills">
+          <div class="tab-pill active">Search SRD</div>
+          <div class="tab-pill">Campaign Library</div>
+          <div class="tab-pill">Create New</div>
+        </div>
+        <input class="search-input" placeholder="Search monsters… e.g. Goblin, Dragon…" value="Orc">
+        <div>
+          <div class="search-result">
+            <div style="font-size:18px;">👺</div>
+            <div style="flex:1;">
+              <div class="sr-name">Orc</div>
+              <div class="sr-type">Humanoid · CR ½ · 15 HP · AC 13</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;">
+              <div style="font-size:10px;color:var(--text-muted);">Add as:</div>
+              <div style="display:flex;gap:4px;">
+                <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-sm);border:1px solid var(--dm-border);color:var(--dm);cursor:pointer;background:var(--dm-subtle);">Enemy</span>
+                <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-sm);border:1px solid var(--border);color:var(--text-muted);cursor:pointer;">Ally</span>
+              </div>
+            </div>
+          </div>
+          <div class="search-result">
+            <div style="font-size:18px;">👺</div>
+            <div style="flex:1;">
+              <div class="sr-name">Orc War Chief</div>
+              <div class="sr-type">Humanoid · CR 4 · 93 HP · AC 16</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;">
+              <div style="font-size:10px;color:var(--text-muted);">Add as:</div>
+              <div style="display:flex;gap:4px;">
+                <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-sm);border:1px solid var(--dm-border);color:var(--dm);cursor:pointer;background:var(--dm-subtle);">Boss</span>
+                <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-sm);border:1px solid var(--border);color:var(--text-muted);cursor:pointer;">Ally</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /screens-grid -->
+</body>
+</html>
