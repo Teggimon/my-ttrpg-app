@@ -13,19 +13,29 @@ function hpColour(pct) {
   return 'var(--hp-low)'
 }
 
-// ─── Character Card ───────────────────────────────────────────────────────────
+function classLine(char) {
+  return (char.identity?.class ?? []).map(c => `${c.name} ${c.level}`).join(' / ')
+}
+
+// ── Character Card ──────────────────────────────────────────
 
 function CharCard({ char, onClick, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const pct = hpPercent(char)
-  const cls = char.identity.class?.[0]
-  const subtitle = [char.identity.race, cls ? `${cls.name} ${cls.level}` : ''].filter(Boolean).join(' · ')
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [menuOpen])
 
   return (
     <div className="char-card" onClick={onClick}>
-      {/* Portrait area */}
+      {/* Portrait */}
       <div className="char-card-portrait">
-        {char.identity.portrait
+        {char.identity?.portrait
           ? <img src={char.identity.portrait} alt={char.identity.name} className="char-card-img" />
           : <span className="char-card-placeholder">⚔️</span>
         }
@@ -34,20 +44,17 @@ function CharCard({ char, onClick, onDelete }) {
       {/* Info */}
       <div className="char-card-body">
         <div className="char-card-name">{char.identity.name}</div>
-        <div className="char-card-sub">{subtitle}</div>
+        <div className="char-card-sub">{char.identity.race} · {classLine(char)}</div>
 
-        {/* HP bar */}
         <div className="char-card-hp-row">
-          <span className="char-card-hp-val" style={{ fontFamily: 'var(--font-mono)' }}>
-            {char.combat.hpCurrent}/{char.combat.hpMax}
-          </span>
+          <span className="char-card-hp-val">{char.combat.hpCurrent}/{char.combat.hpMax}</span>
           <span className="char-card-ac">AC {char.combat.ac}</span>
         </div>
+
         <div className="char-card-hp-track">
           <div className="char-card-hp-fill" style={{ width: `${pct}%`, background: hpColour(pct) }} />
         </div>
 
-        {/* Conditions */}
         {char.combat?.conditions?.length > 0 && (
           <div className="char-card-conditions">
             {char.combat.conditions.slice(0, 2).map(c => (
@@ -60,7 +67,7 @@ function CharCard({ char, onClick, onDelete }) {
         )}
       </div>
 
-      {/* Context menu button */}
+      {/* Context menu */}
       <button
         className="char-card-menu-btn"
         onClick={e => { e.stopPropagation(); setMenuOpen(o => !o) }}
@@ -72,7 +79,7 @@ function CharCard({ char, onClick, onDelete }) {
           <button className="char-menu-item" onClick={() => { setMenuOpen(false); onClick() }}>
             ✏️ Edit Character
           </button>
-          <button className="char-menu-item danger" onClick={() => { setMenuOpen(false); onDelete(char) }}>
+          <button className="char-menu-item char-menu-item--danger" onClick={() => { setMenuOpen(false); onDelete(char) }}>
             🗑️ Delete
           </button>
         </div>
@@ -81,7 +88,7 @@ function CharCard({ char, onClick, onDelete }) {
   )
 }
 
-// ─── New Character Card ───────────────────────────────────────────────────────
+// ── New Character Card ──────────────────────────────────────
 
 function NewCharCard({ onClick }) {
   return (
@@ -94,20 +101,19 @@ function NewCharCard({ onClick }) {
   )
 }
 
-// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
+// ── Delete Confirm ──────────────────────────────────────────
 
 function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="modal-sheet" onClick={e => e.stopPropagation()}>
+        <div className="modal-handle" />
         <p className="modal-title">Delete {char.identity.name}?</p>
-        <p className="modal-body">
-          This removes the character from your repo. This cannot be undone.
-        </p>
+        <p className="modal-body">This removes the character file from your repo. This cannot be undone.</p>
         <div className="modal-actions">
-          <button className="btn btn--ghost" onClick={onCancel}>Cancel</button>
-          <button className="btn btn--danger" onClick={onConfirm} disabled={loading}>
-            {loading ? 'Deleting...' : 'Delete'}
+          <button className="home-btn home-btn--ghost" onClick={onCancel}>Cancel</button>
+          <button className="home-btn home-btn--danger" onClick={onConfirm} disabled={loading}>
+            {loading ? 'Deleting…' : 'Delete'}
           </button>
         </div>
       </div>
@@ -115,60 +121,37 @@ function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
   )
 }
 
-// ─── GM Strip (home page preview) ────────────────────────────────────────────
+// ── Main Home ───────────────────────────────────────────────
 
-function GMStrip({ onOpen }) {
-  return (
-    <div className="gm-strip" onClick={onOpen}>
-      <div className="gm-strip-left">
-        <span className="gm-strip-icon">⚔️</span>
-        <div>
-          <div className="gm-strip-title">Party Dashboard</div>
-          <div className="gm-strip-sub">Track your party live · GM mode</div>
-        </div>
-      </div>
-      <span className="gm-strip-arrow">→</span>
-    </div>
-  )
-}
-
-// ─── Main Home ────────────────────────────────────────────────────────────────
-
-export default function Home({ token, user, isGM, onCreateCharacter, onSelectCharacter, onOpenGMDashboard }) {
+export default function Home({ token, user, isGM: isGMProp, onCreateCharacter, onSelectCharacter, onOpenGMDashboard, onLogout }) {
   const [characters, setCharacters] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [gmMode, setGmMode] = useState(isGM)
+  const [gmMode, setGmMode]         = useState(isGMProp)
 
-  const octokit = new Octokit({ auth: token })
+  const octokit  = new Octokit({ auth: token })
   const repoName = localStorage.getItem('character_repo')
 
-  useEffect(() => {
-    loadCharacters()
-  }, [])
+  useEffect(() => { loadCharacters() }, [])
 
   const loadCharacters = async () => {
     setLoading(true)
     try {
-      const { data } = await octokit.repos.getContent({
-        owner: user.login,
-        repo: repoName,
-        path: 'characters',
+      const { data: files } = await octokit.repos.getContent({
+        owner: user.login, repo: repoName, path: 'characters',
       })
-      const files = await Promise.all(
-        data
+      const loaded = await Promise.all(
+        files
           .filter(f => f.name.endsWith('.json'))
           .map(async f => {
             const { data: fd } = await octokit.repos.getContent({
-              owner: user.login,
-              repo: repoName,
-              path: f.path,
+              owner: user.login, repo: repoName, path: f.path,
             })
-            return { ...JSON.parse(atob(fd.content)), _fileName: f.name }
+            return { ...JSON.parse(atob(fd.content.replace(/\s/g, ''))), _fileName: f.name }
           })
       )
-      setCharacters(files)
+      setCharacters(loaded)
     } catch {
       setCharacters([])
     }
@@ -180,18 +163,16 @@ export default function Home({ token, user, isGM, onCreateCharacter, onSelectCha
     setDeleteLoading(true)
     try {
       const { data: fd } = await octokit.repos.getContent({
-        owner: user.login,
-        repo: repoName,
+        owner: user.login, repo: repoName,
         path: `characters/${confirmDelete._fileName}`,
       })
       await octokit.repos.deleteFile({
-        owner: user.login,
-        repo: repoName,
+        owner: user.login, repo: repoName,
         path: `characters/${confirmDelete._fileName}`,
         message: `Delete character: ${confirmDelete.identity.name}`,
         sha: fd.sha,
       })
-      setCharacters(prev => prev.filter(c => c.meta.characterId !== confirmDelete.meta.characterId))
+      setCharacters(prev => prev.filter(c => c.meta?.characterId !== confirmDelete.meta?.characterId))
       setConfirmDelete(null)
     } catch {
       alert('Failed to delete character.')
@@ -202,11 +183,12 @@ export default function Home({ token, user, isGM, onCreateCharacter, onSelectCha
   const toggleGM = () => {
     const next = !gmMode
     setGmMode(next)
-    localStorage.setItem('is_gm', next)
+    localStorage.setItem('is_gm', String(next))
   }
 
   return (
     <div className="home">
+
       {/* ── Header ── */}
       <header className="home-header">
         <div className="home-header-left">
@@ -217,43 +199,50 @@ export default function Home({ token, user, isGM, onCreateCharacter, onSelectCha
           <div className="gm-toggle-wrap">
             <span className="gm-toggle-label">GM</span>
             <button
-              className={`gm-toggle ${gmMode ? 'gm-toggle--on' : ''}`}
+              className={`gm-toggle${gmMode ? ' gm-toggle--on' : ''}`}
               onClick={toggleGM}
               aria-label="Toggle GM mode"
             >
               <span className="gm-toggle-knob" />
             </button>
           </div>
-          <div className="home-avatar">
-            {user.avatar_url
-              ? <img src={user.avatar_url} alt={user.login} className="avatar-img" />
-              : <span>{user.login[0].toUpperCase()}</span>
-            }
-          </div>
+          {user.avatar_url
+            ? <img src={user.avatar_url} alt={user.login} className="home-avatar" onClick={onLogout} title="Log out" />
+            : <div className="home-avatar home-avatar--initial" onClick={onLogout} title="Log out">{user.login[0].toUpperCase()}</div>
+          }
         </div>
       </header>
 
-      {/* ── GM Dashboard strip ── */}
+      {/* ── GM Party Dashboard strip ── */}
       {gmMode && (
         <div className="home-section">
-          <GMStrip onOpen={onOpenGMDashboard} />
+          <div className="gm-strip" onClick={onOpenGMDashboard}>
+            <div className="gm-strip-left">
+              <span className="gm-strip-icon">⚔️</span>
+              <div>
+                <div className="gm-strip-title">Party Dashboard</div>
+                <div className="gm-strip-sub">Track your party live · GM mode</div>
+              </div>
+            </div>
+            <span className="gm-strip-arrow">→</span>
+          </div>
         </div>
       )}
 
       {/* ── My Characters ── */}
-      <div className="home-section">
+      <div className="home-section home-section--scroll">
         <h2 className="home-section-title">My Characters</h2>
 
         {loading ? (
           <div className="home-loading">
-            <div className="home-loading-spinner" />
-            <span>Loading characters…</span>
+            <div className="home-spinner" />
+            Loading characters…
           </div>
         ) : (
           <div className="char-grid">
             {characters.map(char => (
               <CharCard
-                key={char.meta.characterId}
+                key={char.meta?.characterId ?? char._fileName}
                 char={char}
                 onClick={() => onSelectCharacter(char)}
                 onDelete={setConfirmDelete}
@@ -264,7 +253,7 @@ export default function Home({ token, user, isGM, onCreateCharacter, onSelectCha
         )}
       </div>
 
-      {/* ── Delete confirm ── */}
+      {/* ── Delete confirm modal ── */}
       {confirmDelete && (
         <ConfirmDelete
           char={confirmDelete}

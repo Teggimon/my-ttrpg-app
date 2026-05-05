@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dungeon">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTRPG Sheet — Campaign Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base:#0e0d1a; --bg-surface:#13122a; --bg-elevated:#1c1b35; --bg-inset:#0a0915;
+    --border:#26244a; --border-strong:#36336a;
+    --text-primary:#eeedf8; --text-secondary:#8885aa; --text-muted:#45426a; --text-inverse:#0e0d1a;
+    --accent:#7c6ff5; --accent-hover:#9b90ff; --accent-subtle:rgba(124,111,245,0.15);
+    --hp-high:#4ade80; --hp-mid:#f59e0b; --hp-low:#f87171;
+    --success:#4ade80; --warning:#f59e0b; --danger:#f87171;
+    --shadow-md:0 8px 32px rgba(0,0,0,0.7);
+    --shadow-sm:0 2px 8px rgba(0,0,0,0.5);
+    --font-body:'Nunito',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+    --r-sm:4px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
+    --dm:#e05252; --dm-hover:#f07070; --dm-subtle:rgba(224,82,82,0.12); --dm-border:rgba(224,82,82,0.38);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg-base);color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px;}
+  .mockup-label{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;color:var(--text-muted);text-transform:uppercase;margin-bottom:16px;}
+
+  .app{width:100%;max-width:1100px;background:var(--bg-base);border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--dm-border);box-shadow:0 0 0 1px var(--dm-border),var(--shadow-md);display:flex;flex-direction:column;}
+
+  /* ── Header ── */
+  .app-header{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;background:linear-gradient(90deg,rgba(224,82,82,0.07) 0%,var(--bg-surface) 55%);border-bottom:1px solid var(--dm-border);gap:12px;}
+  .back-btn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text-muted);cursor:pointer;transition:color 150ms;white-space:nowrap;flex-shrink:0;}
+  .back-btn:hover{color:var(--dm-hover);}
+  .campaign-title-wrap{flex:1;min-width:0;text-align:center;}
+  .campaign-title{font-family:'Outfit',var(--font-body);font-size:17px;font-weight:800;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .campaign-subtitle{font-size:11px;color:var(--text-muted);margin-top:1px;}
+  .header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .start-session-btn{display:flex;align-items:center;gap:6px;background:var(--dm);color:#fff;border:none;border-radius:var(--r-md);padding:7px 14px;font-family:var(--font-body);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background 150ms;box-shadow:0 0 10px rgba(224,82,82,0.3);}
+  .start-session-btn:hover{background:var(--dm-hover);}
+  .icon-btn{width:32px;height:32px;border-radius:var(--r-md);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;flex-shrink:0;}
+
+  /* ── Body — left sidebar + right content ── */
+  .campaign-body{display:flex;min-height:680px;}
+
+  /* ── Left sidebar — campaign stats ── */
+  .campaign-sidebar{width:clamp(180px,22%,240px);flex-shrink:0;background:var(--bg-surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 14px;gap:18px;}
+
+  .sidebar-stat{display:flex;flex-direction:column;gap:3px;}
+  .sidebar-stat-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);}
+  .sidebar-stat-value{font-family:var(--font-mono);font-size:18px;font-weight:500;color:var(--text-primary);line-height:1;}
+  .sidebar-stat-sub{font-size:11px;color:var(--text-secondary);}
+
+  .sidebar-divider{height:1px;background:var(--border);margin:0 -14px;}
+
+  /* Live session indicator in sidebar */
+  .live-session-card{background:var(--dm-subtle);border:1px solid var(--dm-border);border-radius:var(--r-md);padding:10px 12px;display:flex;flex-direction:column;gap:6px;}
+  .live-session-header{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--dm-hover);}
+  .live-dot{width:7px;height:7px;border-radius:50%;background:var(--dm);animation:pulse 1.4s ease-in-out infinite;flex-shrink:0;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .live-session-info{font-size:11px;color:var(--text-secondary);font-family:var(--font-mono);}
+  .resume-btn{background:var(--dm);color:#fff;border:none;border-radius:var(--r-sm);padding:6px 10px;font-family:var(--font-body);font-size:11px;font-weight:700;cursor:pointer;width:100%;transition:background 150ms;}
+  .resume-btn:hover{background:var(--dm-hover);}
+
+  /* ── Right panel — tabbed ── */
+  .campaign-right{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+  /* Tab bar */
+  .tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg-surface);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+  .tab-bar::-webkit-scrollbar{display:none;}
+  .tab-btn{display:flex;align-items:center;gap:7px;padding:12px 18px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all 150ms;flex-shrink:0;}
+  .tab-btn:hover{color:var(--text-secondary);}
+  .tab-btn.active{color:var(--dm);border-bottom-color:var(--dm);}
+  .tab-icon{font-size:14px;}
+
+  /* Tab content */
+  .tab-content{flex:1;overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:flex;flex-direction:column;gap:18px;}
+
+  /* Section header */
+  .section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .section-title{font-family:'Outfit',var(--font-body);font-size:14px;font-weight:700;}
+  .section-lbl{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding-bottom:6px;border-bottom:1px solid var(--border);flex:1;margin-right:12px;}
+  .add-btn{font-size:11px;font-weight:700;color:var(--dm);background:var(--dm-subtle);border:1px solid var(--dm-border);border-radius:var(--r-sm);padding:4px 10px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 150ms;}
+  .add-btn:hover{background:var(--dm);color:#fff;}
+
+  /* ── SESSION ROWS ── */
+  .session-row{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:8px;transition:border-color 150ms;cursor:pointer;}
+  .session-row:hover{border-color:var(--border-strong);}
+  .session-row.live-session{border-color:var(--dm-border);background:linear-gradient(90deg,rgba(224,82,82,0.05) 0%,var(--bg-surface) 50%);}
+  .session-row-head{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+  .session-num{font-family:var(--font-mono);font-size:20px;font-weight:500;color:var(--text-muted);min-width:36px;text-align:center;flex-shrink:0;}
+  .session-row.live-session .session-num{color:var(--dm);}
+  .session-info{flex:1;min-width:0;}
+  .session-name{font-size:14px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .session-meta{display:flex;align-items:center;gap:10px;margin-top:3px;flex-wrap:wrap;}
+  .smeta{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);display:flex;align-items:center;gap:3px;}
+  .session-status{font-size:11px;font-weight:700;font-family:var(--font-mono);flex-shrink:0;white-space:nowrap;}
+  .status-live{color:var(--dm);}
+  .status-done{color:var(--success);}
+  .session-row-detail{display:none;padding:0 14px 12px;border-top:1px solid var(--border);background:var(--bg-inset);}
+  .session-row.expanded .session-row-detail{display:block;}
+
+  /* Encounter mini-list inside session */
+  .encounter-list{display:flex;flex-direction:column;gap:5px;padding-top:10px;}
+  .encounter-row{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color 150ms;}
+  .encounter-row:hover{border-color:var(--dm-border);}
+  .enc-name{font-size:13px;font-weight:600;flex:1;}
+  .enc-meta{font-size:11px;color:var(--text-muted);font-family:var(--font-mono);}
+  .enc-outcome{font-size:11px;font-weight:700;font-family:var(--font-mono);}
+  .enc-win{color:var(--success);}
+  .enc-loss{color:var(--danger);}
+
+  /* Players present in session */
+  .player-chips{display:flex;flex-wrap:wrap;gap:6px;padding-top:10px;}
+  .player-chip{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:var(--r-full);padding:3px 10px;font-size:11px;font-weight:600;color:var(--text-secondary);display:flex;align-items:center;gap:5px;}
+  .player-chip.absent{opacity:0.45;text-decoration:line-through;}
+
+  /* Add session dashed */
+  .add-session-row{background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);transition:all 150ms;}
+  .add-session-row:hover{border-color:var(--dm);color:var(--dm);background:var(--dm-subtle);}
+
+  /* ── PARTY TAB ── */
+  .party-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+  .party-card{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;cursor:pointer;transition:all 180ms;}
+  .party-card:hover{border-color:var(--border-strong);transform:translateY(-1px);}
+  .party-portrait{width:100%;aspect-ratio:3/2;background:linear-gradient(145deg,var(--bg-elevated),var(--bg-inset));display:flex;align-items:center;justify-content:center;font-size:28px;border-bottom:1px solid var(--border);position:relative;}
+  .party-portrait::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+  .party-card.ranger .party-portrait::before{background:#4ade80;}
+  .party-card.wizard .party-portrait::before{background:#818cf8;}
+  .party-card.rogue  .party-portrait::before{background:#f59e0b;}
+  .hp-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--bg-inset);}
+  .hp-fill{height:100%;}
+  .online-dot{position:absolute;bottom:8px;right:8px;width:8px;height:8px;border-radius:50%;background:var(--success);border:2px solid var(--bg-surface);box-shadow:0 0 5px rgba(74,222,128,0.6);}
+  .party-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:3px;}
+  .party-name{font-family:'Outfit',var(--font-body);font-size:13px;font-weight:800;line-height:1.1;}
+  .party-class{font-size:10px;color:var(--text-secondary);font-weight:600;}
+  .party-stats{display:flex;align-items:center;gap:6px;margin-top:3px;}
+  .party-hp{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);}
+  .party-hp span{color:var(--text-primary);}
+  .party-lv{margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--accent);background:var(--accent-subtle);border:1px solid rgba(124,111,245,0.3);border-radius:var(--r-full);padding:1px 6px;}
+  .party-owner{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);}
+
+  /* ── PARTY TAB — player blocks ── */
+  .player-block {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    margin-bottom: 10px;
+    transition: border-color 150ms;
+  }
+  .player-block:last-child { margin-bottom: 0; }
+
+  .player-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-elevated);
+    gap: 10px;
+  }
+  .player-block-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .player-avatar {
+    width: 32px; height: 32px;
+    border-radius: var(--r-full);
+    background: var(--bg-inset);
+    border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .player-block-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+  .player-block-github {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+  .online-pip {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 5px rgba(74,222,128,0.6);
+    flex-shrink: 0;
+  }
+  .player-manage-btn {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+    padding: 4px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 150ms;
+  }
+  .player-manage-btn:hover { color: var(--dm); border-color: var(--dm-border); }
+
+  .player-chars {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* Character row within a player block */
+  .party-char-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    transition: border-color 150ms;
+  }
+  .party-char-card.active-char { border-color: var(--border-strong); }
+  .party-char-card.inactive-char { border-style: dashed; }
+
+  .char-portrait-sm {
+    font-size: 22px;
+    width: 36px; height: 36px;
+    border-radius: var(--r-md);
+    background: var(--bg-inset);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .char-info-block { flex: 1; min-width: 0; }
+  .char-name-sm {
+    font-size: 13px; font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .char-class-sm {
+    font-size: 11px; color: var(--text-secondary);
+    margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .char-hp-sm {
+    display: flex; align-items: center; gap: 8px; margin-top: 5px;
+  }
+  .hp-pip-bar {
+    flex: 1; height: 3px;
+    background: var(--bg-inset);
+    border-radius: var(--r-full);
+    overflow: hidden;
+  }
+  .hp-pip-fill { height: 100%; border-radius: var(--r-full); }
+  .hp-text {
+    font-family: var(--font-mono);
+    font-size: 10px; color: var(--text-muted);
+    white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* Active / Inactive badge */
+  .char-active-badge {
+    font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: var(--r-full);
+    white-space: nowrap; flex-shrink: 0;
+    cursor: pointer; transition: all 150ms;
+    font-family: var(--font-body);
+    border: 1px solid;
+  }
+  .char-active-badge.active {
+    color: var(--success);
+    background: rgba(74,222,128,0.1);
+    border-color: rgba(74,222,128,0.35);
+  }
+  .char-active-badge.inactive {
+    color: var(--text-muted);
+    background: transparent;
+    border-color: var(--border);
+  }
+  .char-active-badge:hover { opacity: 0.75; }
+
+  /* ── ADD PLAYER MODAL ── */
+  .modal-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-backdrop.open { display: flex; }
+
+  .add-player-modal {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    padding: 20px 20px 36px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: var(--shadow-md);
+    animation: slideUp 220ms ease-out;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  @keyframes slideUp { from{transform:translateY(30px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+
+  .modal-handle { width: 36px; height: 4px; background: var(--border-strong); border-radius: var(--r-full); margin: 0 auto; }
+  .modal-title { font-family: 'Outfit', var(--font-body); font-size: 17px; font-weight: 800; }
+  .modal-sub { font-size: 12px; color: var(--text-secondary); margin-top: -10px; }
+
+  /* GitHub username input */
+  .github-input-row {
+    display: flex;
+    gap: 8px;
+  }
+  .github-input {
+    flex: 1;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--r-md);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 150ms;
+  }
+  .github-input::placeholder { color: var(--text-muted); font-family: var(--font-body); font-style: italic; }
+  .github-input:focus { border-color: var(--dm); }
+  .fetch-btn {
+    background: var(--dm);
+    color: #fff;
+    border: none;
+    border-radius: var(--r-md);
+    padding: 10px 16px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 150ms;
+  }
+  .fetch-btn:hover { background: var(--dm-hover); }
+
+  /* Fetched characters list */
+  .fetched-section-label {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .fetched-char-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-md);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 150ms;
+    user-select: none;
+  }
+  .fetched-char-row:hover { border-color: var(--border-strong); }
+  .fetched-char-row.selected {
+    border-color: var(--dm);
+    background: var(--dm-subtle);
+  }
+  .fetched-char-row:last-child { margin-bottom: 0; }
+
+  .fetched-char-icon { font-size: 22px; flex-shrink: 0; }
+  .fetched-char-info { flex: 1; min-width: 0; }
+  .fetched-char-name { font-size: 13px; font-weight: 700; }
+  .fetched-char-class { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+  /* Active / Inactive toggle on fetched row */
+  .fetched-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .status-toggle {
+    font-size: 10px; font-weight: 700;
+    padding: 3px 9px; border-radius: var(--r-full);
+    cursor: pointer; border: 1px solid;
+    font-family: var(--font-body);
+    transition: all 150ms;
+  }
+  .status-toggle.active { color: var(--success); background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.35); }
+  .status-toggle.inactive { color: var(--text-muted); background: transparent; border-color: var(--border); }
+  .in-campaign-note { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-confirm {
+    flex: 1; background: var(--dm); color: #fff;
+    border: none; border-radius: var(--r-md);
+    padding: 12px; font-family: var(--font-body);
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: background 150ms;
+  }
+  .modal-confirm:hover { background: var(--dm-hover); }
+  .modal-cancel {
+    background: var(--bg-surface); color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 12px 18px; font-family: var(--font-body);
+    font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+
+  /* ── NPC TAB ── */
+  .npc-row{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);padding:11px 14px;display:flex;align-items:center;gap:12px;margin-bottom:6px;cursor:pointer;transition:border-color 150ms;}
+  .npc-row:hover{border-color:var(--border-strong);}
+  .npc-row.boss{border-color:var(--dm-border);background:linear-gradient(90deg,rgba(224,82,82,0.05),var(--bg-surface) 50%);}
+  .npc-icon{font-size:20px;flex-shrink:0;}
+  .npc-info{flex:1;min-width:0;}
+  .npc-name{font-size:14px;font-weight:700;}
+  .npc-type{font-size:11px;color:var(--text-secondary);}
+  .npc-badges{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;}
+  .nbadge{background:var(--bg-elevated);border:1px solid var(--border-strong);border-radius:var(--r-sm);padding:3px 8px;font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);white-space:nowrap;}
+  .nbadge.dm-accent{color:var(--dm);border-color:var(--dm-border);background:var(--dm-subtle);}
+
+  .add-npc-row{background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:12px 14px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);transition:all 150ms;}
+  .add-npc-row:hover{border-color:var(--dm);color:var(--dm);background:var(--dm-subtle);}
+
+  /* ── NOTES TAB ── */
+  .note-section{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;margin-bottom:8px;}
+  .note-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px 0;}
+  .note-lbl{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);flex:1;}
+  .note-lock{font-size:11px;color:var(--text-muted);opacity:.6;}
+  .note-chevron{width:22px;height:22px;border-radius:var(--r-sm);background:transparent;border:none;color:var(--text-muted);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;transition:all 150ms;}
+  .note-chevron:hover{color:var(--text-secondary);}
+  .note-section.collapsed .note-chevron{transform:rotate(-90deg);}
+  .note-textarea{width:100%;background:transparent;border:none;outline:none;resize:none;color:var(--text-secondary);font-family:var(--font-body);font-size:13px;line-height:1.7;padding:8px 14px 14px;min-height:90px;}
+  .note-textarea::placeholder{color:var(--text-muted);font-style:italic;}
+  .note-textarea:focus{color:var(--text-primary);}
+  .note-section.collapsed .note-textarea{display:none;}
+  .note-label-input{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary);background:transparent;border:none;outline:none;flex:1;font-family:var(--font-body);}
+  .note-label-input::placeholder{color:var(--text-muted);}
+  .note-delete{width:22px;height:22px;background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);transition:all 150ms;}
+  .note-delete:hover{color:var(--danger);}
+  .add-note-btn{display:flex;align-items:center;justify-content:center;gap:6px;background:transparent;border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:11px;font-size:12px;font-weight:600;color:var(--text-muted);cursor:pointer;width:100%;transition:all 150ms;}
+  .add-note-btn:hover{border-color:var(--dm);color:var(--dm);}
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Campaign Home · The Fellowship · Sessions / Party / NPCs / Notes tabs</div>
+
+<div class="app">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="back-btn" onclick="history.back()">← Campaigns</div>
+    <div class="campaign-title-wrap">
+      <div class="campaign-title">The Fellowship</div>
+      <div class="campaign-subtitle">Campaign · Session 14 in progress</div>
+    </div>
+    <div class="header-actions">
+      <button class="start-session-btn">▶ Start Session 15</button>
+      <div class="icon-btn" title="Settings">⚙</div>
+    </div>
+  </div>
+
+  <div class="campaign-body">
+
+    <!-- Left sidebar — campaign stats -->
+    <div class="campaign-sidebar">
+
+      <!-- Live session card -->
+      <div class="live-session-card">
+        <div class="live-session-header">
+          <div class="live-dot"></div>
+          Session 14 Live
+        </div>
+        <div class="live-session-info">04:22 elapsed<br>Round 8 · 0:48 in-game</div>
+        <button class="resume-btn">▶ Resume</button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-stat">
+        <div class="sidebar-stat-label">Sessions</div>
+        <div class="sidebar-stat-value">14</div>
+        <div class="sidebar-stat-sub">Since Jan 2026</div>
+      </div>
+
+      <div class="sidebar-stat">
+        <div class="sidebar-stat-label">Party Size</div>
+        <div class="sidebar-stat-value">4</div>
+        <div class="sidebar-stat-sub">Players</div>
+      </div>
+
+      <div class="sidebar-stat">
+        <div class="sidebar-stat-label">Party Level</div>
+        <div class="sidebar-stat-value">10</div>
+        <div class="sidebar-stat-sub">Avg across party</div>
+      </div>
+
+      <div class="sidebar-stat">
+        <div class="sidebar-stat-label">Encounters</div>
+        <div class="sidebar-stat-value">31</div>
+        <div class="sidebar-stat-sub">Across all sessions</div>
+      </div>
+
+      <div class="sidebar-stat">
+        <div class="sidebar-stat-label">Total Play Time</div>
+        <div class="sidebar-stat-value">47h</div>
+        <div class="sidebar-stat-sub">Real world</div>
+      </div>
+
+    </div>
+
+    <!-- Right — tabbed content -->
+    <div class="campaign-right">
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <div class="tab-btn active" onclick="switchTab('sessions', this)"><span class="tab-icon">📅</span> Sessions</div>
+        <div class="tab-btn" onclick="switchTab('party', this)"><span class="tab-icon">👥</span> Party</div>
+        <div class="tab-btn" onclick="switchTab('npcs', this)"><span class="tab-icon">👹</span> NPCs & Monsters</div>
+        <div class="tab-btn" onclick="switchTab('notes', this)"><span class="tab-icon">📝</span> Campaign Notes</div>
+      </div>
+
+      <div class="tab-content">
+
+        <!-- ══ SESSIONS TAB ══ -->
+        <div class="tab-panel active" id="tab-sessions">
+
+          <!-- Live session -->
+          <div class="session-row live-session expanded" id="sr-14">
+            <div class="session-row-head" onclick="togSession('sr-14')">
+              <div class="session-num">14</div>
+              <div class="session-info">
+                <div class="session-name">Session 14 — The Mines of Moria</div>
+                <div class="session-meta">
+                  <span class="smeta">📅 Today</span>
+                  <span class="smeta">⏱ 04:22 elapsed</span>
+                  <span class="smeta">👥 4 / 4 present</span>
+                  <span class="smeta">⚔️ 3 encounters</span>
+                </div>
+              </div>
+              <div class="session-status status-live">● LIVE</div>
+            </div>
+            <div class="session-row-detail">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:10px;margin-bottom:6px;">Players Present</div>
+              <div class="player-chips">
+                <div class="player-chip">🧙 Aragorn <span style="color:var(--text-muted)">@aragorn_ii</span></div>
+                <div class="player-chip">🧝 Frodo <span style="color:var(--text-muted)">@frodo_b</span></div>
+                <div class="player-chip">🧝‍♂️ Legolas <span style="color:var(--text-muted)">@greenleaf</span></div>
+                <div class="player-chip">🧔 Gimli <span style="color:var(--text-muted)">@axe_lord</span></div>
+              </div>
+              <div class="encounter-list">
+                <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;">Encounters</div>
+                <div class="encounter-row">
+                  <span class="enc-name">Cave Troll + Goblins</span>
+                  <span class="enc-meta">Round 6 · 0:36</span>
+                  <span class="enc-outcome enc-win">Victory</span>
+                </div>
+                <div class="encounter-row">
+                  <span class="enc-name">Watcher in the Water</span>
+                  <span class="enc-meta">Round 4 · 0:24</span>
+                  <span class="enc-outcome enc-win">Fled</span>
+                </div>
+                <div class="encounter-row" style="border-color:var(--dm-border);background:rgba(224,82,82,0.04);">
+                  <span class="enc-name">Orc Pursuit — Bridge of Khazad-dûm</span>
+                  <span class="enc-meta">Round 8 · 0:48 — IN PROGRESS</span>
+                  <span class="enc-outcome" style="color:var(--dm);">● Live</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Past sessions -->
+          <div class="session-row" id="sr-13">
+            <div class="session-row-head" onclick="togSession('sr-13')">
+              <div class="session-num">13</div>
+              <div class="session-info">
+                <div class="session-name">Session 13 — Lothlórien</div>
+                <div class="session-meta">
+                  <span class="smeta">📅 3 days ago</span>
+                  <span class="smeta">⏱ 3h 42m</span>
+                  <span class="smeta">👥 4 / 4 present</span>
+                  <span class="smeta">⚔️ 5 encounters</span>
+                </div>
+              </div>
+              <div class="session-status status-done">✓ Done</div>
+            </div>
+            <div class="session-row-detail">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:10px;margin-bottom:6px;">Players Present</div>
+              <div class="player-chips">
+                <div class="player-chip">🧙 Aragorn</div>
+                <div class="player-chip">🧝 Frodo</div>
+                <div class="player-chip">🧝‍♂️ Legolas</div>
+                <div class="player-chip absent">🧔 Gimli — Absent</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="session-row" id="sr-12">
+            <div class="session-row-head" onclick="togSession('sr-12')">
+              <div class="session-num">12</div>
+              <div class="session-info">
+                <div class="session-name">Session 12 — The Breaking of the Fellowship</div>
+                <div class="session-meta">
+                  <span class="smeta">📅 1 week ago</span>
+                  <span class="smeta">⏱ 4h 01m</span>
+                  <span class="smeta">👥 3 / 4 present</span>
+                  <span class="smeta">⚔️ 4 encounters</span>
+                </div>
+              </div>
+              <div class="session-status status-done">✓ Done</div>
+            </div>
+            <div class="session-row-detail">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-top:10px;margin-bottom:6px;">Players Present</div>
+              <div class="player-chips">
+                <div class="player-chip">🧙 Aragorn</div>
+                <div class="player-chip">🧝 Frodo</div>
+                <div class="player-chip absent">🧝‍♂️ Legolas — Absent</div>
+                <div class="player-chip">🧔 Gimli</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="add-session-row" onclick="alert('Start Session 15')">
+            + Start Session 15
+          </div>
+        </div>
+
+        <!-- ══ PARTY TAB ══ -->
+        <div class="tab-panel" id="tab-party">
+
+          <!-- Add Player button -->
+          <div style="display:flex;justify-content:flex-end;margin-bottom:4px;">
+            <button class="add-btn" onclick="openAddPlayer()">+ Add Player</button>
+          </div>
+
+          <!-- Player 1 — Aragorn_II — one active character -->
+          <div class="player-block">
+            <div class="player-block-header">
+              <div class="player-block-user">
+                <div class="player-avatar">👤</div>
+                <div>
+                  <div class="player-block-name">Aragorn_II</div>
+                  <div class="player-block-github">@aragorn_ii</div>
+                </div>
+                <div class="online-pip" title="Online"></div>
+              </div>
+              <button class="player-manage-btn" onclick="openAddPlayer('aragorn_ii')">Manage Characters</button>
+            </div>
+            <div class="player-chars">
+              <!-- Active character -->
+              <div class="party-char-card active-char">
+                <div class="char-portrait-sm">🧙</div>
+                <div class="char-info-block">
+                  <div class="char-name-sm">Aragorn</div>
+                  <div class="char-class-sm">Human · Ranger / Fighter · Lv 10</div>
+                  <div class="char-hp-sm">
+                    <div class="hp-pip-bar"><div class="hp-pip-fill" style="width:80%;background:var(--hp-high);"></div></div>
+                    <span class="hp-text">72 / 90 HP</span>
+                  </div>
+                </div>
+                <div class="char-active-badge active">Active</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Player 2 — frodo_b — two characters (one active, one inactive) -->
+          <div class="player-block">
+            <div class="player-block-header">
+              <div class="player-block-user">
+                <div class="player-avatar">👤</div>
+                <div>
+                  <div class="player-block-name">frodo_b</div>
+                  <div class="player-block-github">@frodo_b</div>
+                </div>
+                <div class="online-pip" title="Online"></div>
+              </div>
+              <button class="player-manage-btn" onclick="openAddPlayer('frodo_b')">Manage Characters</button>
+            </div>
+            <div class="player-chars">
+              <!-- Active character -->
+              <div class="party-char-card active-char">
+                <div class="char-portrait-sm">🧝</div>
+                <div class="char-info-block">
+                  <div class="char-name-sm">Frodo Baggins</div>
+                  <div class="char-class-sm">Hobbit · Rogue · Lv 7</div>
+                  <div class="char-hp-sm">
+                    <div class="hp-pip-bar"><div class="hp-pip-fill" style="width:54%;background:var(--hp-mid);"></div></div>
+                    <span class="hp-text">19 / 35 HP</span>
+                  </div>
+                </div>
+                <div class="char-active-badge active">Active</div>
+              </div>
+              <!-- Inactive character — backup -->
+              <div class="party-char-card inactive-char">
+                <div class="char-portrait-sm" style="opacity:0.5;">🧑</div>
+                <div class="char-info-block" style="opacity:0.55;">
+                  <div class="char-name-sm">Samwise Gamgee</div>
+                  <div class="char-class-sm">Hobbit · Fighter · Lv 6</div>
+                  <div class="char-hp-sm">
+                    <div class="hp-pip-bar"><div class="hp-pip-fill" style="width:100%;background:var(--hp-high);"></div></div>
+                    <span class="hp-text">52 / 52 HP</span>
+                  </div>
+                </div>
+                <div class="char-active-badge inactive">Inactive</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Player 3 — greenleaf -->
+          <div class="player-block">
+            <div class="player-block-header">
+              <div class="player-block-user">
+                <div class="player-avatar">👤</div>
+                <div>
+                  <div class="player-block-name">greenleaf</div>
+                  <div class="player-block-github">@greenleaf</div>
+                </div>
+                <div class="online-pip" title="Online"></div>
+              </div>
+              <button class="player-manage-btn" onclick="openAddPlayer('greenleaf')">Manage Characters</button>
+            </div>
+            <div class="player-chars">
+              <div class="party-char-card active-char">
+                <div class="char-portrait-sm">🧝‍♂️</div>
+                <div class="char-info-block">
+                  <div class="char-name-sm">Legolas</div>
+                  <div class="char-class-sm">Elf · Ranger · Lv 10</div>
+                  <div class="char-hp-sm">
+                    <div class="hp-pip-bar"><div class="hp-pip-fill" style="width:90%;background:var(--hp-high);"></div></div>
+                    <span class="hp-text">63 / 70 HP</span>
+                  </div>
+                </div>
+                <div class="char-active-badge active">Active</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Player 4 — axe_lord — offline -->
+          <div class="player-block">
+            <div class="player-block-header">
+              <div class="player-block-user">
+                <div class="player-avatar" style="opacity:0.6;">👤</div>
+                <div>
+                  <div class="player-block-name" style="color:var(--text-secondary);">axe_lord</div>
+                  <div class="player-block-github">@axe_lord</div>
+                </div>
+                <!-- no online pip — offline -->
+              </div>
+              <button class="player-manage-btn" onclick="openAddPlayer('axe_lord')">Manage Characters</button>
+            </div>
+            <div class="player-chars">
+              <div class="party-char-card active-char" style="opacity:0.7;">
+                <div class="char-portrait-sm">🧔</div>
+                <div class="char-info-block">
+                  <div class="char-name-sm">Gimli</div>
+                  <div class="char-class-sm">Dwarf · Fighter · Lv 10</div>
+                  <div class="char-hp-sm">
+                    <div class="hp-pip-bar"><div class="hp-pip-fill" style="width:100%;background:var(--hp-high);"></div></div>
+                    <span class="hp-text">88 / 88 HP</span>
+                  </div>
+                </div>
+                <div class="char-active-badge active">Active</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ══ NPCs & MONSTERS TAB ══ -->
+        <div class="tab-panel" id="tab-npcs">
+
+          <div>
+            <div class="section-hdr">
+              <span class="section-lbl">Bosses & Named NPCs</span>
+              <button class="add-btn">+ Add</button>
+            </div>
+            <div class="npc-row boss">
+              <div class="npc-icon">🐉</div>
+              <div class="npc-info">
+                <div class="npc-name">Balrog of Morgoth</div>
+                <div class="npc-type">Demon · Large · CR 20</div>
+              </div>
+              <div class="npc-badges">
+                <span class="nbadge dm-accent">262 HP</span>
+                <span class="nbadge">AC 19</span>
+                <span class="nbadge">+10 Init</span>
+              </div>
+            </div>
+            <div class="npc-row boss">
+              <div class="npc-icon">👁️</div>
+              <div class="npc-info">
+                <div class="npc-name">Saruman the White</div>
+                <div class="npc-type">Humanoid (Wizard) · Medium · CR 18</div>
+              </div>
+              <div class="npc-badges">
+                <span class="nbadge dm-accent">144 HP</span>
+                <span class="nbadge">AC 14</span>
+                <span class="nbadge">+3 Init</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="section-hdr">
+              <span class="section-lbl">Standard Enemies</span>
+              <button class="add-btn">+ Add</button>
+            </div>
+            <div class="npc-row">
+              <div class="npc-icon">👺</div>
+              <div class="npc-info">
+                <div class="npc-name">Orc Warchief</div>
+                <div class="npc-type">Humanoid (Orc) · Medium · CR 4</div>
+              </div>
+              <div class="npc-badges">
+                <span class="nbadge">60 HP</span>
+                <span class="nbadge">AC 16</span>
+                <span class="nbadge">+2 Init</span>
+              </div>
+            </div>
+            <div class="npc-row">
+              <div class="npc-icon">👺</div>
+              <div class="npc-info">
+                <div class="npc-name">Goblin</div>
+                <div class="npc-type">Humanoid (Goblinoid) · Small · CR ¼</div>
+              </div>
+              <div class="npc-badges">
+                <span class="nbadge">7 HP</span>
+                <span class="nbadge">AC 15</span>
+                <span class="nbadge">+2 Init</span>
+              </div>
+            </div>
+            <div class="npc-row">
+              <div class="npc-icon">🧌</div>
+              <div class="npc-info">
+                <div class="npc-name">Cave Troll</div>
+                <div class="npc-type">Giant · Large · CR 5</div>
+              </div>
+              <div class="npc-badges">
+                <span class="nbadge">84 HP</span>
+                <span class="nbadge">AC 13</span>
+                <span class="nbadge">−1 Init</span>
+              </div>
+            </div>
+            <div class="add-npc-row">+ Add enemy</div>
+          </div>
+
+          <div>
+            <div class="section-hdr">
+              <span class="section-lbl">Ally NPCs</span>
+              <button class="add-btn">+ Add</button>
+            </div>
+            <div class="npc-row">
+              <div class="npc-icon">🧙‍♂️</div>
+              <div class="npc-info">
+                <div class="npc-name">Gandalf the Grey</div>
+                <div class="npc-type">Humanoid (Maia) · Medium · CR 15</div>
+              </div>
+              <div class="npc-badges">
+                <span class="nbadge">180 HP</span>
+                <span class="nbadge">AC 15</span>
+              </div>
+            </div>
+            <div class="add-npc-row">+ Add ally NPC</div>
+          </div>
+
+        </div>
+
+        <!-- ══ CAMPAIGN NOTES TAB ══ -->
+        <div class="tab-panel" id="tab-notes">
+
+          <!-- Default locked sections -->
+          <div class="note-section" id="cn-world">
+            <div class="note-hdr">
+              <span class="note-lock">🔒</span>
+              <span class="note-lbl">World & Lore</span>
+              <button class="note-chevron" onclick="togNote('cn-world')">▾</button>
+            </div>
+            <textarea class="note-textarea" placeholder="World building, lore, history…" rows="4">Middle-earth, Third Age. The One Ring has been found by Frodo Baggins in the Shire. The party left Rivendell as the Fellowship of the Ring. Currently in Moria. Gandalf's fate unknown after the Bridge of Khazad-dûm.</textarea>
+          </div>
+
+          <div class="note-section" id="cn-plot">
+            <div class="note-hdr">
+              <span class="note-lock">🔒</span>
+              <span class="note-lbl">Plot Threads</span>
+              <button class="note-chevron" onclick="togNote('cn-plot')">▾</button>
+            </div>
+            <textarea class="note-textarea" placeholder="Active plot threads, hooks, mysteries…" rows="4">[ ] The Ring must reach Mount Doom
+[ ] Saruman has betrayed the White Council — party doesn't know yet
+[ ] Boromir showing signs of corruption — watch for this
+[ ] Aragorn must claim Andúril before facing Sauron</textarea>
+          </div>
+
+          <div class="note-section" id="cn-dm">
+            <div class="note-hdr">
+              <span class="note-lock">🔒</span>
+              <span class="note-lbl">DM Notes (Private)</span>
+              <button class="note-chevron" onclick="togNote('cn-dm')">▾</button>
+            </div>
+            <textarea class="note-textarea" placeholder="Private DM notes — never shared with players…" rows="4">Boromir will attempt to take the Ring from Frodo at Amon Hen — plan this for Session 16.
+The Balrog encounter was a party favourite — lean into dramatic set pieces.
+Need to give Gimli more spotlight — he's been quiet last two sessions.</textarea>
+          </div>
+
+          <!-- Custom section example -->
+          <div class="note-section" id="cn-custom-1">
+            <div class="note-hdr">
+              <input class="note-label-input" value="MAGIC ITEMS GIVEN OUT">
+              <button class="note-delete" title="Delete">✕</button>
+              <button class="note-chevron" onclick="togNote('cn-custom-1')">▾</button>
+            </div>
+            <textarea class="note-textarea" rows="3">Aragorn — Longsword +1 (Session 4)
+Frodo — Mithril Shirt (Session 11)
+Legolas — Arrows of Slaying (Session 9)</textarea>
+          </div>
+
+          <button class="add-note-btn">+ Add section</button>
+
+        </div>
+
+      </div><!-- /tab-content -->
+    </div><!-- /campaign-right -->
+  </div><!-- /campaign-body -->
+</div><!-- /app -->
+
+<!-- Add Player / Manage Characters Modal -->
+<div class="modal-backdrop" id="addPlayerModal" onclick="if(event.target===this)closeModal()">
+  <div class="add-player-modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">Add Player to Campaign</div>
+    <div class="modal-sub" id="modalSub">Enter their GitHub username to fetch their characters</div>
+
+    <!-- Step 1: GitHub username input -->
+    <div id="step-input">
+      <div class="github-input-row">
+        <input class="github-input" id="github-username" placeholder="GitHub username (e.g. frodo_b)" oninput="clearFetched()">
+        <button class="fetch-btn" onclick="fetchChars()">Fetch →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Character list (shown after fetch) -->
+    <div id="step-chars" style="display:none;">
+      <div class="fetched-section-label" id="fetched-label">Characters from @frodo_b</div>
+
+      <!-- Frodo — already in campaign active -->
+      <div class="fetched-char-row" onclick="toggleSelect(this)">
+        <div class="fetched-char-icon">🧝</div>
+        <div class="fetched-char-info">
+          <div class="fetched-char-name">Frodo Baggins</div>
+          <div class="fetched-char-class">Hobbit · Rogue · Lv 7</div>
+        </div>
+        <div class="fetched-status">
+          <span class="in-campaign-note">In campaign</span>
+          <span class="status-toggle active" onclick="event.stopPropagation();toggleStatus(this)">Active</span>
+        </div>
+      </div>
+
+      <!-- Samwise — in campaign inactive -->
+      <div class="fetched-char-row" onclick="toggleSelect(this)">
+        <div class="fetched-char-icon">🧑</div>
+        <div class="fetched-char-info">
+          <div class="fetched-char-name">Samwise Gamgee</div>
+          <div class="fetched-char-class">Hobbit · Fighter · Lv 6</div>
+        </div>
+        <div class="fetched-status">
+          <span class="in-campaign-note">In campaign</span>
+          <span class="status-toggle inactive" onclick="event.stopPropagation();toggleStatus(this)">Inactive</span>
+        </div>
+      </div>
+
+      <!-- Pippin — not in campaign yet -->
+      <div class="fetched-char-row" onclick="toggleSelect(this)">
+        <div class="fetched-char-icon">🧒</div>
+        <div class="fetched-char-info">
+          <div class="fetched-char-name">Pippin Took</div>
+          <div class="fetched-char-class">Hobbit · Bard · Lv 5</div>
+        </div>
+        <div class="fetched-status">
+          <span class="in-campaign-note" style="color:var(--text-muted);opacity:0;">—</span>
+          <span class="status-toggle inactive" onclick="event.stopPropagation();toggleStatus(this)">+ Add</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-confirm" id="modal-confirm-btn" onclick="closeModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function togSession(id) {
+    document.getElementById(id).classList.toggle('expanded');
+  }
+
+  function togNote(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+  }
+
+  function openAddPlayer(username) {
+    const modal = document.getElementById('addPlayerModal');
+    const input = document.getElementById('github-username');
+    const step2 = document.getElementById('step-chars');
+
+    if (username) {
+      // Managing existing player — pre-fill and show chars
+      document.getElementById('modalTitle').textContent = 'Manage Characters — @' + username;
+      document.getElementById('modalSub').textContent = 'Toggle Active/Inactive or add more characters from their account';
+      input.value = username;
+      document.getElementById('fetched-label').textContent = 'Characters from @' + username;
+      step2.style.display = 'block';
+      document.getElementById('modal-confirm-btn').textContent = 'Save Changes';
+    } else {
+      // New player
+      document.getElementById('modalTitle').textContent = 'Add Player to Campaign';
+      document.getElementById('modalSub').textContent = 'Enter their GitHub username to fetch their characters';
+      input.value = '';
+      step2.style.display = 'none';
+      document.getElementById('modal-confirm-btn').textContent = 'Save Changes';
+    }
+
+    modal.classList.add('open');
+  }
+
+  function fetchChars() {
+    const username = document.getElementById('github-username').value.trim();
+    if (!username) return;
+    // In real app: Octokit fetch of user's character repo
+    document.getElementById('fetched-label').textContent = 'Characters from @' + username;
+    document.getElementById('step-chars').style.display = 'block';
+  }
+
+  function clearFetched() {
+    document.getElementById('step-chars').style.display = 'none';
+  }
+
+  function toggleSelect(row) {
+    // Selecting a not-in-campaign char marks it for adding
+    row.classList.toggle('selected');
+  }
+
+  function toggleStatus(badge) {
+    if (badge.classList.contains('active')) {
+      badge.classList.remove('active');
+      badge.classList.add('inactive');
+      badge.textContent = 'Inactive';
+    } else {
+      badge.classList.remove('inactive');
+      badge.classList.add('active');
+      badge.textContent = 'Active';
+    }
+  }
+
+  function closeModal() {
+    document.getElementById('addPlayerModal').classList.remove('open');
+  }
+</script>
+</body>
+</html>
