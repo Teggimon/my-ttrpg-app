@@ -3,7 +3,7 @@ import { Octokit } from '@octokit/rest'
 
 function Onboarding({ token, user, onComplete }) {
   const [step, setStep] = useState(1)
-  const [repoName, setRepoName] = useState('ttrpg-characters')
+  const repoName = 'ttrpg-characters'
   const [isGM, setIsGM] = useState(false)
   const [partyRepoName, setPartyRepoName] = useState('my-party-repo')
   const [loading, setLoading] = useState(false)
