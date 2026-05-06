@@ -393,7 +393,7 @@
 
 /* Name — Cinzel display font as per spec */
 .char-card-name {
-  font-family: var(--font-display);
+  font-family: var(--font-name);
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
