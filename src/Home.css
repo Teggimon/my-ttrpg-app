@@ -93,7 +93,7 @@
 }
 
 .home-wordmark {
-  font-family: var(--font-display);
+  font-family: var(--font-name);
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
