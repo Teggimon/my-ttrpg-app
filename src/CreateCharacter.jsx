@@ -396,18 +396,26 @@ function StepClass({ classes, selected, onSelect, onNext, onBack }) {
 
 // ─── Step 5: Class setup (skills + equipment choices) ─────────────────────────
 
-// Some class data uses broad category names that the SRD splits into sub-categories
-const WEAPON_CATEGORY_MAP = {
-  'martial-weapons': ['martial-melee-weapons', 'martial-ranged-weapons'],
-  'simple-weapons':  ['simple-melee-weapons',  'simple-ranged-weapons'],
+// SRD equipment uses weapon_category/weapon_range/tool_category/gear_category fields
+// rather than hierarchical equipment_category.index values that class data references
+const CATEGORY_FILTERS = {
+  'martial-weapons':        i => i.weapon_category === 'Martial',
+  'martial-melee-weapons':  i => i.weapon_category === 'Martial' && i.weapon_range === 'Melee',
+  'martial-ranged-weapons': i => i.weapon_category === 'Martial' && i.weapon_range === 'Ranged',
+  'simple-weapons':         i => i.weapon_category === 'Simple',
+  'simple-melee-weapons':   i => i.weapon_category === 'Simple'  && i.weapon_range === 'Melee',
+  'simple-ranged-weapons':  i => i.weapon_category === 'Simple'  && i.weapon_range === 'Ranged',
+  'musical-instruments':    i => i.tool_category === 'Musical Instrument',
+  'arcane-foci':            i => i.gear_category?.index === 'arcane-foci',
 }
 
 async function fetchCategoryItems(categoryIndex) {
   try {
     const all = await getEquipment()
-    const aliases = WEAPON_CATEGORY_MAP[categoryIndex] ?? [categoryIndex]
+    const filterFn = CATEGORY_FILTERS[categoryIndex]
+      ?? (i => i.equipment_category?.index === categoryIndex)
     return all
-      .filter(item => aliases.includes(item.equipment_category?.index))
+      .filter(filterFn)
       .map(item => ({ index: item.index, name: item.name, quantity: 1 }))
   } catch { return [] }
 }
