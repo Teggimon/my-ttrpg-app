@@ -1,3 +1,43 @@
+/* ── Root layout ────────────────────────────────────────────── */
+.stats-root   { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.stats-scroll { flex: 1; overflow-y: auto; padding: 14px; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+/* ── Summary strip ──────────────────────────────────────────── */
+.stats-summary {
+  display: flex;
+  border-bottom: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+.summary-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 4px;
+  border-right: 1px solid var(--border-strong);
+}
+.summary-cell:last-child { border-right: none; }
+
+.summary-val {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.summary-lbl {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* ── Ability cards ──────────────────────────────────────────── */
 .ability-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -9,47 +49,57 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px 6px;
+  padding: 10px 6px 8px;
   gap: 2px;
+  position: relative;
 }
 
 .ability-mod {
-  font-size: 18px;
+  font-family: var(--font-mono);
+  font-size: 22px;
   font-weight: 500;
   color: var(--text-primary);
   line-height: 1;
 }
 
 .ability-score {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .ability-input {
   width: 44px;
   background: var(--bg-input);
-  border: 0.5px solid var(--accent-border);
+  border: 1px solid var(--accent-border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 13px;
   text-align: center;
   padding: 2px 4px;
-  font-family: var(--font);
+  font-family: var(--font-mono);
+  outline: none;
 }
-.ability-input:focus { outline: none; }
 
 .ability-label {
   font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: .08em;
   color: var(--text-faint);
 }
 
-/* ── Saving throws ─── */
+.save-prof-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 10px;
+  opacity: .7;
+}
+
+/* ── Saving throws ──────────────────────────────────────────── */
 .save-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
   padding: 0;
   overflow: hidden;
 }
@@ -59,38 +109,26 @@
   align-items: center;
   gap: 8px;
   padding: 7px 10px;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: 1px solid var(--border-strong);
 }
 .save-row:last-child { border-bottom: none; }
 
 .save-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px; height: 9px;
   border-radius: 50%;
-  border: 0.5px solid var(--border-hi);
+  border: 1.5px solid var(--border-hi);
   flex-shrink: 0;
 }
-.save-dot--prof {
-  background: var(--accent);
-  border-color: var(--accent-light);
-}
+.save-dot--prof { background: var(--accent); border-color: var(--accent-light); }
 
-.save-name {
-  flex: 1;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
+.save-name   { flex: 1; font-size: 12px; color: var(--text-secondary); }
+.save-ability { font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; }
+.save-bonus  { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--text-primary); min-width: 28px; text-align: right; }
 
-.save-bonus {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary);
-  min-width: 28px;
-  text-align: right;
-}
-
-/* ── Skills ─── */
+/* ── Skills ─────────────────────────────────────────────────── */
 .skill-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   padding: 0;
   overflow: hidden;
 }
@@ -98,39 +136,58 @@
 .skill-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-bottom: 0.5px solid var(--border);
+  gap: 7px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-strong);
+  border-right: 1px solid var(--border-strong);
 }
-.skill-row:last-child { border-bottom: none; }
+.skill-row:nth-child(even) { border-right: none; }
+.skill-row:nth-last-child(-n+2) { border-bottom: none; }
 .skill-row--editable { cursor: pointer; }
-.skill-row--editable:active { background: var(--bg-surface); }
+.skill-row--editable:hover { background: rgba(255,255,255,.02); }
 
-.skill-prof {
+.skill-prof   { font-size: 11px; color: var(--accent-light); width: 12px; flex-shrink: 0; }
+.skill-name   { flex: 1; font-size: 11px; color: var(--text-secondary); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skill-ability { font-size: 8px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .06em; flex-shrink: 0; }
+.skill-bonus  { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text-primary); min-width: 24px; text-align: right; flex-shrink: 0; }
+
+/* ── Other proficiencies ────────────────────────────────────── */
+.prof-cats { display: flex; flex-direction: column; gap: 12px; }
+
+.prof-cat { background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md); overflow: hidden; }
+
+.prof-cat-head { padding: 7px 12px 5px; }
+.prof-cat-label { font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); }
+
+.prof-pills { padding: 4px 12px 10px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+
+.prof-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  padding: 3px 8px 3px 10px;
   font-size: 11px;
-  color: var(--accent-light);
-  width: 12px;
-  flex-shrink: 0;
-}
-
-.skill-name {
-  flex: 1;
-  font-size: 12px;
   color: var(--text-secondary);
 }
 
-.skill-ability {
-  font-size: 9px;
-  color: var(--text-faint);
-  width: 24px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+.prof-pill-remove {
+  background: none; border: none; cursor: pointer; color: var(--text-faint);
+  font-size: 13px; padding: 0; line-height: 1;
 }
+.prof-pill-remove:hover { color: var(--danger); }
 
-.skill-bonus {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-primary);
-  min-width: 28px;
-  text-align: right;
+.prof-add-input {
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: var(--font-body);
+  outline: none;
+  width: 80px;
+  transition: all .15s;
 }
+.prof-add-input:focus { border-color: var(--accent-border); color: var(--text-primary); width: 120px; }
+.prof-add-input::placeholder { color: var(--text-faint); }

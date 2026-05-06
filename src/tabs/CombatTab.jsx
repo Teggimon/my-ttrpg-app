@@ -8,90 +8,105 @@ const ALL_CONDITIONS = [
   'Poisoned','Prone','Restrained','Stunned','Unconscious',
 ]
 
-function abilityMod(score) { return Math.floor((score - 10) / 2) }
-function fmtBonus(n)        { return n >= 0 ? `+${n}` : `${n}` }
-
+const ORDINALS   = ['','I','II','III','IV','V','VI','VII','VIII','IX']
 const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
+
+function abilityMod(score) { return Math.floor((score - 10) / 2) }
+function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 
 export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const [showCondPicker, setShowCondPicker] = useState(false)
+  const [showEdit,       setShowEdit]       = useState(false)
 
-  const level   = char.identity.class?.[0]?.level ?? 1
-  const pb      = PROFICIENCY[level] ?? 2
-  const strMod  = abilityMod(char.stats?.abilityScores?.str ?? 10)
-  const dexMod  = abilityMod(char.stats?.abilityScores?.dex ?? 10)
+  const level  = char.identity.class?.[0]?.level ?? 1
+  const pb     = PROFICIENCY[level] ?? 2
+  const scores = char.stats?.abilityScores ?? {}
+  const strMod = abilityMod(scores.str ?? 10)
+  const dexMod = abilityMod(scores.dex ?? 10)
+  const hpCur  = char.combat?.hpCurrent ?? 0
+  const isDying = hpCur <= 0
 
+  // Weapons: look in inventory; items need damage field and either equipped flag or damage info
   const equippedWeapons = (char.inventory ?? []).filter(i => i.equipped && i.damage)
 
+  // Spell slots
+  const slotEntries = Object.entries(char.spells?.slots ?? {})
+    .filter(([, v]) => v.total > 0)
+    .sort(([a], [b]) => Number(a) - Number(b))
+
   function toggleDeathSave(type, index) {
-    const current = char.combat.deathSaves[type]
+    const current = char.combat.deathSaves?.[type] ?? 0
     const updated = current > index ? index : index + 1
-    updateChar({ combat: { ...char.combat, deathSaves: { ...char.combat.deathSaves, [type]: updated } } })
+    updateChar({ combat: { ...char.combat, deathSaves: { ...(char.combat.deathSaves ?? {}), [type]: updated } } })
   }
 
-  function toggleSlot(level, index) {
-    const slots    = char.spells?.slots ?? {}
-    const current  = slots[level] ?? { total: index + 1, used: 0 }
-    const used     = current.used > index ? index : index + 1
-    updateChar({ spells: { ...char.spells, slots: { ...slots, [level]: { ...current, used } } } })
+  function toggleSlot(lvl, index) {
+    const slots   = char.spells?.slots ?? {}
+    const current = slots[lvl] ?? { total: index + 1, used: 0 }
+    const used    = current.used > index ? index : index + 1
+    updateChar({ spells: { ...char.spells, slots: { ...slots, [lvl]: { ...current, used } } } })
   }
 
   function addCondition(cond) {
-    if (!char.combat.conditions.includes(cond)) {
-      updateChar({ combat: { ...char.combat, conditions: [...char.combat.conditions, cond] } })
-    }
+    if (!(char.combat.conditions ?? []).includes(cond))
+      updateChar({ combat: { ...char.combat, conditions: [...(char.combat.conditions ?? []), cond] } })
     setShowCondPicker(false)
   }
 
   function removeCondition(cond) {
-    updateChar({ combat: { ...char.combat, conditions: char.combat.conditions.filter(c => c !== cond) } })
+    updateChar({ combat: { ...char.combat, conditions: (char.combat.conditions ?? []).filter(c => c !== cond) } })
   }
-
-  const spellSlotEntries = Object.entries(char.spells?.slots ?? {})
-    .filter(([, v]) => v.total > 0)
-    .sort(([a], [b]) => Number(a) - Number(b))
-
-  const ORDINALS = ['','I','II','III','IV','V','VI','VII','VIII','IX']
 
   return (
     <div className="tab-combat">
 
       {/* ── Attacks ── */}
       <div className="sec-head">Attacks</div>
+
       {equippedWeapons.length === 0 && (
-        <p className="empty-hint">
-          Equip weapons in the Gear tab to show attacks here.
-        </p>
+        <p className="empty-hint">Equip weapons in the Gear tab to show attacks here.</p>
       )}
+
       {equippedWeapons.map(item => {
-        const isFin  = item.properties?.includes('finesse')
-        const isRanged = item.properties?.includes('ammunition') || item.throwRange
-        const base   = isRanged || (isFin && dexMod > strMod) ? dexMod : strMod
-        const enh    = item.enhancement ?? 0
-        const toHit  = base + pb + enh
-        const dmgBonus = base + enh
+        const isFin    = item.properties?.includes?.('finesse') || item.properties?.includes?.('Finesse')
+        const isRanged = item.properties?.includes?.('ammunition') || item.properties?.includes?.('Ammunition')
+        const useAttr  = isRanged || (isFin && dexMod > strMod) ? 'dex' : 'str'
+        const attrMod  = useAttr === 'dex' ? dexMod : strMod
+        const enh      = item.enhancement ?? 0
+        const toHit    = attrMod + pb + enh
+        const dmgMod   = attrMod + enh
+        const dmgStr   = `${item.damage.dice}${dmgMod !== 0 ? fmtB(dmgMod) : ''} ${item.damage.type ?? ''}`
+        const breakdown = `${useAttr.toUpperCase()} ${fmtB(attrMod)}, Prof ${fmtB(pb)}${enh > 0 ? `, Magic +${enh}` : ''}`
+
         return (
-          <div key={item.itemId} className="attack-card card">
-            <div className="atk-name">{item.name}</div>
-            <span className="badge">{fmtBonus(toHit)} to hit</span>
-            <span className="badge">{item.damage.dice}{dmgBonus !== 0 ? fmtBonus(dmgBonus) : ''} {item.damage.type}</span>
+          <div key={item.itemId ?? item.index ?? item.name} className="attack-card">
+            <div className="atk-line1">
+              <span className="atk-name">{item.name}</span>
+            </div>
+            <div className="atk-line2">
+              <span className="badge" title={breakdown}>{fmtB(toHit)} to hit</span>
+              <span className="badge">{dmgStr}</span>
+              <div className="atk-btns">
+                <button className="atk-btn atk-btn--roll">Roll</button>
+              </div>
+            </div>
           </div>
         )
       })}
 
       {/* ── Spell slots ── */}
-      {spellSlotEntries.length > 0 && (
+      {slotEntries.length > 0 && (
         <>
-          <div className="sec-head">Spell slots</div>
+          <div className="sec-head">Spell Slots</div>
           <div className="card slot-grid">
-            {spellSlotEntries.map(([lvl, { total, used }]) => (
+            {slotEntries.map(([lvl, { total, used }]) => (
               <div key={lvl} className="slot-row">
                 <span className="slot-lbl">{ORDINALS[Number(lvl)]}</span>
                 <div className="slot-pips">
                   {Array.from({ length: total }, (_, i) => (
                     <button
                       key={i}
-                      className={`slot-pip ${i < used ? 'slot-pip--used' : ''}`}
+                      className={`slot-pip${i < used ? ' slot-pip--used' : ''}`}
                       onClick={() => isOwner && !locked && toggleSlot(lvl, i)}
                       aria-label={`Slot ${i + 1} ${i < used ? 'used' : 'available'}`}
                     />
@@ -104,7 +119,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       )}
 
       {/* ── Conditions ── */}
-      <div className="sec-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="sec-head" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
         <span>Conditions</span>
         {isOwner && !locked && (
           <button className="add-link" onClick={() => setShowCondPicker(v => !v)}>
@@ -115,94 +130,91 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
 
       {showCondPicker && (
         <div className="cond-picker card">
-          {ALL_CONDITIONS.filter(c => !char.combat.conditions.includes(c)).map(c => (
+          {ALL_CONDITIONS.filter(c => !(char.combat.conditions ?? []).includes(c)).map(c => (
             <button key={c} className="cond-option" onClick={() => addCondition(c)}>{c}</button>
           ))}
         </div>
       )}
 
-      {char.combat.conditions.length === 0 && !showCondPicker && (
+      {(char.combat.conditions ?? []).length === 0 && !showCondPicker && (
         <p className="empty-hint">No active conditions.</p>
       )}
-      {char.combat.conditions.length > 0 && (
+      {(char.combat.conditions ?? []).length > 0 && (
         <div className="active-conds">
-          {char.combat.conditions.map(c => (
+          {(char.combat.conditions ?? []).map(c => (
             <span key={c} className="pill pill-danger">
               {c}
-              {isOwner && !locked && (
-                <button className="cond-remove" onClick={() => removeCondition(c)}>×</button>
-              )}
+              {isOwner && !locked && <button className="cond-remove" onClick={() => removeCondition(c)}>×</button>}
             </span>
           ))}
         </div>
       )}
 
-      {/* ── Death saves ── */}
-      <div className="sec-head">Death saves</div>
-      <div className="card death-saves">
-        {['successes', 'failures'].map(type => (
-          <div key={type} className="ds-group">
-            <div className="ds-label">{type}</div>
-            <div className="ds-pips">
-              {[0, 1, 2].map(i => {
-                const filled = i < char.combat.deathSaves[type]
-                return (
-                  <button
-                    key={i}
-                    className={`ds-pip ds-pip--${type === 'successes' ? 'success' : 'failure'}${filled ? ' ds-pip--filled' : ''}`}
-                    onClick={() => isOwner && !locked && toggleDeathSave(type, i)}
-                    aria-label={`${type} ${i + 1}`}
-                  />
-                )
-              })}
-            </div>
+      {/* ── Death saves — only when HP = 0 ── */}
+      {isDying && (
+        <>
+          <div className="sec-head death-head">Death Saves</div>
+          <div className="card death-saves">
+            {['successes','failures'].map(type => (
+              <div key={type} className="ds-group">
+                <div className="ds-label">{type === 'successes' ? '✓ Successes' : '✕ Failures'}</div>
+                <div className="ds-pips">
+                  {[0,1,2].map(i => {
+                    const filled = i < (char.combat.deathSaves?.[type] ?? 0)
+                    return (
+                      <button
+                        key={i}
+                        className={`ds-pip ds-pip--${type === 'successes' ? 'success' : 'failure'}${filled ? ' ds-pip--filled' : ''}`}
+                        onClick={() => isOwner && !locked && toggleDeathSave(type, i)}
+                        aria-label={`${type} ${i + 1}`}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      {/* ── Temp HP / AC editor ── */}
+      {/* ── Edit stats ── */}
       {isOwner && !locked && (
         <>
-          <div className="sec-head">Edit</div>
-          <div className="edit-row">
-            <label className="edit-field">
-              <span>Temp HP</span>
-              <input
-                type="number"
-                min="0"
-                value={char.combat.hpTemp ?? 0}
-                onChange={e => updateChar({ combat: { ...char.combat, hpTemp: Number(e.target.value) } })}
-              />
-            </label>
-            <label className="edit-field">
-              <span>Max HP</span>
-              <input
-                type="number"
-                min="1"
-                value={char.combat.hpMax}
-                onChange={e => updateChar({ combat: { ...char.combat, hpMax: Number(e.target.value) } })}
-              />
-            </label>
-            <label className="edit-field">
-              <span>AC</span>
-              <input
-                type="number"
-                min="0"
-                value={char.combat.ac}
-                onChange={e => updateChar({ combat: { ...char.combat, ac: Number(e.target.value) } })}
-              />
-            </label>
-            <label className="edit-field">
-              <span>Speed (ft)</span>
-              <input
-                type="number"
-                min="0"
-                step="5"
-                value={char.combat.speed ?? 30}
-                onChange={e => updateChar({ combat: { ...char.combat, speed: Number(e.target.value) } })}
-              />
-            </label>
-          </div>
+          <button
+            className="edit-toggle-btn"
+            onClick={() => setShowEdit(v => !v)}
+          >
+            {showEdit ? '▲ Hide edit' : '✎ Edit stats'}
+          </button>
+
+          {showEdit && (
+            <div className="edit-row">
+              <label className="edit-field">
+                <span>Temp HP</span>
+                <input type="number" min="0"
+                  value={char.combat.hpTemp ?? 0}
+                  onChange={e => updateChar({ combat: { ...char.combat, hpTemp: Number(e.target.value) } })} />
+              </label>
+              <label className="edit-field">
+                <span>Max HP</span>
+                <input type="number" min="1"
+                  value={char.combat.hpMax}
+                  onChange={e => updateChar({ combat: { ...char.combat, hpMax: Number(e.target.value) } })} />
+              </label>
+              <label className="edit-field">
+                <span>AC</span>
+                <input type="number" min="0"
+                  value={char.combat.ac ?? 10}
+                  onChange={e => updateChar({ combat: { ...char.combat, ac: Number(e.target.value) } })} />
+              </label>
+              <label className="edit-field">
+                <span>Speed (ft)</span>
+                <input type="number" min="0" step="5"
+                  value={char.combat.speed ?? 30}
+                  onChange={e => updateChar({ combat: { ...char.combat, speed: Number(e.target.value) } })} />
+              </label>
+            </div>
+          )}
         </>
       )}
     </div>

@@ -1,18 +1,39 @@
-/* ── Attacks ─────────────────────────────────────────────── */
+/* ── Attack cards — two-line layout ──────────────────────────── */
 .attack-card {
-  display: flex;
-  align-items: center;
-  gap: 7px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  overflow: hidden;
   margin-bottom: 6px;
-  flex-wrap: wrap;
+}
+
+.atk-line1 {
+  padding: 9px 12px 5px;
 }
 
 .atk-name {
-  flex: 1;
-  font-size: 13px;
-  color: var(--text-secondary);
-  min-width: 80px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
+
+.atk-line2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 10px;
+  flex-wrap: wrap;
+}
+
+.atk-btns { margin-left: auto; display: flex; gap: 5px; }
+
+.atk-btn {
+  font-size: 11px; font-weight: 700; font-family: var(--font-body);
+  padding: 4px 12px; border-radius: var(--radius-sm); cursor: pointer; border: none;
+}
+.atk-btn--roll { background: var(--accent); color: #fff; }
+.atk-btn--roll:hover { background: var(--accent-hover); }
+.atk-btn--use  { background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-secondary); }
 
 /* ── Spell slots ──────────────────────────────────────────── */
 .slot-grid {
@@ -22,150 +43,90 @@
   padding: 8px 10px;
 }
 
-.slot-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+.slot-row { display: flex; align-items: center; gap: 6px; }
 
 .slot-lbl {
+  font-family: var(--font-mono);
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--text-faint);
   width: 18px;
   text-align: right;
   flex-shrink: 0;
 }
 
-.slot-pips {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-}
+.slot-pips { display: flex; gap: 4px; flex-wrap: wrap; }
 
 .slot-pip {
-  width: 10px;
-  height: 10px;
+  width: 11px; height: 11px;
   border-radius: 50%;
   background: var(--accent);
-  border: 0.5px solid var(--accent-light);
-  cursor: pointer;
-  padding: 0;
-  flex-shrink: 0;
+  border: 1px solid var(--accent-light);
+  cursor: pointer; padding: 0; flex-shrink: 0;
 }
-
-.slot-pip--used {
-  background: transparent;
-  border-color: var(--border-hi);
-}
+.slot-pip--used { background: transparent; border-color: var(--border-hi); }
 
 /* ── Conditions ───────────────────────────────────────────── */
 .cond-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-bottom: 8px;
+  display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px;
 }
 
 .cond-option {
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  border: 0.5px solid var(--border-mid);
-  color: var(--text-muted);
-  font-size: 11px;
-  cursor: pointer;
-  font-family: var(--font);
+  padding: 4px 10px; border-radius: var(--radius-full);
+  background: transparent; border: 1px solid var(--border-strong);
+  color: var(--text-secondary); font-size: 11px; cursor: pointer; font-family: var(--font-body);
 }
 .cond-option:hover { border-color: var(--accent-border); color: var(--accent-light); }
 
-.active-conds {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 4px;
-}
+.active-conds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 
 .cond-remove {
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  font-size: 12px;
-  padding: 0 0 0 4px;
-  line-height: 1;
-  opacity: 0.7;
+  background: none; border: none; color: inherit; cursor: pointer;
+  font-size: 12px; padding: 0 0 0 4px; line-height: 1; opacity: .7;
 }
 
 /* ── Death saves ──────────────────────────────────────────── */
-.death-saves {
-  display: flex;
-  gap: 24px;
-}
+.death-head { color: var(--danger) !important; }
 
-.ds-group {}
+.death-saves { display: flex; gap: 24px; }
 
 .ds-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--text-faint);
-  margin-bottom: 5px;
+  font-size: 9px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--text-faint); margin-bottom: 6px;
 }
 
-.ds-pips {
-  display: flex;
-  gap: 6px;
-}
+.ds-pips { display: flex; gap: 6px; }
 
 .ds-pip {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 0.5px solid var(--border-mid);
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 1.5px solid var(--border-hi); background: transparent;
+  cursor: pointer; padding: 0;
 }
+.ds-pip--success.ds-pip--filled { background: var(--hp-high); border-color: var(--hp-high); }
+.ds-pip--failure.ds-pip--filled { background: var(--danger); border-color: var(--danger); }
 
-.ds-pip--success.ds-pip--filled {
-  background: var(--save-bg);
-  border-color: var(--save-bdr);
+/* ── Edit toggle ──────────────────────────────────────────── */
+.edit-toggle-btn {
+  width: 100%; text-align: left;
+  background: transparent; border: none; border-top: 1px solid var(--border-strong);
+  color: var(--text-faint); font-size: 11px; font-family: var(--font-body);
+  padding: 10px 0; cursor: pointer; margin-top: 8px;
 }
-
-.ds-pip--failure.ds-pip--filled {
-  background: var(--fail-bg);
-  border-color: var(--fail-bdr);
-}
+.edit-toggle-btn:hover { color: var(--text-secondary); }
 
 /* ── Edit fields ──────────────────────────────────────────── */
 .edit-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
 }
 
 .edit-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 10px; color: var(--text-faint);
+  text-transform: uppercase; letter-spacing: .06em;
 }
 
 .edit-field input {
-  background: var(--bg-input);
-  border: 0.5px solid var(--border-mid);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 14px;
-  padding: 6px 9px;
-  font-family: var(--font);
-  width: 100%;
+  background: var(--bg-input); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  font-size: 14px; padding: 7px 9px; font-family: var(--font-mono); width: 100%;
 }
-
-.edit-field input:focus {
-  outline: none;
-  border-color: var(--accent-border);
-}
+.edit-field input:focus { outline: none; border-color: var(--accent-border); }
