@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getEquipment } from '../srdContent'
+import { getEquipment, getSpells } from '../srdContent'
 import '../TabShared.css'
 import './CombatTab.css'
 
@@ -34,6 +34,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const [showCondPicker, setShowCondPicker] = useState(false)
   const [showEdit,       setShowEdit]       = useState(false)
   const [srdMap,         setSrdMap]         = useState({})
+  const [spellMap,       setSpellMap]       = useState({})
 
   const level  = char.identity.class?.reduce((s, c) => s + (c.level ?? 0), 0) ?? 1
   const pb     = PROFICIENCY[level] ?? 2
@@ -44,10 +45,13 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const hpCur  = char.combat?.hpCurrent ?? 0
   const isDying = hpCur <= 0
 
+  const castAbility = char.spells?.spellcastingAbility
+  const castMod     = castAbility ? abilityMod((char.stats?.abilityScores ?? {})[castAbility] ?? 10) : null
+  const spellAtk    = castMod != null ? pb + castMod : null
+
   useEffect(() => {
-    getEquipment().then(all => {
-      setSrdMap(Object.fromEntries(all.map(e => [e.index, e])))
-    }).catch(() => {})
+    getEquipment().then(all => setSrdMap(Object.fromEntries(all.map(e => [e.index, e])))).catch(() => {})
+    getSpells().then(all => setSpellMap(Object.fromEntries(all.map(s => [s.index, s])))).catch(() => {})
   }, [])
 
   // Resolve damage for a weapon item (item data + SRD fallback)
@@ -87,6 +91,13 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const slotEntries = Object.entries(char.spells?.slots ?? {})
     .filter(([, v]) => v.total > 0)
     .sort(([a], [b]) => Number(a) - Number(b))
+
+  // Prepared spells (cantrips + prepared leveled spells)
+  const known    = char.spells?.known    ?? []
+  const prepared = char.spells?.prepared ?? []
+  const preparedSpells = known.filter(s =>
+    s.level === 0 || prepared.includes(s.id)
+  )
 
   // Racial combat abilities
   const racialCombatTraits = (char.identity.racialTraits ?? [])
@@ -193,6 +204,40 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
               </div>
             ))}
           </div>
+        </>
+      )}
+
+      {/* ── Prepared Spells ── */}
+      {preparedSpells.length > 0 && (
+        <>
+          <div className="sec-head">Prepared Spells</div>
+          {preparedSpells.map(spell => {
+            const srd  = spellMap[spell.index] ?? {}
+            const isConc = srd.concentration === true
+            const dmgDice = srd.damage?.damage_at_character_level
+              ? Object.values(srd.damage.damage_at_character_level)[0]
+              : srd.damage?.damage_at_slot_level
+                ? Object.values(srd.damage.damage_at_slot_level)[0]
+                : null
+            const dmgType = srd.damage?.damage_type?.name ?? ''
+            const isAtk   = !!srd.attack_type
+
+            return (
+              <div key={spell.id} className="spell-combat-card">
+                <div className="spell-combat-left">
+                  <span className={`conc-dot${isConc ? ' conc-dot--on' : ''}`} />
+                  <span className="spell-combat-name">{spell.name}</span>
+                </div>
+                <div className="spell-combat-badges">
+                  {dmgDice && <span className="badge">{dmgDice}{dmgType ? ` ${dmgType}` : ''}</span>}
+                  {isAtk && spellAtk != null && <span className="badge">{fmtB(spellAtk)} to hit</span>}
+                  {isConc && <span className="badge badge--dim">Conc</span>}
+                  {spell.level > 0 && <span className="badge badge--dim">Lv {spell.level}</span>}
+                  <button className="atk-btn atk-btn--roll">Cast</button>
+                </div>
+              </div>
+            )
+          })}
         </>
       )}
 

@@ -36,6 +36,41 @@
 
 .badge--dim { color: var(--text-faint); }
 
+/* ── Prepared spell cards ─────────────────────────────────── */
+.spell-combat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+.spell-combat-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.spell-combat-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spell-combat-badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .atk-btn {
   font-size: 11px; font-weight: 700; font-family: var(--font-body);
   padding: 4px 12px; border-radius: var(--radius-sm); cursor: pointer; border: none;
