@@ -1,0 +1,202 @@
+/* ════════════════════════════════════════════
+   Onboarding
+   ════════════════════════════════════════════ */
+.ob-body {
+  width: 100%;
+  min-height: 100vh;
+  background: #080712;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  font-family: var(--font-body);
+}
+
+.ob-body--dm {
+  background: #0e0608;
+}
+
+/* ── Panel ── */
+.ob-panel {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-base);
+  border: 0.5px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 40px 32px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+}
+
+.ob-panel--dm {
+  border-color: rgba(224, 82, 82, 0.35);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 0.5px rgba(224, 82, 82, 0.2);
+}
+
+/* ── Logo ── */
+.ob-logo {
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+/* ── Text ── */
+.ob-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.ob-body-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 320px;
+}
+
+.ob-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Repo pill ── */
+.ob-repo-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  padding: 8px 18px;
+  margin: 4px 0;
+}
+
+.ob-repo-pill--dm {
+  border-color: rgba(224, 82, 82, 0.35);
+}
+
+.ob-repo-icon { font-size: 14px; }
+
+.ob-repo-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── Error ── */
+.ob-error {
+  font-size: 12px;
+  color: var(--danger);
+  line-height: 1.5;
+  width: 100%;
+  text-align: left;
+  background: rgba(248,113,113,0.08);
+  border: 0.5px solid rgba(248,113,113,0.3);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+/* ── Choice buttons ── */
+.ob-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  margin: 4px 0;
+}
+
+.ob-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.ob-choice-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  transform: translateY(-1px);
+}
+
+.ob-choice-emoji { font-size: 28px; }
+
+.ob-choice-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Share box ── */
+.ob-share-box {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.ob-share-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.ob-share-url {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent-hover);
+  word-break: break-all;
+}
+
+/* ── Buttons ── */
+.ob-btn {
+  width: 100%;
+  padding: 13px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  min-height: 48px;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.ob-btn:disabled { opacity: 0.4; cursor: default; }
+
+.ob-btn--accent {
+  background: var(--accent);
+  color: #fff;
+}
+.ob-btn--accent:not(:disabled):hover { background: var(--accent-hover); }
+
+.ob-btn--dm {
+  background: #e05252;
+  color: #fff;
+}
+.ob-btn--dm:not(:disabled):hover { background: #f07070; }
+
+.ob-btn--ghost {
+  background: transparent;
+  border: 0.5px solid var(--border-strong);
+  color: var(--text-muted);
+}
+.ob-btn--ghost:hover { color: var(--text-primary); border-color: var(--border-mid); }

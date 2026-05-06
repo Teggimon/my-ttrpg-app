@@ -1,0 +1,526 @@
+/* ════════════════════════════════════════════
+   Level Up Modal
+   ════════════════════════════════════════════ */
+
+/* Gold token */
+:root {
+  --gold:        #c9a227;
+  --gold-hover:  #e8bb30;
+  --gold-subtle: rgba(201, 162, 39, 0.12);
+  --gold-border: rgba(201, 162, 39, 0.40);
+}
+
+/* ── Overlay + sheet ── */
+.lu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+}
+
+.lu-sheet {
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 20px 36px;
+  animation: lu-slide-up 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes lu-slide-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.lu-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+  margin: 12px auto 16px;
+}
+
+/* ── Step indicator ── */
+.lu-step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.lu-step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.lu-step-dot--done {
+  background: var(--accent);
+  transform: scale(0.85);
+}
+
+.lu-step-dot--active {
+  background: var(--accent);
+  transform: scale(1.25);
+  box-shadow: 0 0 6px rgba(124, 111, 245, 0.6);
+}
+
+/* Gold variant for ASI/subclass steps */
+.lu-title--gold ~ .lu-step-dot--active {
+  background: var(--gold);
+  box-shadow: 0 0 6px rgba(201, 162, 39, 0.6);
+}
+
+/* ── Step container ── */
+.lu-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lu-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.lu-title--gold {
+  color: var(--gold);
+}
+
+.lu-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: -8px;
+}
+
+/* ── Feature list (simple level) ── */
+.lu-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.lu-feature-row {
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--border);
+}
+.lu-feature-row:last-child { border-bottom: none; }
+
+.lu-feature-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.lu-feature-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.lu-feature-tag {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tag-new {
+  background: rgba(124, 111, 245, 0.15);
+  color: var(--accent);
+  border: 0.5px solid rgba(124, 111, 245, 0.4);
+}
+
+.lu-hp-gain {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.lu-prof-gain {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Option cards (ASI vs Feat choice) ── */
+.lu-option-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lu-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: var(--font-body);
+}
+
+.lu-option-card:hover {
+  border-color: var(--gold-border);
+  background: var(--gold-subtle);
+}
+
+.lu-option-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: border-color 0.15s;
+}
+.lu-option-card:hover .lu-option-radio { border-color: var(--gold); }
+
+.lu-option-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.lu-option-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Back to choice ── */
+.lu-change-choice {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-body);
+  align-self: flex-start;
+  transition: color 0.15s;
+}
+.lu-change-choice:hover { color: var(--gold); }
+
+/* ── ASI grid ── */
+.lu-asi-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lu-asi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lu-asi-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lu-asi-counter {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.lu-asi-counter--done { color: var(--gold); }
+
+.lu-asi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.lu-asi-tile {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+  font-family: var(--font-body);
+}
+
+.lu-asi-tile:hover:not(:disabled) {
+  border-color: var(--gold-border);
+  background: var(--gold-subtle);
+}
+
+.lu-asi-tile--active {
+  border-color: var(--gold) !important;
+  background: var(--gold-subtle) !important;
+  box-shadow: 0 0 0 1px var(--gold-border);
+}
+
+.lu-asi-tile--maxed { opacity: 0.35; cursor: not-allowed; }
+.lu-asi-tile:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.lu-asi-stat {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lu-asi-score {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.lu-asi-delta {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-top: 2px;
+}
+
+.lu-asi-open {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.lu-asi-maxed {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+/* ── Feat picker ── */
+.lu-feat-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lu-feat-search {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-inset);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+}
+.lu-feat-search:focus { border-color: var(--gold); }
+.lu-feat-search::placeholder { color: var(--text-muted); }
+
+.lu-feat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 280px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.lu-feat-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.lu-feat-row:hover {
+  border-color: var(--gold-border);
+  background: var(--gold-subtle);
+}
+
+.lu-feat-row--selected {
+  border-color: var(--gold) !important;
+  background: var(--gold-subtle) !important;
+  box-shadow: 0 0 0 1px var(--gold-border);
+}
+
+.lu-feat-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lu-feat-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lu-feat-prereq {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.lu-feat-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ── Subclass list ── */
+.lu-subclass-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lu-subclass-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.lu-subclass-card:hover {
+  border-color: var(--gold-border);
+  background: var(--gold-subtle);
+}
+
+.lu-subclass-card--selected {
+  border-color: var(--gold) !important;
+  background: var(--gold-subtle) !important;
+}
+
+.lu-subclass-radio {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+.lu-subclass-card:hover .lu-subclass-radio,
+.lu-subclass-card--selected .lu-subclass-radio { border-color: var(--gold); }
+
+.lu-radio-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.15s;
+}
+.lu-radio-dot--active { background: var(--gold); }
+
+.lu-subclass-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Warning ── */
+.lu-warning {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid;
+  line-height: 1.4;
+}
+
+.lu-warning--gold {
+  background: var(--gold-subtle);
+  border-color: var(--gold-border);
+  color: var(--gold);
+}
+
+/* ── Action buttons ── */
+.lu-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.lu-btn {
+  flex: 1;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  min-height: 48px;
+  transition: opacity 0.15s, background 0.15s;
+}
+.lu-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.lu-btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+.lu-btn--primary:not(:disabled):hover { background: var(--accent-hover); }
+
+.lu-btn--gold {
+  background: var(--gold);
+  color: #0e0d1a;
+}
+.lu-btn--gold:not(:disabled):hover { background: var(--gold-hover); }
+
+.lu-btn--ghost {
+  background: var(--bg-inset);
+  border: 0.5px solid var(--border-strong);
+  color: var(--text-secondary);
+  flex: none;
+  padding: 13px 20px;
+}
+.lu-btn--ghost:hover { color: var(--text-primary); }

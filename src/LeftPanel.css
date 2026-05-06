@@ -214,6 +214,62 @@
   transition: width 0.4s ease;
 }
 
+/* ── Rest buttons ─────────────────────────────────────────── */
+.lp-rest-btns {
+  display: flex;
+  gap: 6px;
+  padding: 7px 10px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.rest-trigger-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 6px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body, var(--font));
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 0.5px solid;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.rest-trigger-btn--short {
+  background: rgba(124, 111, 245, 0.08);
+  border-color: rgba(124, 111, 245, 0.3);
+  color: var(--accent-light, #9b90ff);
+}
+
+.rest-trigger-btn--short:hover {
+  background: rgba(124, 111, 245, 0.16);
+  border-color: rgba(124, 111, 245, 0.55);
+  color: #fff;
+}
+
+.rest-trigger-btn--long {
+  background: rgba(14, 13, 26, 0.6);
+  border-color: var(--border-mid, #36336a);
+  color: var(--text-secondary);
+}
+
+.rest-trigger-btn--long:hover {
+  background: rgba(14, 13, 26, 0.9);
+  border-color: var(--border-hi, #4a4880);
+  color: var(--text-primary);
+}
+
+/* In portrait mode, hide rest buttons — they take too much space
+   in the horizontal strip. They're available in landscape sidebar only. */
+.left-panel--portrait .lp-rest-btns {
+  display: none;
+}
+
 /* ── Sync ─────────────────────────────────────────────────── */
 .lp-sync {
   display: flex;
@@ -230,12 +286,20 @@
   flex-shrink: 0;
 }
 
+.lp-sync--saved  { color: var(--green); }
+.lp-sync--saved  .lp-sync-dot { background: var(--green); }
+
+.lp-sync--saving { color: var(--text-muted); }
+.lp-sync--saving .lp-sync-dot { background: var(--text-muted); }
+
+.lp-sync--error  { color: #f09090; }
+.lp-sync--error  .lp-sync-dot { background: #f09090; }
+
+/* legacy class names kept for safety */
 .sync--ok   { color: var(--green); }
 .sync--ok   .lp-sync-dot { background: var(--green); }
-
 .sync--busy { color: var(--text-muted); }
 .sync--busy .lp-sync-dot { background: var(--text-muted); }
-
 .sync--err  { color: #f09090; }
 .sync--err  .lp-sync-dot { background: #f09090; }
 
@@ -306,10 +370,12 @@
 
 /* ── Compact header in landscape phone ───────────────────── */
 @media (orientation: landscape) and (max-height: 420px) {
-  .lp-identity { padding: 6px 10px 5px; }
-  .lp-vitals   { padding: 5px 10px; }
-  .lp-xp       { padding: 4px 10px 5px; }
-  .lp-sync     { padding: 3px 10px; }
+  .lp-identity  { padding: 6px 10px 5px; }
+  .lp-vitals    { padding: 5px 10px; }
+  .lp-xp        { padding: 4px 10px 5px; }
+  .lp-rest-btns { padding: 5px 8px; }
+  .lp-sync      { padding: 3px 10px; }
   .lp-hp-current { font-size: 18px; }
   .nav-rail-item { padding: 7px 10px; }
+  .rest-trigger-btn { font-size: 10px; padding: 5px 4px; }
 }

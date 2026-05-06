@@ -1,59 +1,84 @@
+import { useState } from 'react'
+import { ShortRestModal, LongRestModal } from './RestModals'
 import './LeftPanel.css'
 
-const PROFICIENCY = [0, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6]
+function fmtBonus(n) { return n >= 0 ? `+${n}` : `${n}` }
 
-function abilityMod(score) {
-  return Math.floor((score - 10) / 2)
-}
+const XP_THRESHOLDS = [0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000]
 
-function initiativeBonus(char) {
-  const dex = char.stats?.abilityScores?.dex ?? 10
-  return abilityMod(dex)
-}
+function XPBar({ char, isOwner, locked, updateChar }) {
+  const level = char.identity.class?.[0]?.level ?? 1
+  const xp    = char.identity.xp ?? 0
+  const next  = XP_THRESHOLDS[level]
+  const prev  = XP_THRESHOLDS[level - 1] ?? 0
+  const pct   = next ? Math.min(100, Math.round(((xp - prev) / (next - prev)) * 100)) : 100
 
-function fmtBonus(n) {
-  return n >= 0 ? `+${n}` : `${n}`
+  return (
+    <div className="xp-bar-wrap">
+      <div className="xp-meta">
+        <span>{xp.toLocaleString()} XP</span>
+        {next && <span>Lv {level + 1} at {next.toLocaleString()}</span>}
+      </div>
+      <div className="xp-track">
+        <div className="xp-fill" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
 }
 
 export default function LeftPanel({
-  char,
-  isOwner,
-  locked,
-  onToggleLock,
+  char, isOwner, locked, onToggleLock,
+  updateChar, onBack,
+  portrait, tabs, activeTab, onTabChange,
   syncStatus,
-  updateChar,
-  portrait = false,
-  tabs,
-  activeTab,
-  onTabChange,
-  onBack,
 }) {
-  const level = char.identity.class?.[0]?.level ?? 1
-  const pb = PROFICIENCY[level] ?? 2
-  const initBonus = initiativeBonus(char)
+  const [showShortRest, setShowShortRest] = useState(false)
+  const [showLongRest,  setShowLongRest]  = useState(false)
 
-  function adjustHP(delta) {
-    const next = Math.max(0, Math.min(char.combat.hpMax, char.combat.hpCurrent + delta))
-    updateChar({ combat: { ...char.combat, hpCurrent: next } })
+  if (!char) return null
+
+  const level    = char.identity.class?.reduce((s, c) => s + (c.level ?? 0), 0) ?? 1
+  const dexMod   = Math.floor(((char.stats?.DEX ?? char.abilities?.dexterity ?? 10) - 10) / 2)
+  const initBonus = dexMod + (char.combat?.initiativeBonus ?? 0)
+
+  const syncClass = syncStatus === 'saving' ? 'lp-sync--saving'
+    : syncStatus === 'saved'  ? 'lp-sync--saved'
+    : syncStatus === 'error'  ? 'lp-sync--error'
+    : ''
+  const syncLabel = syncStatus === 'saving' ? 'Saving…'
+    : syncStatus === 'saved'  ? 'Saved'
+    : syncStatus === 'error'  ? 'Save failed'
+    : ''
+
+  const adjustHP = (delta) => {
+    const cur = char.combat.hpCurrent ?? 0
+    const max = char.combat.hpMax     ?? 0
+    updateChar({ combat: { ...char.combat, hpCurrent: Math.max(0, Math.min(max, cur + delta)) } })
   }
 
-  function removeCondition(cond) {
-    updateChar({ combat: { ...char.combat, conditions: char.combat.conditions.filter(c => c !== cond) } })
+  const removeCondition = (cond) => {
+    updateChar({
+      combat: {
+        ...char.combat,
+        conditions: char.combat.conditions.filter(c => c !== cond),
+      }
+    })
   }
 
-  const syncLabel = syncStatus === 'saved'  ? '✓ Saved'
-                  : syncStatus === 'saving' ? '⟳ Saving…'
-                  : '⚠ Error'
-  const syncClass = syncStatus === 'saved'  ? 'sync--ok'
-                  : syncStatus === 'error'  ? 'sync--err'
-                  : 'sync--busy'
+  const handleRestConfirm = (updatedChar) => {
+    updateChar(updatedChar)
+    setShowShortRest(false)
+    setShowLongRest(false)
+  }
 
   return (
-    <div className={`left-panel ${portrait ? 'left-panel--portrait' : 'left-panel--landscape'}`}>
+    <div className={`left-panel left-panel--${portrait ? 'portrait' : 'landscape'}`}>
 
       {/* ── Identity row ── */}
       <div className="lp-identity">
-        <button className="icon-btn lp-back" onClick={onBack} title="Back">←</button>
+        {onBack && (
+          <button className="icon-btn lp-back" onClick={onBack} title="Back">←</button>
+        )}
         {isOwner && (
           <button className="icon-btn lp-lock" onClick={onToggleLock} title={locked ? 'Unlock sheet' : 'Lock sheet'}>
             {locked ? '🔒' : '🔓'}
@@ -108,7 +133,11 @@ export default function LeftPanel({
       {(char.combat.conditions?.length > 0 || (isOwner && !locked)) && (
         <div className="lp-conditions">
           {char.combat.conditions?.map(c => (
-            <span key={c} className="pill pill-danger" onClick={() => !locked && isOwner && removeCondition(c)}>
+            <span
+              key={c}
+              className="pill pill-danger"
+              onClick={() => !locked && isOwner && removeCondition(c)}
+            >
               {c} {isOwner && !locked && '×'}
             </span>
           ))}
@@ -122,6 +151,26 @@ export default function LeftPanel({
       <div className="lp-xp">
         <XPBar char={char} isOwner={isOwner} locked={locked} updateChar={updateChar} />
       </div>
+
+      {/* ── Rest buttons (owner only, unlocked) ── */}
+      {isOwner && !locked && (
+        <div className="lp-rest-btns">
+          <button
+            className="rest-trigger-btn rest-trigger-btn--short"
+            onClick={() => setShowShortRest(true)}
+            title="Short Rest — spend Hit Dice to recover HP"
+          >
+            🌙 Short Rest
+          </button>
+          <button
+            className="rest-trigger-btn rest-trigger-btn--long"
+            onClick={() => setShowLongRest(true)}
+            title="Long Rest — fully restore HP, spell slots and abilities"
+          >
+            🌑 Long Rest
+          </button>
+        </div>
+      )}
 
       {/* ── Sync ── */}
       <div className={`lp-sync ${syncClass}`}>
@@ -144,28 +193,23 @@ export default function LeftPanel({
           ))}
         </nav>
       )}
-    </div>
-  )
-}
 
-const XP_THRESHOLDS = [0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000]
+      {/* ── Rest Modals ── */}
+      {showShortRest && (
+        <ShortRestModal
+          char={char}
+          onConfirm={handleRestConfirm}
+          onClose={() => setShowShortRest(false)}
+        />
+      )}
 
-function XPBar({ char, isOwner, locked, updateChar }) {
-  const level = char.identity.class?.[0]?.level ?? 1
-  const xp    = char.identity.xp ?? 0
-  const next  = XP_THRESHOLDS[level]
-  const prev  = XP_THRESHOLDS[level - 1] ?? 0
-  const pct   = next ? Math.min(100, Math.round(((xp - prev) / (next - prev)) * 100)) : 100
-
-  return (
-    <div className="xp-bar-wrap">
-      <div className="xp-meta">
-        <span>{xp.toLocaleString()} XP</span>
-        {next && <span>Lv {level + 1} at {next.toLocaleString()}</span>}
-      </div>
-      <div className="xp-track">
-        <div className="xp-fill" style={{ width: `${pct}%` }} />
-      </div>
+      {showLongRest && (
+        <LongRestModal
+          char={char}
+          onConfirm={handleRestConfirm}
+          onClose={() => setShowLongRest(false)}
+        />
+      )}
     </div>
   )
 }

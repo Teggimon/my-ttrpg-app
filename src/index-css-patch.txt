@@ -1,0 +1,26 @@
+/* ─── PATCH: Add this to index.css ───
+   The home screen needs body-level scroll on desktop.
+   Change the existing #root rule from overflow: hidden to overflow: auto,
+   OR scope the overflow:hidden only to the character sheet shell.
+
+   Find this block in index.css:
+   
+   html, body, #root {
+     height: 100%;
+     overflow: hidden;         ← remove/change this
+   }
+
+   Replace with:
+
+   html, body {
+     height: 100%;
+   }
+
+   #root {
+     height: 100%;
+     overflow: auto;           ← allows Home to scroll on desktop
+   }
+
+   The character sheet (.app-shell) has its own overflow:hidden,
+   so this won't break the tab scrolling inside the sheet.
+*/

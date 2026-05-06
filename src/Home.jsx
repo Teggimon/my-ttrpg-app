@@ -143,7 +143,8 @@ function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
 
 export default function Home({
   token, user,
-  isGM: isGMProp,
+  isGM,
+  onGMToggle,
   onCreateCharacter,
   onSelectCharacter,
   onOpenGMDashboard,
@@ -153,10 +154,10 @@ export default function Home({
   const [loading, setLoading]             = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [gmMode, setGmMode]               = useState(isGMProp)
+  const [gmMode, setGmMode]               = useState(isGM)
 
   const octokit  = new Octokit({ auth: token })
-  const repoName = localStorage.getItem('character_repo')
+  const repoName = 'ttrpg-characters'
 
   useEffect(() => { loadCharacters() }, [])
 
@@ -235,13 +236,13 @@ export default function Home({
           <div className="mode-toggle">
             <button
               className={`mode-btn${!gmMode ? ' mode-btn--active' : ''}`}
-              onClick={() => { setGmMode(false); localStorage.setItem('is_gm', 'false') }}
+              onClick={() => { setGmMode(false); onGMToggle?.(false) }}
             >
               ⚔️ Player
             </button>
             <button
               className={`mode-btn mode-btn--dm${gmMode ? ' mode-btn--active mode-btn--dm-active' : ''}`}
-              onClick={() => { setGmMode(true); localStorage.setItem('is_gm', 'true') }}
+              onClick={() => { setGmMode(true); onGMToggle?.(true); onOpenGMDashboard() }}
             >
               📖 DM
             </button>
