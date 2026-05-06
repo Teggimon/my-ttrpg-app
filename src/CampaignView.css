@@ -685,6 +685,361 @@
 /* Start session modal */
 .cv-session-modal-title { font-family: var(--font-body); font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: var(--spacing-md); }
 
+/* ── NPC Add/Create Modal ── */
+.npc-modal-sheet {
+  max-height: 90vh;
+}
+
+.npc-modal-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.npc-modal-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.npc-back-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 8px;
+  display: block;
+  transition: color 0.15s;
+}
+.npc-back-btn:hover { color: var(--dm); }
+
+/* Source filter chips */
+.npc-source-chips {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.npc-source-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: transparent;
+  font-family: var(--font-body);
+  transition: all 0.15s;
+}
+.npc-source-chip--active {
+  border-color: var(--dm-border);
+  color: var(--dm);
+  background: var(--dm-subtle);
+}
+
+/* Search results list */
+.npc-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 280px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  margin-bottom: 12px;
+}
+
+.npc-search-row {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: border-color 0.15s;
+}
+.npc-search-row:hover { border-color: var(--border-strong); }
+
+.npc-sr-icon { font-size: 18px; flex-shrink: 0; }
+
+.npc-sr-info { flex: 1; min-width: 0; }
+.npc-sr-name { font-size: 13px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.npc-sr-meta { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px; }
+
+.npc-sr-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.npc-sr-badge--srd      { background: var(--accent-subtle); color: var(--accent); border: 1px solid rgba(124,111,245,0.3); }
+.npc-sr-badge--campaign { background: var(--dm-subtle); color: var(--dm); border: 1px solid var(--dm-border); }
+
+.npc-sr-btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+.npc-add-btn {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1px solid;
+  font-family: var(--font-body);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.npc-add-btn--enemy { color: var(--dm); border-color: var(--dm-border); background: var(--dm-subtle); }
+.npc-add-btn--enemy:hover { background: var(--dm); color: #fff; }
+.npc-add-btn--ally  { color: var(--text-muted); border-color: var(--border); background: transparent; }
+.npc-add-btn--ally:hover  { border-color: var(--border-strong); color: var(--text-secondary); }
+.npc-add-btn--boss  { color: var(--warning); border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.08); }
+.npc-add-btn--boss:hover  { background: rgba(245,158,11,0.2); }
+
+.npc-search-hint {
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.npc-create-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: transparent;
+  font-family: var(--font-body);
+  width: 100%;
+  margin-top: 4px;
+  transition: all 0.15s;
+}
+.npc-create-link:hover { border-color: var(--dm); color: var(--dm); background: var(--dm-subtle); }
+
+/* Mode toggle */
+.npc-mode-toggle {
+  display: flex;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+.npc-mode-btn {
+  flex: 1;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-muted);
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  transition: all 0.18s;
+}
+.npc-mode-btn--active {
+  background: var(--dm);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(224,82,82,0.3);
+}
+
+/* 3-column grid used in create form */
+.npc-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+/* Form sections */
+.npc-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-top: 0.5px solid var(--border);
+}
+.npc-form-section:first-of-type { border-top: none; padding-top: 0; }
+
+.npc-sec-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-bottom: 6px;
+  border-bottom: 0.5px solid var(--border);
+  margin-bottom: 4px;
+}
+
+/* Ability score tiles */
+.npc-ability-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.npc-ability-tile {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px 4px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.npc-ability-lbl {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.npc-ability-input {
+  padding: 4px 2px !important;
+  font-size: 13px !important;
+  text-align: center;
+  font-family: var(--font-mono) !important;
+}
+
+.npc-ability-mod {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Tag pills */
+.npc-tag-section { margin-bottom: 6px; }
+
+.npc-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.npc-tag {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.npc-tag button {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s;
+}
+.npc-tag button:hover { color: var(--danger); }
+
+.npc-add-tag {
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-full);
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.15s;
+}
+.npc-add-tag:hover { border-color: var(--dm); color: var(--dm); }
+
+.npc-tag-input {
+  border: 1px solid var(--dm-border);
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--text-primary);
+  background: var(--bg-inset);
+  font-family: var(--font-body);
+  outline: none;
+  width: 100px;
+}
+
+/* Action / trait entries */
+.npc-action-entry {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+.npc-action-entry:last-of-type { margin-bottom: 0; }
+
+.npc-action-entry-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.npc-del-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.npc-del-btn:hover { color: var(--danger); }
+
+.npc-add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: transparent;
+  font-family: var(--font-body);
+  width: 100%;
+  margin-top: 6px;
+  transition: all 0.15s;
+}
+.npc-add-row:hover { border-color: var(--dm); color: var(--dm); }
+
 /* Mobile: hide sidebar */
 @media (max-width: 600px) {
   .cv-sidebar { display: none; }

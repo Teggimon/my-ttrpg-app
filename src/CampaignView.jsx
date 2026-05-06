@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Octokit } from '@octokit/rest'
+import { getMonsters } from './srdContent'
 import './CampaignView.css'
 
 const CAMPAIGNS_REPO  = 'ttrpg-campaigns'
@@ -232,7 +234,7 @@ function ManageCharsModal({ token, player, campaign, onSave, onClose }) {
     onSave(username.trim(), selected)
   }
 
-  return (
+  return createPortal(
     <div className="cv-modal-overlay" onClick={onClose}>
       <div className="cv-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="cv-modal-handle" />
@@ -291,7 +293,8 @@ function ManageCharsModal({ token, player, campaign, onSave, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -337,85 +340,463 @@ function NPCRow({ npc, onDelete }) {
   )
 }
 
-// ── Add NPC Modal ─────────────────────────────────────────────
-function AddNPCModal({ onAdd, onClose }) {
-  const [name, setName]         = useState('')
-  const [type, setType]         = useState('')
-  const [cr, setCr]             = useState('')
-  const [hp, setHp]             = useState('')
-  const [ac, setAc]             = useState('')
-  const [initiative, setInit]   = useState('')
-  const [category, setCategory] = useState('standard')
+// ── CR formatter ──────────────────────────────────────────────
+function formatCR(cr) {
+  if (cr === 0.125) return '⅛'
+  if (cr === 0.25)  return '¼'
+  if (cr === 0.5)   return '½'
+  return String(cr)
+}
+function dexMod(dex) { return Math.floor(((dex ?? 10) - 10) / 2) }
+function abilityMod(val) {
+  const n = parseInt(val) || 10
+  const m = Math.floor((n - 10) / 2)
+  return m >= 0 ? `+${m}` : `${m}`
+}
 
-  const submit = () => {
-    if (!name.trim()) return
+const CREATURE_TYPES = ['Humanoid','Beast','Undead','Fiend','Dragon','Aberration','Construct','Elemental','Fey','Giant','Monstrosity','Ooze','Plant','Celestial','Other']
+
+// ── Add NPC Modal (Search + Create) ───────────────────────────
+function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
+  const [view, setView]               = useState('search')
+  const [query, setQuery]             = useState('')
+  const [sourceFilter, setSourceFilter] = useState('all')
+  const [srdMonsters, setSrdMonsters] = useState([])
+  const [loadingSrd, setLoadingSrd]   = useState(false)
+
+  // Create form — shared fields
+  const [createMode, setCreateMode]   = useState('quick')
+  const [name, setName]               = useState('')
+  const [type, setType]               = useState('Humanoid')
+  const [cr, setCr]                   = useState('')
+  const [hp, setHp]                   = useState('')
+  const [ac, setAc]                   = useState('')
+  const [speed, setSpeed]             = useState('30ft')
+  const [hitDie, setHitDie]           = useState('')
+  const [category, setCategory]       = useState('standard')
+
+  // Quick-only
+  const [initiative, setInit]         = useState('')
+  const [quickNotes, setQuickNotes]   = useState('')
+
+  // Full-only
+  const [size, setSize]               = useState('Medium')
+  const [alignment, setAlignment]     = useState('')
+  const [profBonus, setProfBonus]     = useState('')
+  const [str, setStr]                 = useState('10')
+  const [dex, setDex]                 = useState('10')
+  const [con, setCon]                 = useState('10')
+  const [int_, setInt]                = useState('10')
+  const [wis, setWis]                 = useState('10')
+  const [cha, setCha]                 = useState('10')
+  const [resistances, setResistances] = useState([])
+  const [immunities, setImmunities]   = useState([])
+  const [condImm, setCondImm]         = useState([])
+  const [actions, setActions]         = useState([])
+  const [traits, setTraits]           = useState([])
+  const [senses, setSenses]           = useState('')
+
+  // Inline tag-add state
+  const [tagAdding, setTagAdding]     = useState(null) // 'res'|'imm'|'cond'
+  const [tagDraft, setTagDraft]       = useState('')
+
+  useEffect(() => {
+    setLoadingSrd(true)
+    getMonsters()
+      .then(d => { setSrdMonsters(d); setLoadingSrd(false) })
+      .catch(() => setLoadingSrd(false))
+  }, [])
+
+  const filteredSrd = srdMonsters.filter(m =>
+    query.trim() && m.name.toLowerCase().includes(query.toLowerCase())
+  ).slice(0, 20)
+
+  const filteredCampaign = campaignNpcs.filter(n =>
+    query.trim() && n.name.toLowerCase().includes(query.toLowerCase())
+  )
+
+  const showSrd      = sourceFilter === 'all' || sourceFilter === 'srd'
+  const showCampaign = sourceFilter === 'all' || sourceFilter === 'campaign'
+
+  const addFromSrd = (monster, cat) => {
     onAdd({
-      npcId:    genId(),
-      name:     name.trim(),
-      type:     type.trim(),
-      cr:       cr.trim(),
-      hp:       hp ? parseInt(hp) : null,
-      ac:       ac ? parseInt(ac) : null,
-      initiative: initiative !== '' ? parseInt(initiative) : null,
-      category,
-      actions: [],
+      npcId:      genId(),
+      name:       monster.name,
+      type:       monster.type,
+      cr:         formatCR(monster.challenge_rating),
+      hp:         monster.hit_points ?? null,
+      ac:         monster.armor_class?.[0]?.value ?? null,
+      initiative: dexMod(monster.dexterity),
+      category:   cat,
+      actions:    (monster.actions ?? []).map(a => ({ name: a.name, desc: a.desc })),
+      source:     'srd',
     })
     onClose()
   }
 
-  return (
+  const addFromCampaign = (npc, cat) => {
+    onAdd({ ...npc, npcId: genId(), category: cat })
+    onClose()
+  }
+
+  const submitQuick = () => {
+    if (!name.trim()) return
+    onAdd({
+      npcId:      genId(),
+      name:       name.trim(),
+      type,
+      cr:         cr.trim(),
+      hp:         hp ? parseInt(hp) : null,
+      ac:         ac ? parseInt(ac) : null,
+      initiative: initiative !== '' ? parseInt(initiative) : null,
+      speed:      speed.trim(),
+      hitDie:     hitDie.trim(),
+      notes:      quickNotes.trim(),
+      category,
+      actions:    [],
+      source:     'custom',
+    })
+    onClose()
+  }
+
+  const submitFull = () => {
+    if (!name.trim()) return
+    onAdd({
+      npcId:      genId(),
+      name:       name.trim(),
+      size, type, alignment: alignment.trim(),
+      cr:         cr.trim(),
+      hp:         hp ? parseInt(hp) : null,
+      ac:         ac ? parseInt(ac) : null,
+      hitDie:     hitDie.trim(),
+      speed:      speed.trim(),
+      profBonus:  profBonus.trim(),
+      initiative: dexMod(parseInt(dex) || 10),
+      abilityScores: {
+        str: parseInt(str)||10, dex: parseInt(dex)||10, con: parseInt(con)||10,
+        int: parseInt(int_)||10, wis: parseInt(wis)||10, cha: parseInt(cha)||10,
+      },
+      resistances, immunities, conditionImmunities: condImm,
+      actions, traits, senses: senses.trim(),
+      category, source: 'custom',
+    })
+    onClose()
+  }
+
+  // Actions helpers
+  const addAction    = () => setActions(a => [...a, { name: '', toHit: '', damage: '', damageType: '', desc: '' }])
+  const removeAction = i  => setActions(a => a.filter((_, idx) => idx !== i))
+  const updateAction = (i, field, val) => setActions(a => a.map((x, idx) => idx === i ? { ...x, [field]: val } : x))
+
+  // Traits helpers
+  const addTrait    = () => setTraits(t => [...t, { name: '', desc: '' }])
+  const removeTrait = i  => setTraits(t => t.filter((_, idx) => idx !== i))
+  const updateTrait = (i, field, val) => setTraits(t => t.map((x, idx) => idx === i ? { ...x, [field]: val } : x))
+
+  // Inline tag add
+  const commitTag = (setter) => {
+    if (tagDraft.trim()) setter(a => [...a, tagDraft.trim()])
+    setTagAdding(null)
+    setTagDraft('')
+  }
+
+  return createPortal(
     <div className="cv-modal-overlay" onClick={onClose}>
-      <div className="cv-modal-sheet" onClick={e => e.stopPropagation()}>
+      <div className="cv-modal-sheet npc-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="cv-modal-handle" />
-        <div className="cv-modal-title">Add NPC / Monster</div>
 
-        <div className="add-npc-category-row">
-          {['boss','standard','ally'].map(cat => (
-            <button
-              key={cat}
-              className={`category-chip${category === cat ? ' category-chip--active' : ''}`}
-              onClick={() => setCategory(cat)}
-            >
-              {cat === 'boss' ? '👑 Boss' : cat === 'standard' ? '👺 Enemy' : '🤝 Ally'}
+        {/* ══ SEARCH VIEW ══ */}
+        {view === 'search' && (
+          <>
+            <div className="npc-modal-title">Add NPC / Enemy</div>
+            <div className="npc-modal-sub">Search the SRD and your campaign library, or create a custom NPC.</div>
+
+            <input
+              className="cv-input"
+              placeholder="Search monsters, NPCs… e.g. Goblin, Veteran…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              autoFocus
+              style={{ marginBottom: 8 }}
+            />
+
+            <div className="npc-source-chips">
+              {[['all','All sources'],['srd','SRD only'],['campaign','My campaign']].map(([val, label]) => (
+                <button
+                  key={val}
+                  className={`npc-source-chip${sourceFilter === val ? ' npc-source-chip--active' : ''}`}
+                  onClick={() => setSourceFilter(val)}
+                >{label}</button>
+              ))}
+            </div>
+
+            {query.trim() && (
+              <div className="npc-search-results">
+                {loadingSrd && showSrd && <div className="npc-search-hint">Loading SRD…</div>}
+
+                {showSrd && filteredSrd.map(m => (
+                  <div key={m.index} className="npc-search-row">
+                    <div className="npc-sr-icon">👺</div>
+                    <div className="npc-sr-info">
+                      <div className="npc-sr-name">{m.name}</div>
+                      <div className="npc-sr-meta">
+                        {m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}
+                      </div>
+                    </div>
+                    <span className="npc-sr-badge npc-sr-badge--srd">SRD</span>
+                    <div className="npc-sr-btns">
+                      {m.challenge_rating >= 4 && (
+                        <button className="npc-add-btn npc-add-btn--boss" onClick={() => addFromSrd(m, 'boss')}>Boss</button>
+                      )}
+                      <button className="npc-add-btn npc-add-btn--enemy" onClick={() => addFromSrd(m, 'standard')}>Enemy</button>
+                      <button className="npc-add-btn npc-add-btn--ally"  onClick={() => addFromSrd(m, 'ally')}>Ally</button>
+                    </div>
+                  </div>
+                ))}
+
+                {showCampaign && filteredCampaign.map(n => (
+                  <div key={n.npcId} className="npc-search-row">
+                    <div className="npc-sr-icon">{n.category === 'boss' ? '👑' : n.category === 'ally' ? '🤝' : '👺'}</div>
+                    <div className="npc-sr-info">
+                      <div className="npc-sr-name">{n.name}</div>
+                      <div className="npc-sr-meta">
+                        Custom{n.type ? ` · ${n.type}` : ''}{n.cr ? ` · CR ${n.cr}` : ''}{n.hp ? ` · ${n.hp} HP` : ''}
+                      </div>
+                    </div>
+                    <span className="npc-sr-badge npc-sr-badge--campaign">Campaign</span>
+                    <div className="npc-sr-btns">
+                      <button className="npc-add-btn npc-add-btn--boss"  onClick={() => addFromCampaign(n, 'boss')}>Boss</button>
+                      <button className="npc-add-btn npc-add-btn--enemy" onClick={() => addFromCampaign(n, 'standard')}>Enemy</button>
+                      <button className="npc-add-btn npc-add-btn--ally"  onClick={() => addFromCampaign(n, 'ally')}>Ally</button>
+                    </div>
+                  </div>
+                ))}
+
+                {!loadingSrd && filteredSrd.length === 0 && filteredCampaign.length === 0 && (
+                  <div className="npc-search-hint">No results for "{query}"</div>
+                )}
+              </div>
+            )}
+
+            <button className="npc-create-link" onClick={() => setView('create')}>
+              + Can't find what you need? Create a custom NPC →
             </button>
-          ))}
-        </div>
+          </>
+        )}
 
-        <label className="cv-label">Name *</label>
-        <input className="cv-input" placeholder="e.g. Goblin Boss" value={name} onChange={e => setName(e.target.value)} autoFocus />
+        {/* ══ CREATE VIEW ══ */}
+        {view === 'create' && (
+          <>
+            <button className="npc-back-btn" onClick={() => setView('search')}>← Back to Search</button>
+            <div className="npc-modal-title">Create NPC</div>
+            <div className="npc-modal-sub">
+              {createMode === 'quick' ? 'Quick mode for standard enemies.' : 'Full stat block for bosses and named NPCs.'}
+            </div>
 
-        <div className="cv-input-row">
-          <div>
-            <label className="cv-label">Type</label>
-            <input className="cv-input" placeholder="Humanoid" value={type} onChange={e => setType(e.target.value)} />
-          </div>
-          <div>
-            <label className="cv-label">CR</label>
-            <input className="cv-input" placeholder="1/2" value={cr} onChange={e => setCr(e.target.value)} />
-          </div>
-        </div>
+            <div className="npc-mode-toggle">
+              <button className={`npc-mode-btn${createMode === 'quick' ? ' npc-mode-btn--active' : ''}`} onClick={() => setCreateMode('quick')}>⚡ Quick</button>
+              <button className={`npc-mode-btn${createMode === 'full'  ? ' npc-mode-btn--active' : ''}`} onClick={() => setCreateMode('full')}>📋 Full Stat Block</button>
+            </div>
 
-        <div className="cv-input-row">
-          <div>
-            <label className="cv-label">HP</label>
-            <input className="cv-input" type="number" placeholder="21" value={hp} onChange={e => setHp(e.target.value)} />
-          </div>
-          <div>
-            <label className="cv-label">AC</label>
-            <input className="cv-input" type="number" placeholder="15" value={ac} onChange={e => setAc(e.target.value)} />
-          </div>
-          <div>
-            <label className="cv-label">Initiative</label>
-            <input className="cv-input" type="number" placeholder="+2" value={initiative} onChange={e => setInit(e.target.value)} />
-          </div>
-        </div>
+            {/* ── Quick mode ── */}
+            {createMode === 'quick' && (
+              <>
+                <label className="cv-label">Name *</label>
+                <input className="cv-input" placeholder="e.g. Goblin Shaman" value={name} onChange={e => setName(e.target.value)} autoFocus />
 
-        <div className="cv-modal-actions">
-          <button className="cv-btn cv-btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="cv-btn cv-btn--dm" onClick={submit} disabled={!name.trim()}>Add</button>
-        </div>
+                <div className="npc-grid-3" style={{ marginTop: 10 }}>
+                  <div><label className="cv-label">Max HP</label><input className="cv-input" type="number" placeholder="18" value={hp} onChange={e => setHp(e.target.value)} /></div>
+                  <div><label className="cv-label">AC</label><input className="cv-input" type="number" placeholder="13" value={ac} onChange={e => setAc(e.target.value)} /></div>
+                  <div><label className="cv-label">Initiative</label><input className="cv-input" type="number" placeholder="+2" value={initiative} onChange={e => setInit(e.target.value)} /></div>
+                  <div><label className="cv-label">CR</label><input className="cv-input" placeholder="½" value={cr} onChange={e => setCr(e.target.value)} /></div>
+                  <div><label className="cv-label">Speed</label><input className="cv-input" placeholder="30ft" value={speed} onChange={e => setSpeed(e.target.value)} /></div>
+                  <div>
+                    <label className="cv-label">Type</label>
+                    <select className="cv-input" value={type} onChange={e => setType(e.target.value)}>
+                      {CREATURE_TYPES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <label className="cv-label" style={{ marginTop: 8 }}>Actions / Notes</label>
+                <textarea className="cv-input" rows={3} placeholder="e.g. Scimitar +4, 1d6+2 slashing." value={quickNotes} onChange={e => setQuickNotes(e.target.value)} style={{ resize: 'vertical', lineHeight: '1.5' }} />
+
+                <div className="cv-input-row" style={{ marginTop: 8 }}>
+                  <div>
+                    <label className="cv-label">Add to campaign as</label>
+                    <select className="cv-input" value={category} onChange={e => setCategory(e.target.value)}>
+                      <option value="standard">Standard Enemy</option>
+                      <option value="boss">Boss / Named NPC</option>
+                      <option value="ally">Ally NPC</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="cv-label">Hit Die</label>
+                    <input className="cv-input" placeholder="e.g. 2d8+2" value={hitDie} onChange={e => setHitDie(e.target.value)} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── Full stat block mode ── */}
+            {createMode === 'full' && (
+              <>
+                {/* Identity */}
+                <div className="npc-form-section">
+                  <div className="npc-sec-lbl">Identity</div>
+                  <label className="cv-label">Name *</label>
+                  <input className="cv-input" placeholder="e.g. Gorthak, Orc Warchief" value={name} onChange={e => setName(e.target.value)} autoFocus />
+                  <div className="npc-grid-3" style={{ marginTop: 8 }}>
+                    <div>
+                      <label className="cv-label">Size</label>
+                      <select className="cv-input" value={size} onChange={e => setSize(e.target.value)}>
+                        {['Tiny','Small','Medium','Large','Huge','Gargantuan'].map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="cv-label">Type</label>
+                      <select className="cv-input" value={type} onChange={e => setType(e.target.value)}>
+                        {CREATURE_TYPES.map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="cv-label">Alignment</label>
+                      <input className="cv-input" placeholder="Chaotic Evil" value={alignment} onChange={e => setAlignment(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Core stats */}
+                <div className="npc-form-section">
+                  <div className="npc-sec-lbl">Core Stats</div>
+                  <div className="npc-grid-3">
+                    <div><label className="cv-label">AC</label><input className="cv-input" type="number" placeholder="15" value={ac} onChange={e => setAc(e.target.value)} /></div>
+                    <div><label className="cv-label">Max HP</label><input className="cv-input" type="number" placeholder="93" value={hp} onChange={e => setHp(e.target.value)} /></div>
+                    <div><label className="cv-label">Hit Die</label><input className="cv-input" placeholder="11d8+44" value={hitDie} onChange={e => setHitDie(e.target.value)} /></div>
+                    <div><label className="cv-label">Speed</label><input className="cv-input" placeholder="30ft" value={speed} onChange={e => setSpeed(e.target.value)} /></div>
+                    <div><label className="cv-label">CR</label><input className="cv-input" placeholder="4" value={cr} onChange={e => setCr(e.target.value)} /></div>
+                    <div><label className="cv-label">Prof Bonus</label><input className="cv-input" placeholder="+2" value={profBonus} onChange={e => setProfBonus(e.target.value)} /></div>
+                  </div>
+                </div>
+
+                {/* Ability scores */}
+                <div className="npc-form-section">
+                  <div className="npc-sec-lbl">Ability Scores</div>
+                  <div className="npc-ability-grid">
+                    {[['STR',str,setStr],['DEX',dex,setDex],['CON',con,setCon],['INT',int_,setInt],['WIS',wis,setWis],['CHA',cha,setCha]].map(([label, val, setter]) => (
+                      <div key={label} className="npc-ability-tile">
+                        <div className="npc-ability-lbl">{label}</div>
+                        <input className="cv-input npc-ability-input" type="number" min="1" max="30" value={val} onChange={e => setter(e.target.value)} />
+                        <div className="npc-ability-mod">{abilityMod(val)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Resistances & Immunities */}
+                <div className="npc-form-section">
+                  <div className="npc-sec-lbl">Resistances &amp; Immunities</div>
+                  {[
+                    ['Damage Resistances', resistances, setResistances, 'res'],
+                    ['Damage Immunities',  immunities,  setImmunities,  'imm'],
+                    ['Condition Immunities', condImm,   setCondImm,     'cond'],
+                  ].map(([label, arr, setter, key]) => (
+                    <div key={key} className="npc-tag-section">
+                      <label className="cv-label">{label}</label>
+                      <div className="npc-tag-row">
+                        {arr.map((tag, i) => (
+                          <span key={i} className="npc-tag">
+                            {tag}
+                            <button onClick={() => setter(a => a.filter((_, idx) => idx !== i))}>✕</button>
+                          </span>
+                        ))}
+                        {tagAdding === key ? (
+                          <input
+                            className="npc-tag-input"
+                            autoFocus
+                            value={tagDraft}
+                            placeholder="e.g. Fire"
+                            onChange={e => setTagDraft(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') commitTag(setter); if (e.key === 'Escape') { setTagAdding(null); setTagDraft('') } }}
+                            onBlur={() => commitTag(setter)}
+                          />
+                        ) : (
+                          <button className="npc-add-tag" onClick={() => { setTagAdding(key); setTagDraft('') }}>+ Add</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="npc-form-section">
+                  <div className="npc-sec-lbl">Actions</div>
+                  {actions.map((a, i) => (
+                    <div key={i} className="npc-action-entry">
+                      <div className="npc-action-entry-head">
+                        <input className="cv-input" placeholder="Action name" value={a.name} onChange={e => updateAction(i, 'name', e.target.value)} style={{ fontWeight: 700 }} />
+                        <button className="npc-del-btn" onClick={() => removeAction(i)}>✕</button>
+                      </div>
+                      <div className="npc-grid-3" style={{ marginTop: 6 }}>
+                        <div><label className="cv-label">To Hit</label><input className="cv-input" placeholder="+5" value={a.toHit} onChange={e => updateAction(i, 'toHit', e.target.value)} /></div>
+                        <div><label className="cv-label">Damage</label><input className="cv-input" placeholder="1d8+3" value={a.damage} onChange={e => updateAction(i, 'damage', e.target.value)} /></div>
+                        <div><label className="cv-label">Type</label><input className="cv-input" placeholder="Slashing" value={a.damageType} onChange={e => updateAction(i, 'damageType', e.target.value)} /></div>
+                      </div>
+                      <input className="cv-input" placeholder="Description / additional effect…" value={a.desc} onChange={e => updateAction(i, 'desc', e.target.value)} style={{ marginTop: 6 }} />
+                    </div>
+                  ))}
+                  <button className="npc-add-row" onClick={addAction}>+ Add Action</button>
+                </div>
+
+                {/* Traits */}
+                <div className="npc-form-section">
+                  <div className="npc-sec-lbl">Traits</div>
+                  {traits.map((t, i) => (
+                    <div key={i} className="npc-action-entry">
+                      <div className="npc-action-entry-head">
+                        <input className="cv-input" placeholder="Trait name" value={t.name} onChange={e => updateTrait(i, 'name', e.target.value)} style={{ fontWeight: 700 }} />
+                        <button className="npc-del-btn" onClick={() => removeTrait(i)}>✕</button>
+                      </div>
+                      <input className="cv-input" placeholder="Description" value={t.desc} onChange={e => updateTrait(i, 'desc', e.target.value)} style={{ marginTop: 6 }} />
+                    </div>
+                  ))}
+                  <button className="npc-add-row" onClick={addTrait}>+ Add Trait</button>
+                </div>
+
+                {/* Campaign */}
+                <div className="npc-form-section">
+                  <div className="npc-sec-lbl">Campaign</div>
+                  <div className="cv-input-row">
+                    <div>
+                      <label className="cv-label">Add to campaign as</label>
+                      <select className="cv-input" value={category} onChange={e => setCategory(e.target.value)}>
+                        <option value="standard">Standard Enemy</option>
+                        <option value="boss">Boss / Named NPC</option>
+                        <option value="ally">Ally NPC</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="cv-label">Senses</label>
+                      <input className="cv-input" placeholder="e.g. Darkvision 60ft" value={senses} onChange={e => setSenses(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="cv-modal-actions">
+              <button className="cv-btn cv-btn--ghost" onClick={onClose}>Cancel</button>
+              <button
+                className="cv-btn cv-btn--dm"
+                onClick={createMode === 'quick' ? submitQuick : submitFull}
+                disabled={!name.trim()}
+              >Save NPC</button>
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -451,7 +832,7 @@ function NoteSection({ section, onChange, onDelete, locked }) {
 function StartSessionModal({ sessionNumber, onStart, onClose }) {
   const [name, setName] = useState(`Session ${sessionNumber}`)
 
-  return (
+  return createPortal(
     <div className="cv-modal-overlay" onClick={onClose}>
       <div className="cv-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="cv-modal-handle" />
@@ -469,7 +850,8 @@ function StartSessionModal({ sessionNumber, onStart, onClose }) {
           <button className="cv-btn cv-btn--dm" onClick={() => onStart(name)}>Start →</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -872,6 +1254,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
 
       {showAddNPC && (
         <AddNPCModal
+          campaignNpcs={npcs}
           onAdd={addNPC}
           onClose={() => setShowAddNPC(false)}
         />
