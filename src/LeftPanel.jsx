@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ShortRestModal, LongRestModal } from './RestModals'
+import LevelUpModal, { checkLevelUp } from './LevelUpModal'
 import './LeftPanel.css'
 
 const XP_THRESHOLDS = [0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000]
@@ -16,6 +17,7 @@ export default function LeftPanel({
   const [showLongRest,  setShowLongRest]  = useState(false)
   const [xpInput,       setXpInput]       = useState('')
   const [showXpInput,   setShowXpInput]   = useState(false)
+  const [showLevelUp,   setShowLevelUp]   = useState(false)
 
   if (!char) return null
 
@@ -168,7 +170,10 @@ export default function LeftPanel({
               e.preventDefault()
               const delta = parseInt(xpInput, 10)
               if (!isNaN(delta) && delta !== 0) {
-                updateChar({ identity: { ...char.identity, xp: Math.max(0, xp + delta) } })
+                const newXp = Math.max(0, xp + delta)
+                const updated = { ...char, identity: { ...char.identity, xp: newXp } }
+                updateChar({ identity: updated.identity })
+                if (checkLevelUp(updated)) setShowLevelUp(true)
               }
               setXpInput('')
               setShowXpInput(false)
@@ -228,6 +233,13 @@ export default function LeftPanel({
       )}
       {showLongRest && (
         <LongRestModal char={char} onConfirm={handleRestConfirm} onClose={() => setShowLongRest(false)} />
+      )}
+      {showLevelUp && (
+        <LevelUpModal
+          char={char}
+          onConfirm={updated => { updateChar(updated); setShowLevelUp(false) }}
+          onClose={() => setShowLevelUp(false)}
+        />
       )}
     </div>
   )
