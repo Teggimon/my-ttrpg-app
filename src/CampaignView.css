@@ -691,7 +691,7 @@
 }
 
 .npc-modal-title {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 17px;
   font-weight: 800;
   color: var(--text-primary);
