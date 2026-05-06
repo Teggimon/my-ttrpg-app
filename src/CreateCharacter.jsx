@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
 import { v4 as uuidv4 } from 'uuid'
-import { getClasses, getRaces, getBackgrounds } from './srdContent'
+import { getClasses, getRaces, getBackgrounds, getEquipment } from './srdContent'
 
 // ─── SRD helpers ─────────────────────────────────────────────────────────────
 
@@ -23,7 +23,7 @@ const SPELLCASTING_ABILITY = {
 
 // ─── Character builder ────────────────────────────────────────────────────────
 
-function buildCharacter({ user, name, raceData, subraceData, classData, backgroundData, alignment, choices }) {
+async function buildCharacter({ user, name, raceData, subraceData, classData, backgroundData, alignment, choices }) {
   const {
     raceBonusOptions = [],   // [{ability_score:{index}, bonus}]
     classSkills = [],        // ['skill-perception', ...]
@@ -84,18 +84,32 @@ function buildCharacter({ user, name, raceData, subraceData, classData, backgrou
     .map(p => p.name)
 
   // 8. Inventory: class starting_equipment + chosen class equipment + background equipment
+  // Packs are expanded into their individual contents using SRD data
+  const allEquipmentData = await getEquipment().catch(() => [])
+  const equipMap = Object.fromEntries(allEquipmentData.map(e => [e.index, e]))
+
+  const expandItem = ({ index, name, quantity }) => {
+    const srdItem = equipMap[index]
+    if (srdItem?.contents?.length > 0) {
+      return srdItem.contents.map(c => ({
+        index: c.item.index, name: c.item.name, quantity: c.quantity ?? 1, equipped: false,
+      }))
+    }
+    return [{ index, name, quantity: quantity ?? 1, equipped: false }]
+  }
+
   const inventory = []
   for (const item of (classData?.starting_equipment ?? [])) {
-    inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
+    inventory.push(...expandItem({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity }))
   }
   for (const item of classEquipment) {
-    inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
+    inventory.push(...expandItem(item))
   }
   for (const item of (backgroundData?.starting_equipment ?? [])) {
-    inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
+    inventory.push(...expandItem({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity }))
   }
   for (const item of backgroundEquipment) {
-    inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
+    inventory.push(...expandItem(item))
   }
 
   // 9. Racial traits
@@ -382,14 +396,18 @@ function StepClass({ classes, selected, onSelect, onNext, onBack }) {
 
 // ─── Step 5: Class setup (skills + equipment choices) ─────────────────────────
 
-// Fetch all items in an equipment category from the SRD
+// Some class data uses broad category names that the SRD splits into sub-categories
+const WEAPON_CATEGORY_MAP = {
+  'martial-weapons': ['martial-melee-weapons', 'martial-ranged-weapons'],
+  'simple-weapons':  ['simple-melee-weapons',  'simple-ranged-weapons'],
+}
+
 async function fetchCategoryItems(categoryIndex) {
-  const BASE = 'https://raw.githubusercontent.com/Teggimon/ttrpg-srd-content/master/5e_PHB_2014'
   try {
-    const res = await fetch(`${BASE}/5e-SRD-Equipment.json`)
-    if (!res.ok) return []
-    const all = await res.json()
-    return all.filter(item => item.equipment_category?.index === categoryIndex)
+    const all = await getEquipment()
+    const aliases = WEAPON_CATEGORY_MAP[categoryIndex] ?? [categoryIndex]
+    return all
+      .filter(item => aliases.includes(item.equipment_category?.index))
       .map(item => ({ index: item.index, name: item.name, quantity: 1 }))
   } catch { return [] }
 }
@@ -460,7 +478,8 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
   // When user clicks a category card, fetch its items
   const expandCategory = async (choice, groupIndex) => {
     setExpandedChoice(choice.id)
-    if (categoryItems[choice.id]) return // already loaded
+    if (categoryItems[choice.id] !== undefined) return // already loaded or loading
+    setCategoryItems(prev => ({ ...prev, [choice.id]: null })) // null = loading
     const items = choice.categoryIndex
       ? await fetchCategoryItems(choice.categoryIndex)
       : []
@@ -534,7 +553,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
           {group.choices.map(choice => {
             const checked = selectedEquipment.some(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
             const isExpanded = expandedChoice === choice.id
-            const catItems = categoryItems[choice.id] ?? []
+            const catItems = categoryItems[choice.id] // undefined=not started, null=loading, []=empty
 
             if (choice.isCategory) {
               const choose = choice.choose ?? 1
@@ -555,8 +574,9 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                   </div>
                   {isExpanded && (
                     <div style={{ paddingLeft: '1rem', marginBottom: '0.5rem' }}>
-                      {catItems.length === 0 && <div style={S.cardSub}>Loading…</div>}
-                      {catItems.map(item => {
+                      {(catItems === undefined || catItems === null) && <div style={S.cardSub}>Loading…</div>}
+                      {Array.isArray(catItems) && catItems.length === 0 && <div style={S.cardSub}>No items found in this category.</div>}
+                      {Array.isArray(catItems) && catItems.map(item => {
                         const itemChecked = selectedForChoice.some(e => e.index === item.index)
                         const disabled = !itemChecked && selectedForChoice.length >= choose
                         return (
@@ -918,7 +938,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
     setCreating(true)
     setError(null)
     try {
-      const character = buildCharacter({
+      const character = await buildCharacter({
         user, name,
         raceData, subraceData, classData, backgroundData, alignment,
         choices: {
