@@ -328,7 +328,8 @@ export default function EncounterView({ encounter, session, campaign, party, onB
     : []
 
   return (
-    <div className="ev-body">
+    <div className="app-page app-page--full">
+    <div className="app-container app-container--wide app-container--dm app-container--full-height ev-layout">
       {/* ── Initiative overlay ── */}
       {phase === 'initiative' && (
         <InitiativeOverlay
@@ -480,6 +481,7 @@ export default function EncounterView({ encounter, session, campaign, party, onB
           )}
         </>
       )}
+    </div>
     </div>
   )
 }

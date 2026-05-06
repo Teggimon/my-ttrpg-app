@@ -1,46 +1,110 @@
-/* ── Outer shell ─────────────────────────────────────────── */
-.char-layout {
+/* ════════════════════════════════════════════
+   Character Sheet Layout
+   Uses the global .app-page / .app-container
+   pattern from index.css.
+   Max-width: 1100px (wide variant).
+   ════════════════════════════════════════════ */
+
+/* The outer .app-page and .app-container classes come from index.css.
+   CharacterLayout.jsx renders:
+
+   <div class="app-page app-page--full">
+     <div class="app-container app-container--wide app-container--full-height">
+       [character switcher]
+       [sheet body — portrait or landscape]
+     </div>
+   </div>
+*/
+
+/* ── Character Switcher ── */
+.char-switcher {
   display: flex;
-  flex-direction: column;
-  height: 100%;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.char-switcher::-webkit-scrollbar { display: none; }
+
+.char-tab {
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  background: transparent;
+  transition: all 0.15s;
+}
+.char-tab:hover { color: var(--text-primary); }
+.char-tab--active {
+  background: var(--accent);
+  color: var(--text-inverse);
+  border-color: var(--accent);
+}
+.char-tab--new {
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+}
+.char-tab--new:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Sheet body — shared ── */
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
   overflow: hidden;
 }
 
-/* ── Portrait body ───────────────────────────────────────── */
+/* ── Portrait: stacked — header strip + content + bottom nav ── */
 .portrait-body {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
-/* ── Landscape body ──────────────────────────────────────── */
+/* ── Landscape: side-by-side — left panel + content ── */
 .landscape-body {
   flex: 1;
   display: flex;
   flex-direction: row;
   min-height: 0;
+  overflow: hidden;
 }
 
-/* ── Content panel (shared) ──────────────────────────────── */
+/* ── Content panel (tab right side / portrait main area) ── */
 .content-panel {
   flex: 1;
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--bg-base);
 }
 
-.tab-content {
-  padding: 12px 14px 24px;
-}
-
-/* ── Portrait: content gets all remaining space ──────────── */
-.portrait-body .content-panel {
-  flex: 1;
-}
-
-/* ── Landscape: content fills beside sidebar ─────────────── */
 .landscape-body .content-panel {
   border-left: 0.5px solid var(--border);
+}
+
+/* Standard tab content inner padding */
+.tab-content {
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-xl);
+}
+
+/* ── Char layout root ── */
+.char-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }

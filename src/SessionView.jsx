@@ -333,7 +333,8 @@ export default function SessionView({ token, user, session, campaign, party, onB
   const chars = allActiveChars(party)
 
   return (
-    <div className="sv-body">
+    <div className="app-page app-page--full">
+    <div className="app-container app-container--wide app-container--dm app-container--full-height sv-layout">
       {/* ── Left panel ── */}
       <aside className="sv-sidebar">
         {/* Back + title */}
@@ -488,6 +489,7 @@ export default function SessionView({ token, user, session, campaign, party, onB
           onClose={() => setShowNewEncounter(false)}
         />
       )}
+    </div>
     </div>
   )
 }

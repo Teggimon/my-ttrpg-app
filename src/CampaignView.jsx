@@ -661,7 +661,8 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
   const allies   = npcs.filter(n => n.category === 'ally')
 
   return (
-    <div className="cv-body">
+    <div className="app-page app-page--full">
+    <div className="app-container app-container--wide app-container--dm app-container--full-height cv-layout">
       {/* ── Left sidebar ── */}
       <aside className="cv-sidebar">
         <div className="cv-sidebar-top">
@@ -875,6 +876,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
           onClose={() => setShowAddNPC(false)}
         />
       )}
+    </div>
     </div>
   )
 }

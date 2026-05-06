@@ -1,204 +1,321 @@
-/* ═══════════════════════════════════════════════════════════
-   TTRPG Sheet — Design tokens (Dungeon theme, always active)
-   All variables on :root — no data-theme selector needed.
-   ═══════════════════════════════════════════════════════════ */
-:root {
-  /* Core backgrounds */
-  --bg-base:           #0e0d1a;
-  --bg-surface:        #13122a;
-  --bg-elevated:       #1c1b35;
-  --bg-inset:          #0a0915;
+/* ═══════════════════════════════════════════════════════════════════
+   TTRPG Sheet — Global Design System
+   Single source of truth for all tokens, layout, typography,
+   and shared component primitives.
+   Version 2.2 · May 2026
+   ═══════════════════════════════════════════════════════════════════ */
 
-  /* Borders */
-  --border:            #26244a;
-  --border-strong:     #36336a;
 
-  /* Text */
-  --text-primary:      #eeedf8;
-  --text-secondary:    #8885aa;
-  --text-muted:        #45426a;
-  --text-inverse:      #0e0d1a;
+/* ── 1. RESET ──────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+button { cursor: pointer; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+img { display: block; max-width: 100%; }
+::-webkit-scrollbar { width: 0; height: 0; }
 
-  /* Accent */
-  --accent:            #7c6ff5;
-  --accent-hover:      #9b90ff;
-  --accent-subtle:     rgba(124, 111, 245, 0.15);
-  --accent-secondary:  #5550cc;
 
-  /* HP colours */
-  --hp-high:           #4ade80;
-  --hp-mid:            #f59e0b;
-  --hp-low:            #f87171;
-  --hp-temp:           #67e8f9;
+/* ── 2. DUNGEON THEME (default) ────────────────────────────────────── */
+:root,
+[data-theme="dungeon"] {
+  /* ── Backgrounds ── */
+  --bg-page:             #080712;
+  --bg-base:             #0e0d1a;
+  --bg-surface:          #13122a;
+  --bg-elevated:         #1c1b35;
+  --bg-inset:            #0a0915;
 
-  /* Spells */
-  --spell-slot-filled: #7c6ff5;
-  --spell-slot-empty:  #26244a;
+  /* ── Borders ── */
+  --border:              #26244a;
+  --border-strong:       #36336a;
 
-  /* Conditions */
-  --condition-bg:      rgba(239, 100, 60, 0.22);
-  --condition-text:    #f4845f;
+  /* ── Text ── */
+  --text-primary:        #eeedf8;
+  --text-secondary:      #8885aa;
+  --text-muted:          #45426a;
+  --text-inverse:        #0e0d1a;
+
+  /* ── Accent — player purple ── */
+  --accent:              #7c6ff5;
+  --accent-hover:        #9b90ff;
+  --accent-subtle:       rgba(124, 111, 245, 0.15);
+  --accent-secondary:    #5550cc;
+
+  /* ── DM crimson ── */
+  --dm:                  #e05252;
+  --dm-hover:            #f07070;
+  --dm-subtle:           rgba(224, 82, 82, 0.12);
+  --dm-border:           rgba(224, 82, 82, 0.38);
+
+  /* ── HP ── */
+  --hp-high:             #4ade80;
+  --hp-mid:              #f59e0b;
+  --hp-low:              #f87171;
+  --hp-temp:             #67e8f9;
+
+  /* ── Spells ── */
+  --spell-slot-filled:   #7c6ff5;
+  --spell-slot-empty:    #26244a;
+
+  /* ── Conditions ── */
+  --condition-bg:        rgba(239, 100, 60, 0.22);
+  --condition-text:      #f4845f;
   --concentration-indicator: #67e8f9;
 
-  /* States */
-  --success:           #4ade80;
-  --warning:           #f59e0b;
-  --danger:            #f87171;
+  /* ── States ── */
+  --success:             #4ade80;
+  --warning:             #f59e0b;
+  --danger:              #f87171;
 
-  /* Tabs */
-  --tab-active-bg:     #1c1b35;
-  --tab-active-text:   #eeedf8;
-  --tab-inactive-text: #45426a;
+  /* ── Tabs ── */
+  --tab-active-bg:       #1c1b35;
+  --tab-active-text:     #eeedf8;
+  --tab-inactive-text:   #45426a;
 
-  /* Shadows */
-  --shadow-sm:         0 2px 8px rgba(0,0,0,0.5);
-  --shadow-md:         0 8px 32px rgba(0,0,0,0.7);
+  /* ── Gold ── */
+  --gold:                #c9a227;
+  --gold-hover:          #e8bb30;
+  --gold-subtle:         rgba(201, 162, 39, 0.12);
+  --gold-border:         rgba(201, 162, 39, 0.40);
 
-  /* Typography */
-  --font-display:      'Cinzel', Georgia, serif;
-  --font-body:         'Nunito', system-ui, sans-serif;
-  --font-mono:         'JetBrains Mono', 'Fira Code', monospace;
+  /* ── Shadows ── */
+  --shadow-sm:           0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-md:           0 8px 32px rgba(0, 0, 0, 0.7);
+  --shadow-lg:           0 24px 80px rgba(0, 0, 0, 0.8);
 
-  /* Shape */
-  --radius-sm:         4px;
-  --radius-md:         8px;
-  --radius-lg:         12px;
-  --radius-full:       9999px;
-  --radius-pill:       9999px;
+  /* ── Typography ── */
+  --font-display:        'Cinzel', Georgia, serif;
+  --font-body:           'Nunito', system-ui, sans-serif;
+  --font-mono:           'JetBrains Mono', monospace;
+  --font-name:           'Outfit', system-ui, sans-serif;
 
-  /* Spacing */
-  --spacing-xs:        4px;
-  --spacing-sm:        8px;
-  --spacing-md:        16px;
-  --spacing-lg:        24px;
-  --spacing-xl:        32px;
+  /* ── Spacing (8px grid) ── */
+  --spacing-xs:          4px;
+  --spacing-sm:          8px;
+  --spacing-md:          16px;
+  --spacing-lg:          24px;
+  --spacing-xl:          32px;
 
-  /* Gold */
-  --gold:              #c9a227;
-  --gold-subtle:       rgba(201,162,39,0.10);
-  --gold-border:       rgba(201,162,39,0.38);
+  /* ── Border radius ── */
+  --radius-sm:           4px;
+  --radius-md:           8px;
+  --radius-lg:           12px;
+  --radius-xl:           16px;
+  --radius-full:         9999px;
 
-  /* ── Legacy aliases — old components reference these ── */
-  --bg-deep:           #08070f;
-  --bg-raised:         #13122a;
-  --bg-input:          #0a0915;
-  --border-mid:        #36336a;
-  --border-hi:         #4a4880;
-  --text-faint:        #45426a;
-  --accent-light:      #9b90ff;
-  --accent-bg:         rgba(124,111,245,0.15);
-  --accent-border:     #5550cc;
-  --hp-bg:             #12102a;
-  --hp-border:         #3a3870;
-  --hp-text:           #eeedf8;
-  --hp-muted:          #8885aa;
-  --hp-btn-bg:         #1c1b35;
-  --hp-btn-bdr:        #36336a;
-  --hp-btn-txt:        #eeedf8;
-  --danger-bg:         rgba(248,113,113,0.12);
-  --danger-bdr:        rgba(248,113,113,0.4);
-  --danger-txt:        #f87171;
-  --save-bg:           rgba(74,222,128,0.12);
-  --save-bdr:          rgba(74,222,128,0.4);
-  --fail-bg:           rgba(248,113,113,0.2);
-  --fail-bdr:          rgba(248,113,113,0.5);
-  --green:             #4ade80;
-  --font:              'Nunito', system-ui, sans-serif;
+  /* ── Legacy aliases (keep while old components migrate) ── */
+  --bg-deep:             #08070f;
+  --bg-raised:           #13122a;
+  --bg-input:            #0a0915;
+  --border-mid:          #36336a;
+  --border-hi:           #4a4880;
+  --text-faint:          #45426a;
+  --accent-light:        #9b90ff;
+  --accent-bg:           rgba(124, 111, 245, 0.15);
+  --accent-border:       #5550cc;
+  --hp-bg:               #12102a;
+  --hp-border:           #3a3870;
+  --hp-text:             #eeedf8;
+  --hp-muted:            #8885aa;
+  --hp-btn-bg:           #1c1b35;
+  --hp-btn-bdr:          #36336a;
+  --hp-btn-txt:          #eeedf8;
+  --danger-bg:           rgba(248, 113, 113, 0.12);
+  --danger-bdr:          rgba(248, 113, 113, 0.4);
+  --danger-txt:          #f87171;
+  --save-bg:             rgba(74, 222, 128, 0.12);
+  --save-bdr:            rgba(74, 222, 128, 0.4);
+  --fail-bg:             rgba(248, 113, 113, 0.2);
+  --fail-bdr:            rgba(248, 113, 113, 0.5);
+  --green:               #4ade80;
+  --font:                'Nunito', system-ui, sans-serif;
+  --r-sm:                4px;
+  --r-md:                8px;
+  --r-lg:                12px;
+  --r-xl:                16px;
+  --r-full:              9999px;
 }
 
-/* ── Reset ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── 3. BASE DOCUMENT ──────────────────────────────────────────────── */
 html, body {
   height: 100%;
 }
 
 body {
-  background: var(--bg-base);
+  background: var(--bg-page);
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-  height: 100%;
-  overflow: auto;      /* was: overflow: hidden — changed so Home panel can scroll on desktop */
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+}
+
+
+/* ── 4. APP CONTAINER PATTERN ──────────────────────────────────────── */
+/*
+  Every screen uses this two-layer pattern:
+
+  <div class="app-page">            ← dark backdrop, centres content
+    <div class="app-container">     ← the floating rounded panel
+      ...screen content...
+    </div>
+  </div>
+
+  Variants:
+  - app-page--full         no vertical padding, for sidebar layouts
+  - app-container--wide    max-width 1100px (campaign/session views)
+  - app-container--dm      crimson border tint (all DM screens)
+  - app-container--scroll  internal overflow-y: auto (for sidebar layouts)
+*/
+
+.app-page {
+  width: 100%;
+  min-height: 100vh;
+  background: var(--bg-page);
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  padding: var(--spacing-lg) var(--spacing-md) 48px;
 }
 
-/* ── App shell (character sheet — has its own scroll management) ── */
+.app-page--full {
+  padding: var(--spacing-lg) var(--spacing-md);
+  align-items: stretch;
+  min-height: 100vh;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 960px;
+  background: var(--bg-base);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-container--wide {
+  max-width: 1100px;
+}
+
+.app-container--full-height {
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+.app-container--dm {
+  border-color: var(--dm-border);
+  box-shadow: var(--shadow-md), 0 0 0 0.5px var(--dm-border);
+}
+
+/* Mobile — fills edge to edge, no radius */
+@media (max-width: 600px) {
+  .app-page,
+  .app-page--full {
+    padding: 0;
+  }
+  .app-container,
+  .app-container--wide {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    min-height: 100vh;
+  }
+  .app-container--full-height {
+    height: 100vh;
+  }
+}
+
+
+/* ── 5. LEGACY SHELLS ──────────────────────────────────────────────── */
+/* Character sheet — keeps its own scroll management */
 .app-shell {
   width: 100%;
   max-width: 480px;
-  height: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--bg-base);
   border-inline: 0.5px solid var(--border);
-  overflow: hidden;    /* character sheet keeps its own overflow:hidden */
+  overflow: hidden;
 }
-
 @media (orientation: landscape) and (min-width: 480px) {
   .app-shell { max-width: 100%; }
 }
 
-/* ── Scrollbars ── */
-::-webkit-scrollbar { width: 0; height: 0; }
+.screen-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
-/* ── Shared primitives (used by existing components) ── */
-.badge {
-  background: var(--bg-elevated);
-  border: 0.5px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 2px 7px;
+
+/* ── 6. TYPOGRAPHY ─────────────────────────────────────────────────── */
+/*
+  RULES (from design system §4):
+  - NEVER use --font-display below 16px. Use --font-body instead.
+  - Game mechanic numbers (HP, AC, dice, modifiers) → --font-mono
+  - Character name, race, class text → --font-display
+  - Button labels, form labels, all UI text → --font-body
+  - Character name element only → --font-name (Outfit 800)
+*/
+
+.type-display-xl { font-family: var(--font-display); font-size: 28px; font-weight: 700; line-height: 1.1; }
+.type-display-lg { font-family: var(--font-display); font-size: 22px; font-weight: 600; line-height: 1.2; }
+.type-display-md { font-family: var(--font-display); font-size: 18px; font-weight: 600; line-height: 1.2; }
+
+.type-label-lg   { font-family: var(--font-body); font-size: 15px; font-weight: 600; }
+.type-label-md   { font-family: var(--font-body); font-size: 13px; font-weight: 600; }
+.type-body-lg    { font-family: var(--font-body); font-size: 15px; font-weight: 400; }
+.type-body-md    { font-family: var(--font-body); font-size: 13px; font-weight: 400; }
+.type-body-sm    { font-family: var(--font-body); font-size: 11px; font-weight: 400; }
+
+.type-stat-xl    { font-family: var(--font-mono); font-size: 32px; font-weight: 500; }
+.type-stat-lg    { font-family: var(--font-mono); font-size: 22px; font-weight: 500; }
+.type-stat-md    { font-family: var(--font-mono); font-size: 15px; font-weight: 400; }
+.type-stat-sm    { font-family: var(--font-mono); font-size: 12px; font-weight: 400; }
+
+/* Character name — Outfit 800 ONLY — applied to .char-name element */
+.char-name {
+  font-family: var(--font-name);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+
+/* ── 7. SECTION HEADINGS ────────────────────────────────────────────── */
+.section-heading {
+  font-family: var(--font-body);
   font-size: 11px;
-  color: var(--accent);
-  font-weight: 500;
-  white-space: nowrap;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--border);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
 }
+.section-heading:first-child { margin-top: 0; }
 
-.pill {
-  border-radius: var(--radius-full);
-  padding: 2px 9px;
-  font-size: 10px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.pill-danger {
-  background: var(--danger-bg);
-  border: 0.5px solid var(--danger-bdr);
-  color: var(--danger-txt);
-}
-
-.pill-ghost {
-  background: transparent;
-  border: 0.5px solid var(--border-mid);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.icon-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-md);
-  background: var(--bg-surface);
-  border: 0.5px solid var(--border-strong);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  cursor: pointer;
-  flex-shrink: 0;
-  color: var(--text-muted);
-  user-select: none;
-}
-.icon-btn:active { opacity: 0.7; }
-
+/* Legacy */
 .sec-head {
   font-size: 9px;
   text-transform: uppercase;
@@ -208,15 +325,347 @@ body {
 }
 .sec-head:first-child { margin-top: 0; }
 
+
+/* ── 8. CARD ────────────────────────────────────────────────────────── */
 .card {
   background: var(--bg-surface);
-  border: 0.5px solid var(--border-strong);
-  border-radius: var(--radius-lg);
-  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+.card--elevated {
+  background: var(--bg-elevated);
+  border-color: var(--border-strong);
 }
 
-.screen-scroll {
-  height: 100%;
+
+/* ── 9. BUTTONS ─────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  min-height: 44px;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  text-align: center;
+}
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn--sm   { min-height: 32px; padding: 6px 12px; font-size: 12px; }
+.btn--full { width: 100%; }
+
+.btn-primary   { background: var(--accent); color: var(--text-inverse); }
+.btn-primary:not(:disabled):hover { background: var(--accent-hover); }
+
+.btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-strong); }
+.btn-secondary:not(:disabled):hover { border-color: var(--border-hi); }
+
+.btn-ghost     { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-ghost:not(:disabled):hover { color: var(--text-primary); border-color: var(--border-strong); }
+
+.btn-danger    { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-bdr); }
+.btn-danger:not(:disabled):hover { background: rgba(248, 113, 113, 0.22); }
+
+.btn-dm        { background: var(--dm); color: #fff; }
+.btn-dm:not(:disabled):hover { background: var(--dm-hover); }
+
+.btn-gold      { background: var(--gold); color: var(--text-inverse); }
+.btn-gold:not(:disabled):hover { background: var(--gold-hover); }
+
+
+/* ── 10. FORM INPUTS ────────────────────────────────────────────────── */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-subtle);
+}
+.input::placeholder { color: var(--text-muted); }
+.input:disabled { opacity: 0.4; cursor: not-allowed; }
+textarea.input { resize: none; line-height: 1.6; }
+
+.label {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+
+/* ── 11. PILLS & BADGES ─────────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-full);
+  padding: 2px var(--spacing-sm);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pill-primary { background: var(--accent-subtle); border: 0.5px solid var(--accent-secondary); color: var(--accent-hover); }
+.pill-danger  { background: var(--danger-bg);     border: 0.5px solid var(--danger-bdr);      color: var(--danger-txt); }
+.pill-success { background: var(--save-bg);        border: 0.5px solid var(--save-bdr);        color: var(--success); }
+.pill-ghost   { background: transparent;           border: 0.5px solid var(--border-mid);      color: var(--text-muted); }
+.pill-gold    { background: var(--gold-subtle);    border: 0.5px solid var(--gold-border);     color: var(--gold); }
+.pill-dm      { background: var(--dm-subtle);      border: 0.5px solid var(--dm-border);       color: var(--dm-hover); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 2px 7px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+
+/* ── 12. ICON BUTTON ────────────────────────────────────────────────── */
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover  { color: var(--text-primary); background: var(--bg-elevated); }
+.icon-btn:active { opacity: 0.7; }
+
+
+/* ── 13. MODALS ─────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.68);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-sheet {
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
   overflow-y: auto;
   overscroll-behavior: contain;
+  padding: 0 var(--spacing-md) var(--spacing-xl);
+  animation: modal-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
 }
+@keyframes modal-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+  margin: 12px auto var(--spacing-md);
+}
+
+.modal-title {
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.modal-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-md);
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+
+/* ── 14. HP BAR ─────────────────────────────────────────────────────── */
+.hp-track {
+  width: 100%;
+  height: 4px;
+  background: var(--bg-inset);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.hp-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.35s ease-out, background 0.35s;
+}
+
+
+/* ── 15. SPINNER ────────────────────────────────────────────────────── */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+.spinner--dm { border-top-color: var(--dm); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: var(--spacing-xl) 0;
+  justify-content: center;
+}
+
+
+/* ── 16. EMPTY STATE ────────────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px var(--spacing-lg);
+  gap: var(--spacing-sm);
+}
+.empty-state-icon  { font-size: 36px; opacity: 0.5; margin-bottom: 4px; }
+.empty-state-title { font-family: var(--font-body); font-size: 16px; font-weight: 700; color: var(--text-secondary); }
+.empty-state-sub   { font-size: 13px; color: var(--text-muted); line-height: 1.6; max-width: 280px; }
+
+
+/* ── 17. ADD ROW ────────────────────────────────────────────────────── */
+.add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.add-row:hover          { border-color: var(--accent); color: var(--accent);  background: var(--accent-subtle); }
+.add-row--dm:hover      { border-color: var(--dm);     color: var(--dm);      background: var(--dm-subtle); }
+
+
+/* ── 18. SYNC INDICATOR ─────────────────────────────────────────────── */
+.sync-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px var(--spacing-md);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.sync-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sync-bar--saved  { color: var(--success); }
+.sync-bar--saved  .sync-dot { background: var(--success); }
+.sync-bar--saving { color: var(--text-muted); }
+.sync-bar--saving .sync-dot { background: var(--text-muted); }
+.sync-bar--error  { color: var(--danger); }
+.sync-bar--error  .sync-dot { background: var(--danger); }
+
+
+/* ── 19. LIVE BADGE ─────────────────────────────────────────────────── */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--dm);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.04em;
+}
+.live-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  flex-shrink: 0;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+
+/* ── 20. WARNING BANNER ─────────────────────────────────────────────── */
+.warning-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 0.5px solid;
+  line-height: 1.4;
+}
+.warning-banner--gold   { background: var(--gold-subtle);  border-color: var(--gold-border); color: var(--gold); }
+.warning-banner--dm     { background: var(--dm-subtle);    border-color: var(--dm-border);   color: var(--dm-hover); }
+.warning-banner--danger { background: var(--danger-bg);    border-color: var(--danger-bdr);  color: var(--danger); }

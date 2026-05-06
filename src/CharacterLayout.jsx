@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import CharSwitcher from './CharSwitcher'
 import LeftPanel from './LeftPanel'
 import BottomNav from './BottomNav'
 import CombatTab from './tabs/CombatTab'
@@ -18,7 +17,7 @@ const TABS = [
 ]
 
 function useIsLandscape() {
-  const query = '(orientation: landscape) and (min-width: 480px)'
+  const query = '(orientation: landscape) and (min-width: 600px)'
   const [landscape, setLandscape] = useState(() => window.matchMedia(query).matches)
   useEffect(() => {
     const mq = window.matchMedia(query)
@@ -39,14 +38,14 @@ export default function CharacterLayout({
   onUpdateChar,
   syncStatus,
 }) {
-  const [activeTab, setActiveTab] = useState('combat')
-  const isLandscape = useIsLandscape()
+  const [activeTab, setActiveTab]   = useState('combat')
+  const [locked, setLocked]         = useState(false)
+  const isLandscape                 = useIsLandscape()
 
-  const char = characters.find(c => c.meta.characterId === activeCharId)
+  const char    = characters.find(c => c.meta?.characterId === activeCharId)
   if (!char) return null
 
-  const isOwner = char.meta.owner === `github:${user.login}`
-  const [locked, setLocked] = useState(false)
+  const isOwner = char.meta?.owner === `github:${user.login}`
 
   function updateChar(updates) {
     onUpdateChar({ ...char, ...updates })
@@ -65,56 +64,73 @@ export default function CharacterLayout({
   )
 
   return (
-    <div className="char-layout">
-      <CharSwitcher
-        characters={characters}
-        activeCharId={activeCharId}
-        onSwitch={onSwitchChar}
-        onNew={onNewChar}
-      />
+    /* ── Outer page backdrop ── */
+    <div className="app-page app-page--full">
 
-      {isLandscape ? (
-        /* ── Landscape: sidebar + content ── */
-        <div className="landscape-body">
-          <LeftPanel
-            char={char}
-            isOwner={isOwner}
-            locked={locked}
-            onToggleLock={() => setLocked(l => !l)}
-            syncStatus={syncStatus}
-            updateChar={updateChar}
-            tabs={TABS}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onBack={onBack}
-          />
-          <main className="content-panel">
-            {tabContent}
-          </main>
+      {/* ── Floating panel ── */}
+      <div className="app-container app-container--wide app-container--full-height">
+
+        {/* Character switcher row */}
+        <div className="char-switcher">
+          {characters.map(c => (
+            <button
+              key={c.meta?.characterId}
+              className={`char-tab${c.meta?.characterId === activeCharId ? ' char-tab--active' : ''}`}
+              onClick={() => onSwitchChar(c.meta?.characterId)}
+            >
+              {c.identity?.name ?? 'Character'}
+            </button>
+          ))}
+          <button className="char-tab char-tab--new" onClick={onNewChar}>+ New</button>
         </div>
-      ) : (
-        /* ── Portrait: header + content + bottom nav ── */
-        <div className="portrait-body">
-          <LeftPanel
-            char={char}
-            isOwner={isOwner}
-            locked={locked}
-            onToggleLock={() => setLocked(l => !l)}
-            syncStatus={syncStatus}
-            updateChar={updateChar}
-            portrait
-            onBack={onBack}
-          />
-          <main className="content-panel">
-            {tabContent}
-          </main>
-          <BottomNav
-            tabs={TABS}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
+
+        {/* ── Sheet body ── */}
+        <div className="sheet-body">
+          {isLandscape ? (
+            /* Landscape — sidebar + content */
+            <div className="landscape-body">
+              <LeftPanel
+                char={char}
+                isOwner={isOwner}
+                locked={locked}
+                onToggleLock={() => setLocked(l => !l)}
+                syncStatus={syncStatus}
+                updateChar={updateChar}
+                tabs={TABS}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                onBack={onBack}
+              />
+              <main className="content-panel">
+                {tabContent}
+              </main>
+            </div>
+          ) : (
+            /* Portrait — header strip + content + bottom nav */
+            <div className="portrait-body">
+              <LeftPanel
+                char={char}
+                isOwner={isOwner}
+                locked={locked}
+                onToggleLock={() => setLocked(l => !l)}
+                syncStatus={syncStatus}
+                updateChar={updateChar}
+                portrait
+                onBack={onBack}
+              />
+              <main className="content-panel">
+                {tabContent}
+              </main>
+              <BottomNav
+                tabs={TABS}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+              />
+            </div>
+          )}
         </div>
-      )}
+
+      </div>
     </div>
   )
 }
