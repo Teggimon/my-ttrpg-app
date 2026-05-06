@@ -30,3 +30,4 @@ git add .gitignore
 git commit -m "Remove node_modules from tracking"
 git push origin mainnode_modules/
 node_modules/
+.claude/worktrees/
