@@ -2,29 +2,9 @@ import { useState } from 'react'
 import { ShortRestModal, LongRestModal } from './RestModals'
 import './LeftPanel.css'
 
-function fmtBonus(n) { return n >= 0 ? `+${n}` : `${n}` }
-
 const XP_THRESHOLDS = [0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000]
 
-function XPBar({ char, isOwner, locked, updateChar }) {
-  const level = char.identity.class?.[0]?.level ?? 1
-  const xp    = char.identity.xp ?? 0
-  const next  = XP_THRESHOLDS[level]
-  const prev  = XP_THRESHOLDS[level - 1] ?? 0
-  const pct   = next ? Math.min(100, Math.round(((xp - prev) / (next - prev)) * 100)) : 100
-
-  return (
-    <div className="xp-bar-wrap">
-      <div className="xp-meta">
-        <span>{xp.toLocaleString()} XP</span>
-        {next && <span>Lv {level + 1} at {next.toLocaleString()}</span>}
-      </div>
-      <div className="xp-track">
-        <div className="xp-fill" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  )
-}
+function fmtBonus(n) { return n >= 0 ? `+${n}` : `${n}` }
 
 export default function LeftPanel({
   char, isOwner, locked, onToggleLock,
@@ -38,8 +18,22 @@ export default function LeftPanel({
   if (!char) return null
 
   const level    = char.identity.class?.reduce((s, c) => s + (c.level ?? 0), 0) ?? 1
-  const dexMod   = Math.floor(((char.stats?.DEX ?? char.abilities?.dexterity ?? 10) - 10) / 2)
+  const dexScore = char.stats?.abilityScores?.dex ?? 10
+  const dexMod   = Math.floor((dexScore - 10) / 2)
   const initBonus = dexMod + (char.combat?.initiativeBonus ?? 0)
+
+  const hpCur = char.combat?.hpCurrent ?? 0
+  const hpMax = char.combat?.hpMax ?? 1
+  const hpPct = Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100)))
+  const hpColor = hpPct > 66 ? 'var(--hp-high)' : hpPct > 33 ? 'var(--hp-mid)' : 'var(--hp-low)'
+
+  const xp   = char.identity.xp ?? 0
+  const next = XP_THRESHOLDS[level]
+  const prev = XP_THRESHOLDS[level - 1] ?? 0
+  const xpPct = next ? Math.min(100, Math.round(((xp - prev) / (next - prev)) * 100)) : 100
+
+  const className = char.identity.class?.[0]?.name ?? ''
+  const race      = char.identity.race ?? ''
 
   const syncClass = syncStatus === 'saving' ? 'lp-sync--saving'
     : syncStatus === 'saved'  ? 'lp-sync--saved'
@@ -52,16 +46,13 @@ export default function LeftPanel({
 
   const adjustHP = (delta) => {
     const cur = char.combat.hpCurrent ?? 0
-    const max = char.combat.hpMax     ?? 0
+    const max = char.combat.hpMax ?? 0
     updateChar({ combat: { ...char.combat, hpCurrent: Math.max(0, Math.min(max, cur + delta)) } })
   }
 
   const removeCondition = (cond) => {
     updateChar({
-      combat: {
-        ...char.combat,
-        conditions: char.combat.conditions.filter(c => c !== cond),
-      }
+      combat: { ...char.combat, conditions: char.combat.conditions.filter(c => c !== cond) }
     })
   }
 
@@ -74,141 +65,136 @@ export default function LeftPanel({
   return (
     <div className={`left-panel left-panel--${portrait ? 'portrait' : 'landscape'}`}>
 
-      {/* ── Identity row ── */}
-      <div className="lp-identity">
-        {onBack && (
-          <button className="icon-btn lp-back" onClick={onBack} title="Back">←</button>
-        )}
-        {isOwner && (
-          <button className="icon-btn lp-lock" onClick={onToggleLock} title={locked ? 'Unlock sheet' : 'Lock sheet'}>
-            {locked ? '🔒' : '🔓'}
-          </button>
-        )}
-        {!isOwner && <span className="icon-btn lp-lock" title="Read only">🔒</span>}
-        <div className="lp-name-block">
-          <span className="lp-name">{char.identity.name}</span>
-          <span className="lp-meta">
-            {char.identity.race} · {char.identity.class?.[0]?.name} {level}
-          </span>
-        </div>
-        <div className="lp-actions">
-          <button className="icon-btn" title="Share">↑</button>
-          <button className="icon-btn" title="More">⋯</button>
+      {/* ── Char info ── */}
+      <div className="lp-char-info">
+        <div className="lp-char-info-row">
+          <div className="lp-name-block">
+            {onBack && (
+              <button className="icon-btn lp-back" onClick={onBack} title="Back">←</button>
+            )}
+            <div>
+              <div className="lp-char-name">{char.identity.name}</div>
+              <div className="lp-char-meta">{race} · {className} · Lv {level}</div>
+            </div>
+          </div>
+          <div className="lp-char-actions">
+            {isOwner
+              ? <button className="icon-btn" onClick={onToggleLock} title={locked ? 'Unlock' : 'Lock'}>{locked ? '🔒' : '🔓'}</button>
+              : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🔒</span>
+            }
+            <button className="icon-btn" title="Share">↑</button>
+            <button className="icon-btn" title="More">⋯</button>
+          </div>
         </div>
       </div>
 
       {/* ── HP block ── */}
-      <div className="lp-vitals">
-        <div className="lp-hp">
-          <div className="lp-hp-label">Hit points</div>
+      <div className="lp-hp-wrap">
+        <div className="lp-hp-block">
+          <div className="lp-hp-label">Hit Points</div>
           <div className="lp-hp-row">
-            <span className="lp-hp-current">{char.combat.hpCurrent}</span>
-            <span className="lp-hp-max">/ {char.combat.hpMax}</span>
+            <div>
+              <span className="lp-hp-value">{hpCur}</span>
+              <span className="lp-hp-max"> / {hpMax}</span>
+            </div>
             {isOwner && !locked && (
-              <div className="lp-hp-btns">
-                <button className="hp-btn" onClick={() => adjustHP(-1)}>−</button>
-                <button className="hp-btn" onClick={() => adjustHP(+1)}>+</button>
+              <div className="lp-hp-controls">
+                <button className="lp-hp-btn" onClick={() => adjustHP(-1)}>−</button>
+                <button className="lp-hp-btn lp-hp-btn--plus" onClick={() => adjustHP(+1)}>+</button>
               </div>
             )}
           </div>
+          <div className="lp-hp-bar-track">
+            <div className="lp-hp-bar-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
+          </div>
         </div>
+      </div>
 
-        <div className="lp-stats">
-          <div className="stat-pip">
-            <span className="stat-pip-val">{char.combat.ac}</span>
-            <span className="stat-pip-lbl">AC</span>
-          </div>
-          <div className="stat-pip">
-            <span className="stat-pip-val">{fmtBonus(initBonus)}</span>
-            <span className="stat-pip-lbl">Init</span>
-          </div>
-          <div className="stat-pip">
-            <span className="stat-pip-val">{char.combat.speed}ft</span>
-            <span className="stat-pip-lbl">Speed</span>
-          </div>
+      {/* ── Stat tiles ── */}
+      <div className="lp-stat-tiles">
+        <div className="lp-stat-tile">
+          <div className="lp-stat-value">{char.combat?.ac ?? '—'}</div>
+          <div className="lp-stat-label">AC</div>
+        </div>
+        <div className="lp-stat-tile">
+          <div className="lp-stat-value">{fmtBonus(initBonus)}</div>
+          <div className="lp-stat-label">Init</div>
+        </div>
+        <div className="lp-stat-tile">
+          <div className="lp-stat-value">{char.combat?.speed ?? 30}ft</div>
+          <div className="lp-stat-label">Speed</div>
         </div>
       </div>
 
       {/* ── Conditions ── */}
-      {(char.combat.conditions?.length > 0 || (isOwner && !locked)) && (
-        <div className="lp-conditions">
-          {char.combat.conditions?.map(c => (
-            <span
-              key={c}
-              className="pill pill-danger"
-              onClick={() => !locked && isOwner && removeCondition(c)}
-            >
-              {c} {isOwner && !locked && '×'}
-            </span>
-          ))}
-          {isOwner && !locked && (
-            <span className="pill pill-ghost">+ Add</span>
-          )}
+      <div className="lp-conditions-row">
+        {(char.combat?.conditions ?? []).map(c => (
+          <span
+            key={c}
+            className="lp-condition-pill"
+            onClick={() => isOwner && !locked && removeCondition(c)}
+            title={isOwner && !locked ? 'Click to remove' : c}
+          >
+            {c}
+          </span>
+        ))}
+        {isOwner && !locked && (
+          <button className="lp-add-condition" onClick={() => onTabChange?.('combat')}>+ Add</button>
+        )}
+      </div>
+
+      {/* ── XP row ── */}
+      <div className="lp-xp-row">
+        <div className="lp-xp-labels">
+          <span>{xp.toLocaleString()} XP</span>
+          {next && <span>Lv {level + 1} at {next >= 1000 ? `${Math.round(next / 1000)}k` : next}</span>}
+        </div>
+        <div className="lp-xp-track">
+          <div className="lp-xp-fill" style={{ width: `${xpPct}%` }} />
+        </div>
+      </div>
+
+      {/* ── Saved indicator ── */}
+      {syncLabel && (
+        <div className={`lp-saved-indicator ${syncClass}`}>
+          <div className="lp-saved-dot" />
+          {syncLabel}
         </div>
       )}
 
-      {/* ── XP bar ── */}
-      <div className="lp-xp">
-        <XPBar char={char} isOwner={isOwner} locked={locked} updateChar={updateChar} />
-      </div>
-
-      {/* ── Rest buttons (owner only, unlocked) ── */}
-      {isOwner && !locked && (
+      {/* ── Rest buttons (landscape, owner, unlocked) ── */}
+      {!portrait && isOwner && !locked && (
         <div className="lp-rest-btns">
-          <button
-            className="rest-trigger-btn rest-trigger-btn--short"
-            onClick={() => setShowShortRest(true)}
-            title="Short Rest — spend Hit Dice to recover HP"
-          >
+          <button className="lp-rest-btn lp-rest-btn--short" onClick={() => setShowShortRest(true)}>
             🌙 Short Rest
           </button>
-          <button
-            className="rest-trigger-btn rest-trigger-btn--long"
-            onClick={() => setShowLongRest(true)}
-            title="Long Rest — fully restore HP, spell slots and abilities"
-          >
+          <button className="lp-rest-btn lp-rest-btn--long" onClick={() => setShowLongRest(true)}>
             🌑 Long Rest
           </button>
         </div>
       )}
 
-      {/* ── Sync ── */}
-      <div className={`lp-sync ${syncClass}`}>
-        <span className="lp-sync-dot" />
-        {syncLabel}
-      </div>
-
-      {/* ── Nav rail (landscape only) ── */}
+      {/* ── Sidebar tabs (landscape only) ── */}
       {!portrait && tabs && (
-        <nav className="nav-rail">
+        <div className="lp-sidebar-tabs">
           {tabs.map(tab => (
             <button
               key={tab.id}
-              className={`nav-rail-item ${activeTab === tab.id ? 'nav-rail-item--active' : ''}`}
+              className={`lp-sidebar-tab${activeTab === tab.id ? ' lp-sidebar-tab--active' : ''}`}
               onClick={() => onTabChange(tab.id)}
             >
-              <span className="nav-rail-icon">{tab.icon}</span>
-              <span className="nav-rail-label">{tab.label}</span>
+              <span className="lp-tab-icon">{tab.icon}</span>
+              <span className="lp-tab-label">{tab.label}</span>
             </button>
           ))}
-        </nav>
+        </div>
       )}
 
-      {/* ── Rest Modals ── */}
       {showShortRest && (
-        <ShortRestModal
-          char={char}
-          onConfirm={handleRestConfirm}
-          onClose={() => setShowShortRest(false)}
-        />
+        <ShortRestModal char={char} onConfirm={handleRestConfirm} onClose={() => setShowShortRest(false)} />
       )}
-
       {showLongRest && (
-        <LongRestModal
-          char={char}
-          onConfirm={handleRestConfirm}
-          onClose={() => setShowLongRest(false)}
-        />
+        <LongRestModal char={char} onConfirm={handleRestConfirm} onClose={() => setShowLongRest(false)} />
       )}
     </div>
   )
