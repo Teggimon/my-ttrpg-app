@@ -72,8 +72,9 @@ function FreeformCard({ label, value, isOwner, locked, onChange, tall }) {
 }
 
 function AllyCard({ ally, isOwner, locked, onUpdate, onRemove }) {
-  const [expanded, setExpanded] = useState(false)
-  const [editing, setEditing] = useState(false)
+  const isNew = !ally.name
+  const [expanded, setExpanded] = useState(isNew)
+  const [editing, setEditing] = useState(isNew)
   const [draft, setDraft] = useState(ally)
 
   const save = () => { onUpdate(draft); setEditing(false) }
