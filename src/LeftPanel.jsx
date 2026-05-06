@@ -14,6 +14,8 @@ export default function LeftPanel({
 }) {
   const [showShortRest, setShowShortRest] = useState(false)
   const [showLongRest,  setShowLongRest]  = useState(false)
+  const [xpInput,       setXpInput]       = useState('')
+  const [showXpInput,   setShowXpInput]   = useState(false)
 
   if (!char) return null
 
@@ -147,11 +149,42 @@ export default function LeftPanel({
       <div className="lp-xp-row">
         <div className="lp-xp-labels">
           <span>{xp.toLocaleString()} XP</span>
-          {next && <span>Lv {level + 1} at {next >= 1000 ? `${Math.round(next / 1000)}k` : next}</span>}
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {next && <span>Lv {level + 1} at {next >= 1000 ? `${Math.round(next / 1000)}k` : next}</span>}
+            {isOwner && !locked && (
+              <button className="lp-xp-add-btn" onClick={() => setShowXpInput(v => !v)}>
+                {showXpInput ? '✕' : '+ XP'}
+              </button>
+            )}
+          </span>
         </div>
         <div className="lp-xp-track">
           <div className="lp-xp-fill" style={{ width: `${xpPct}%` }} />
         </div>
+        {showXpInput && isOwner && !locked && (
+          <form
+            className="lp-xp-form"
+            onSubmit={e => {
+              e.preventDefault()
+              const delta = parseInt(xpInput, 10)
+              if (!isNaN(delta) && delta !== 0) {
+                updateChar({ identity: { ...char.identity, xp: Math.max(0, xp + delta) } })
+              }
+              setXpInput('')
+              setShowXpInput(false)
+            }}
+          >
+            <input
+              className="lp-xp-input"
+              type="number"
+              placeholder="e.g. 300"
+              value={xpInput}
+              onChange={e => setXpInput(e.target.value)}
+              autoFocus
+            />
+            <button className="lp-xp-submit" type="submit">Add</button>
+          </form>
+        )}
       </div>
 
       {/* ── Saved indicator ── */}

@@ -254,6 +254,30 @@
   transition: width 0.4s ease;
 }
 
+.lp-xp-add-btn {
+  font-size: 9px; font-weight: 700; font-family: var(--font-body);
+  padding: 1px 6px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--border-strong); background: transparent;
+  color: var(--text-faint); transition: all .15s; line-height: 1.4;
+}
+.lp-xp-add-btn:hover { border-color: var(--accent-border); color: var(--accent-light); }
+
+.lp-xp-form {
+  display: flex; gap: 5px; margin-top: 6px;
+}
+.lp-xp-input {
+  flex: 1; background: var(--bg-input); border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px;
+  padding: 4px 7px; font-family: var(--font-mono); outline: none; min-width: 0;
+}
+.lp-xp-input:focus { border-color: var(--accent); }
+.lp-xp-submit {
+  font-size: 11px; font-weight: 700; font-family: var(--font-body);
+  padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--accent); border: none; color: #fff;
+}
+.lp-xp-submit:hover { background: var(--accent-hover); }
+
 /* ── Saved indicator ─────────────────────────────────────────── */
 .lp-saved-indicator {
   display: flex;
