@@ -537,19 +537,23 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
                 {showSrd && filteredSrd.map(m => (
                   <div key={m.index} className="npc-search-row">
                     <div className="npc-sr-icon">👺</div>
-                    <div className="npc-sr-info">
-                      <div className="npc-sr-name">{m.name}</div>
-                      <div className="npc-sr-meta">
-                        {m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}
+                    <div className="npc-sr-body">
+                      <div className="npc-sr-top">
+                        <span className="npc-sr-name">{m.name}</span>
+                        <span className="npc-sr-badge npc-sr-badge--srd">SRD</span>
                       </div>
-                    </div>
-                    <span className="npc-sr-badge npc-sr-badge--srd">SRD</span>
-                    <div className="npc-sr-btns">
-                      {m.challenge_rating >= 4 && (
-                        <button className="npc-add-btn npc-add-btn--boss" onClick={() => addFromSrd(m, 'boss')}>Boss</button>
-                      )}
-                      <button className="npc-add-btn npc-add-btn--enemy" onClick={() => addFromSrd(m, 'standard')}>Enemy</button>
-                      <button className="npc-add-btn npc-add-btn--ally"  onClick={() => addFromSrd(m, 'ally')}>Ally</button>
+                      <div className="npc-sr-bottom">
+                        <span className="npc-sr-meta">
+                          {m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}
+                        </span>
+                        <div className="npc-sr-btns">
+                          {m.challenge_rating >= 4 && (
+                            <button className="npc-add-btn npc-add-btn--boss" onClick={() => addFromSrd(m, 'boss')}>Boss</button>
+                          )}
+                          <button className="npc-add-btn npc-add-btn--enemy" onClick={() => addFromSrd(m, 'standard')}>Enemy</button>
+                          <button className="npc-add-btn npc-add-btn--ally"  onClick={() => addFromSrd(m, 'ally')}>Ally</button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -557,17 +561,21 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
                 {showCampaign && filteredCampaign.map(n => (
                   <div key={n.npcId} className="npc-search-row">
                     <div className="npc-sr-icon">{n.category === 'boss' ? '👑' : n.category === 'ally' ? '🤝' : '👺'}</div>
-                    <div className="npc-sr-info">
-                      <div className="npc-sr-name">{n.name}</div>
-                      <div className="npc-sr-meta">
-                        Custom{n.type ? ` · ${n.type}` : ''}{n.cr ? ` · CR ${n.cr}` : ''}{n.hp ? ` · ${n.hp} HP` : ''}
+                    <div className="npc-sr-body">
+                      <div className="npc-sr-top">
+                        <span className="npc-sr-name">{n.name}</span>
+                        <span className="npc-sr-badge npc-sr-badge--campaign">Campaign</span>
                       </div>
-                    </div>
-                    <span className="npc-sr-badge npc-sr-badge--campaign">Campaign</span>
-                    <div className="npc-sr-btns">
-                      <button className="npc-add-btn npc-add-btn--boss"  onClick={() => addFromCampaign(n, 'boss')}>Boss</button>
-                      <button className="npc-add-btn npc-add-btn--enemy" onClick={() => addFromCampaign(n, 'standard')}>Enemy</button>
-                      <button className="npc-add-btn npc-add-btn--ally"  onClick={() => addFromCampaign(n, 'ally')}>Ally</button>
+                      <div className="npc-sr-bottom">
+                        <span className="npc-sr-meta">
+                          Custom{n.type ? ` · ${n.type}` : ''}{n.cr ? ` · CR ${n.cr}` : ''}{n.hp ? ` · ${n.hp} HP` : ''}
+                        </span>
+                        <div className="npc-sr-btns">
+                          <button className="npc-add-btn npc-add-btn--boss"  onClick={() => addFromCampaign(n, 'boss')}>Boss</button>
+                          <button className="npc-add-btn npc-add-btn--enemy" onClick={() => addFromCampaign(n, 'standard')}>Enemy</button>
+                          <button className="npc-add-btn npc-add-btn--ally"  onClick={() => addFromCampaign(n, 'ally')}>Ally</button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
