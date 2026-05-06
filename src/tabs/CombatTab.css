@@ -11,6 +11,13 @@
   padding: 9px 12px 5px;
 }
 
+.atk-source {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
 .atk-name {
   font-size: 14px;
   font-weight: 600;
@@ -26,6 +33,8 @@
 }
 
 .atk-btns { margin-left: auto; display: flex; gap: 5px; }
+
+.badge--dim { color: var(--text-faint); }
 
 .atk-btn {
   font-size: 11px; font-weight: 700; font-family: var(--font-body);

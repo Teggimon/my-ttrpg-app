@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getEquipment } from '../srdContent'
 import '../TabShared.css'
 import './CombatTab.css'
 
@@ -8,8 +9,23 @@ const ALL_CONDITIONS = [
   'Poisoned','Prone','Restrained','Stunned','Unconscious',
 ]
 
-const ORDINALS   = ['','I','II','III','IV','V','VI','VII','VIII','IX']
+const ORDINALS    = ['','I','II','III','IV','V','VI','VII','VIII','IX']
 const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
+
+// Racial traits that are combat-relevant (show in Attacks/Abilities section)
+const COMBAT_TRAIT_INDICES = new Set([
+  'breath-weapon', 'relentless-endurance', 'savage-attacks',
+  'gnome-cunning', 'halfling-luck', 'brave', 'stone-cunning',
+  'stonecunning', 'lucky', 'martial-arts', 'unarmored-defense',
+])
+
+// Breath weapon damage dice scale by level
+function breathDice(level) {
+  if (level >= 16) return '5d6'
+  if (level >= 11) return '4d6'
+  if (level >= 6)  return '3d6'
+  return '2d6'
+}
 
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
@@ -17,22 +33,64 @@ function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const [showCondPicker, setShowCondPicker] = useState(false)
   const [showEdit,       setShowEdit]       = useState(false)
+  const [srdMap,         setSrdMap]         = useState({})
 
-  const level  = char.identity.class?.[0]?.level ?? 1
+  const level  = char.identity.class?.reduce((s, c) => s + (c.level ?? 0), 0) ?? 1
   const pb     = PROFICIENCY[level] ?? 2
   const scores = char.stats?.abilityScores ?? {}
   const strMod = abilityMod(scores.str ?? 10)
   const dexMod = abilityMod(scores.dex ?? 10)
+  const conMod = abilityMod(scores.con ?? 10)
   const hpCur  = char.combat?.hpCurrent ?? 0
   const isDying = hpCur <= 0
 
-  // Weapons: look in inventory; items need damage field and either equipped flag or damage info
-  const equippedWeapons = (char.inventory ?? []).filter(i => i.equipped && i.damage)
+  useEffect(() => {
+    getEquipment().then(all => {
+      setSrdMap(Object.fromEntries(all.map(e => [e.index, e])))
+    }).catch(() => {})
+  }, [])
+
+  // Resolve damage for a weapon item (item data + SRD fallback)
+  function resolveWeapon(item) {
+    const srd = srdMap[item.index] ?? {}
+    const props = item.properties ?? srd.properties?.map(p => p.name) ?? []
+    const propsLower = props.map(p => (typeof p === 'string' ? p : p.name ?? '').toLowerCase())
+
+    const isFin    = propsLower.includes('finesse')
+    const isRanged = propsLower.includes('ammunition') || propsLower.includes('thrown')
+    const useAttr  = isRanged || (isFin && dexMod > strMod) ? 'dex' : 'str'
+    const attrMod  = useAttr === 'dex' ? dexMod : strMod
+    const enh      = item.enhancement ?? 0
+    const toHit    = attrMod + pb + enh
+    const dmgMod   = attrMod + enh
+
+    // Damage: prefer stored item.damage, fallback to SRD
+    const damageDice = item.damage?.dice ?? srd.damage?.damage_dice ?? null
+    const damageType = item.damage?.type ?? srd.damage?.damage_type?.name ?? ''
+    if (!damageDice) return null
+
+    const dmgStr = `${damageDice}${dmgMod !== 0 ? fmtB(dmgMod) : ''} ${damageType}`.trim()
+    const breakdown = `${useAttr.toUpperCase()} ${fmtB(attrMod)}, Prof ${fmtB(pb)}${enh > 0 ? `, Magic +${enh}` : ''}`
+
+    return { toHit, dmgStr, breakdown }
+  }
+
+  // Equipped weapons — any equipped item that has damage (stored or via SRD)
+  const equippedWeapons = (char.inventory ?? []).filter(item => {
+    if (!item.equipped) return false
+    if (item.damage?.dice) return true
+    const srd = srdMap[item.index]
+    return !!srd?.damage?.damage_dice
+  })
 
   // Spell slots
   const slotEntries = Object.entries(char.spells?.slots ?? {})
     .filter(([, v]) => v.total > 0)
     .sort(([a], [b]) => Number(a) - Number(b))
+
+  // Racial combat abilities
+  const racialCombatTraits = (char.identity.racialTraits ?? [])
+    .filter(t => COMBAT_TRAIT_INDICES.has(t.index))
 
   function toggleDeathSave(type, index) {
     const current = char.combat.deathSaves?.[type] ?? 0
@@ -57,27 +115,23 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     updateChar({ combat: { ...char.combat, conditions: (char.combat.conditions ?? []).filter(c => c !== cond) } })
   }
 
+  const hasAnything = equippedWeapons.length > 0 || racialCombatTraits.length > 0
+
   return (
     <div className="tab-combat">
 
-      {/* ── Attacks ── */}
-      <div className="sec-head">Attacks</div>
+      {/* ── Attacks & Abilities ── */}
+      <div className="sec-head">Attacks &amp; Abilities</div>
 
-      {equippedWeapons.length === 0 && (
+      {!hasAnything && Object.keys(srdMap).length > 0 && (
         <p className="empty-hint">Equip weapons in the Gear tab to show attacks here.</p>
       )}
 
+      {/* Weapon attack cards */}
       {equippedWeapons.map(item => {
-        const isFin    = item.properties?.includes?.('finesse') || item.properties?.includes?.('Finesse')
-        const isRanged = item.properties?.includes?.('ammunition') || item.properties?.includes?.('Ammunition')
-        const useAttr  = isRanged || (isFin && dexMod > strMod) ? 'dex' : 'str'
-        const attrMod  = useAttr === 'dex' ? dexMod : strMod
-        const enh      = item.enhancement ?? 0
-        const toHit    = attrMod + pb + enh
-        const dmgMod   = attrMod + enh
-        const dmgStr   = `${item.damage.dice}${dmgMod !== 0 ? fmtB(dmgMod) : ''} ${item.damage.type ?? ''}`
-        const breakdown = `${useAttr.toUpperCase()} ${fmtB(attrMod)}, Prof ${fmtB(pb)}${enh > 0 ? `, Magic +${enh}` : ''}`
-
+        const resolved = resolveWeapon(item)
+        if (!resolved) return null
+        const { toHit, dmgStr, breakdown } = resolved
         return (
           <div key={item.itemId ?? item.index ?? item.name} className="attack-card">
             <div className="atk-line1">
@@ -88,6 +142,30 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
               <span className="badge">{dmgStr}</span>
               <div className="atk-btns">
                 <button className="atk-btn atk-btn--roll">Roll</button>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Racial ability cards */}
+      {racialCombatTraits.map(trait => {
+        const isBreath = trait.index === 'breath-weapon'
+        return (
+          <div key={trait.index} className="attack-card">
+            <div className="atk-line1">
+              <span className="atk-source">{char.identity.race?.toUpperCase()}</span>
+              <span className="atk-name">{trait.name}</span>
+            </div>
+            <div className="atk-line2">
+              {isBreath && (
+                <>
+                  <span className="badge">{breathDice(level)} damage</span>
+                  <span className="badge badge--dim">DEX/CON save DC {8 + pb + conMod}</span>
+                </>
+              )}
+              <div className="atk-btns">
+                <button className="atk-btn atk-btn--use">Use</button>
               </div>
             </div>
           </div>
@@ -180,10 +258,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       {/* ── Edit stats ── */}
       {isOwner && !locked && (
         <>
-          <button
-            className="edit-toggle-btn"
-            onClick={() => setShowEdit(v => !v)}
-          >
+          <button className="edit-toggle-btn" onClick={() => setShowEdit(v => !v)}>
             {showEdit ? '▲ Hide edit' : '✎ Edit stats'}
           </button>
 

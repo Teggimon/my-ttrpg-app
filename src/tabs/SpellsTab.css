@@ -149,3 +149,79 @@
 }
 .spell-prep-btn--on { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent-light); }
 .spell-prep-btn:hover { color: var(--text-primary); }
+
+/* ── Slot configure button ──────────────────────────────────── */
+.slot-configure-btn {
+  font-size: 10px; font-weight: 700; font-family: var(--font-body);
+  padding: 3px 9px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px dashed var(--border-strong); background: transparent;
+  color: var(--text-faint); transition: all .15s; align-self: center;
+}
+.slot-configure-btn:hover { border-color: var(--accent-border); color: var(--accent-light); }
+
+/* ── Slot editor ────────────────────────────────────────────── */
+.slot-editor {
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md); padding: 12px; margin-bottom: 8px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.slot-editor-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.slot-editor-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); }
+.slot-editor-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.slot-editor-row {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--bg-elevated); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); padding: 5px 8px;
+}
+.slot-editor-lbl { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); width: 20px; text-align: center; flex-shrink: 0; }
+.slot-editor-btns { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.slot-adj-btn {
+  width: 20px; height: 20px; border-radius: var(--radius-sm);
+  background: var(--bg-inset); border: 1px solid var(--border-strong);
+  color: var(--text-primary); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+  font-family: var(--font-body); padding: 0;
+}
+.slot-adj-btn:hover { border-color: var(--accent-border); }
+.slot-editor-val { font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); min-width: 16px; text-align: center; }
+
+/* ── Spell picker ───────────────────────────────────────────── */
+.spell-picker {
+  background: var(--bg-surface); border: 1px solid var(--border-hi);
+  border-radius: var(--radius-md); overflow: hidden; margin-bottom: 8px;
+}
+.spell-picker-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-bottom: 1px solid var(--border-strong);
+}
+.spell-picker-search {
+  flex: 1; background: var(--bg-input); border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm); color: var(--text-primary); font-size: 13px;
+  padding: 6px 10px; font-family: var(--font-body); outline: none;
+}
+.spell-picker-search:focus { border-color: var(--accent-border); }
+.spell-picker-close {
+  font-size: 11px; color: var(--text-faint); background: none; border: none;
+  cursor: pointer; padding: 4px; line-height: 1;
+}
+.spell-picker-close:hover { color: var(--text-primary); }
+.spell-picker-levels {
+  display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 12px;
+  border-bottom: 1px solid var(--border-strong);
+}
+.spell-picker-list {
+  max-height: 260px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+}
+.spell-picker-row {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 8px 12px; background: none; border: none;
+  border-bottom: 1px solid var(--border-strong); cursor: pointer;
+  text-align: left; gap: 10px; transition: background .1s;
+}
+.spell-picker-row:last-child { border-bottom: none; }
+.spell-picker-row:hover { background: rgba(255,255,255,.03); }
+.spell-picker-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.spell-picker-meta { font-size: 10px; font-family: var(--font-mono); color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }

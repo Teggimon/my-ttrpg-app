@@ -1,21 +1,125 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getSpells } from '../srdContent'
 import '../TabShared.css'
 import './SpellsTab.css'
 
 const ORDINALS    = ['','I','II','III','IV','V','VI','VII','VIII','IX']
 const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
-
 const SCHOOLS = ['Abjuration','Conjuration','Divination','Enchantment','Evocation','Illusion','Necromancy','Transmutation']
+
+// Max slots per level for full-casters (used as reference for slot editor)
+const MAX_SLOTS = [0, 4, 3, 3, 3, 3, 2, 2, 1, 1]
 
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
+function uid()              { return Math.random().toString(36).slice(2) }
 
+// ── Spell Picker ────────────────────────────────────────────────────────────
+function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
+  const [search,      setSearch]      = useState('')
+  const [filterLevel, setFilterLevel] = useState('all')
+  const inputRef = useRef(null)
+
+  useEffect(() => { inputRef.current?.focus() }, [])
+
+  const levels = ['all', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+
+  const results = srdSpells.filter(s => {
+    if (knownIds.has(s.index)) return false
+    if (filterLevel !== 'all' && String(s.level) !== filterLevel) return false
+    if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  }).slice(0, 50)
+
+  return (
+    <div className="spell-picker">
+      <div className="spell-picker-head">
+        <input
+          ref={inputRef}
+          className="spell-picker-search"
+          placeholder="Search spells…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <button className="spell-picker-close" onClick={onClose}>✕</button>
+      </div>
+      <div className="spell-picker-levels">
+        {levels.map(l => (
+          <button
+            key={l}
+            className={`filter-chip${filterLevel === l ? ' filter-chip--on' : ''}`}
+            onClick={() => setFilterLevel(l)}
+          >
+            {l === 'all' ? 'All' : l === '0' ? 'Cantrip' : `Lv ${l}`}
+          </button>
+        ))}
+      </div>
+      <div className="spell-picker-list">
+        {results.length === 0 && <p className="empty-hint">No spells match.</p>}
+        {results.map(s => (
+          <button key={s.index} className="spell-picker-row" onClick={() => onAdd(s)}>
+            <span className="spell-picker-name">{s.name}</span>
+            <span className="spell-picker-meta">
+              {s.level === 0 ? 'Cantrip' : `Lv ${s.level}`} · {s.school?.name}
+            </span>
+          </button>
+        ))}
+        {results.length === 50 && <p className="empty-hint" style={{ padding: '6px 0' }}>Showing first 50 — refine search.</p>}
+      </div>
+    </div>
+  )
+}
+
+// ── Slot Editor ─────────────────────────────────────────────────────────────
+function SlotEditor({ slots, onSave, onClose }) {
+  const [draft, setDraft] = useState(() => {
+    const d = {}
+    for (let i = 1; i <= 9; i++) d[i] = slots[i]?.total ?? 0
+    return d
+  })
+
+  const save = () => {
+    const next = {}
+    for (let i = 1; i <= 9; i++) {
+      if (draft[i] > 0) next[i] = { total: draft[i], used: Math.min(slots[i]?.used ?? 0, draft[i]) }
+    }
+    onSave(next)
+  }
+
+  return (
+    <div className="slot-editor">
+      <div className="slot-editor-head">
+        <span className="slot-editor-title">Configure Spell Slots</span>
+        <button className="spell-picker-close" onClick={onClose}>✕</button>
+      </div>
+      <div className="slot-editor-grid">
+        {[1,2,3,4,5,6,7,8,9].map(lvl => (
+          <div key={lvl} className="slot-editor-row">
+            <span className="slot-editor-lbl">{ORDINALS[lvl]}</span>
+            <div className="slot-editor-btns">
+              <button className="slot-adj-btn" onClick={() => setDraft(d => ({ ...d, [lvl]: Math.max(0, d[lvl] - 1) }))}>−</button>
+              <span className="slot-editor-val">{draft[lvl]}</span>
+              <button className="slot-adj-btn" onClick={() => setDraft(d => ({ ...d, [lvl]: Math.min(MAX_SLOTS[lvl] ?? 4, d[lvl] + 1) }))}>+</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <button className="spell-prep-btn spell-prep-btn--on" style={{ width: '100%', alignSelf: 'stretch' }} onClick={save}>
+        Save Slots
+      </button>
+    </div>
+  )
+}
+
+// ── Main tab ────────────────────────────────────────────────────────────────
 export default function SpellsTab({ char, locked, isOwner, updateChar }) {
-  const [expandedId,    setExpandedId]    = useState(null)
+  const [expandedId,     setExpandedId]     = useState(null)
   const [showUnprepared, setShowUnprepared] = useState(false)
-  const [filterSchool,  setFilterSchool]  = useState('All')
-  const [srdSpellMap,   setSrdSpellMap]   = useState({})
+  const [filterSchool,   setFilterSchool]   = useState('All')
+  const [srdSpellMap,    setSrdSpellMap]    = useState({})
+  const [allSrdSpells,   setAllSrdSpells]   = useState([])
+  const [showPicker,     setShowPicker]     = useState(false)
+  const [showSlotEditor, setShowSlotEditor] = useState(false)
 
   const known    = char.spells?.known    ?? []
   const prepared = char.spells?.prepared ?? []
@@ -34,13 +138,14 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     .sort(([a], [b]) => Number(a) - Number(b))
 
   const preparedLeveled = known.filter(s => s.level > 0 && prepared.includes(s.id))
-  const preparedMax     = castMod != null ? (level + castMod) : null
+  const preparedMax     = castMod != null ? Math.max(1, level + castMod) : null
 
   useEffect(() => {
     getSpells().then(all => {
       const map = {}
       for (const s of all) map[s.index] = s
       setSrdSpellMap(map)
+      setAllSrdSpells(all)
     }).catch(() => {})
   }, [])
 
@@ -57,7 +162,33 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     updateChar({ spells: { ...char.spells, prepared: next } })
   }
 
+  function addSpell(srdSpell) {
+    const newSpell = {
+      id:    uid(),
+      index: srdSpell.index,
+      name:  srdSpell.name,
+      level: srdSpell.level,
+    }
+    updateChar({ spells: { ...char.spells, known: [...known, newSpell] } })
+  }
+
+  function removeSpell(spellId) {
+    updateChar({
+      spells: {
+        ...char.spells,
+        known:    known.filter(s => s.id !== spellId),
+        prepared: prepared.filter(id => id !== spellId),
+      }
+    })
+  }
+
+  function saveSlots(newSlots) {
+    updateChar({ spells: { ...char.spells, slots: newSlots } })
+    setShowSlotEditor(false)
+  }
+
   // Collect unique schools from known spells (via SRD data)
+  const knownIds = new Set(known.map(s => s.index))
   const knownSchools = [...new Set(
     known.map(s => srdSpellMap[s.index]?.school?.name).filter(Boolean)
   )]
@@ -66,8 +197,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   const visible = known.filter(spell => {
     if (!showUnprepared && spell.level > 0 && !prepared.includes(spell.id)) return false
     if (filterSchool !== 'All') {
-      const school = srdSpellMap[spell.index]?.school?.name
-      if (school !== filterSchool) return false
+      if (srdSpellMap[spell.index]?.school?.name !== filterSchool) return false
     }
     return true
   })
@@ -126,7 +256,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
       <div className="spells-scroll">
 
         {/* ── Slot tracker ── */}
-        {slotEntries.length > 0 && (
+        {(slotEntries.length > 0 || (isOwner && !locked)) && (
           <div className="spell-slot-block">
             {slotEntries.map(([lvl, { total, used }]) => (
               <div key={lvl} className="slot-row-sp">
@@ -142,27 +272,61 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 </div>
               </div>
             ))}
+            {isOwner && !locked && (
+              <button
+                className="slot-configure-btn"
+                onClick={() => setShowSlotEditor(v => !v)}
+              >
+                {showSlotEditor ? 'Cancel' : '⚙ Configure slots'}
+              </button>
+            )}
           </div>
         )}
 
-        {/* Prepared toggle */}
+        {/* ── Slot editor ── */}
+        {showSlotEditor && isOwner && !locked && (
+          <SlotEditor slots={slots} onSave={saveSlots} onClose={() => setShowSlotEditor(false)} />
+        )}
+
+        {/* Spell list header */}
         <div className="spell-list-head">
           <span className="sec-head" style={{ margin: 0 }}>Spells</span>
-          <button className="add-link" onClick={() => setShowUnprepared(v => !v)}>
-            {showUnprepared ? 'Prepared only' : 'Show all'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {known.length > 0 && (
+              <button className="add-link" onClick={() => setShowUnprepared(v => !v)}>
+                {showUnprepared ? 'Prepared only' : 'Show all'}
+              </button>
+            )}
+            {isOwner && !locked && (
+              <button className="add-link" onClick={() => setShowPicker(v => !v)}>
+                {showPicker ? 'Cancel' : '+ Add spell'}
+              </button>
+            )}
+          </div>
         </div>
 
-        {known.length === 0 && <p className="empty-hint">No spells added yet.</p>}
+        {/* ── Spell picker ── */}
+        {showPicker && isOwner && !locked && (
+          <SpellPicker
+            srdSpells={allSrdSpells}
+            knownIds={knownIds}
+            onAdd={spell => { addSpell(spell); setShowPicker(false) }}
+            onClose={() => setShowPicker(false)}
+          />
+        )}
+
+        {known.length === 0 && !showPicker && (
+          <p className="empty-hint">
+            No spells added yet.{isOwner && !locked ? ' Tap "+ Add spell" above.' : ''}
+          </p>
+        )}
 
         {/* ── Spell levels ── */}
-        {Object.entries(byLevel).sort(([a],[b]) => Number(a)-Number(b)).map(([level, spells]) => {
-          const lvlNum  = Number(level)
-          const slotDat = slots[level]
+        {Object.entries(byLevel).sort(([a],[b]) => Number(a)-Number(b)).map(([lvl, spells]) => {
+          const lvlNum  = Number(lvl)
+          const slotDat = slots[lvl]
           return (
-            <div key={level} className="spell-level-group">
-
-              {/* Level header with slot pips */}
+            <div key={lvl} className="spell-level-group">
               <div className="level-group-head">
                 <span className="level-group-label">
                   {lvlNum === 0 ? 'Cantrips' : `Level ${lvlNum}`}
@@ -191,9 +355,8 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 return (
                   <div key={spell.id} className={`spell-row${!isPrep ? ' spell-row--unprepared' : ''}${expanded ? ' spell-row--expanded' : ''}`}>
 
-                    {/* Collapsed row */}
                     <div className="spell-row-head" onClick={() => setExpandedId(expanded ? null : spell.id)}>
-                      <span className={`conc-dot-wrap${isConc ? ' conc-dot-wrap--on' : ''}`} title={isConc ? 'Concentration active' : 'Concentration'}>
+                      <span className="conc-dot-wrap" title={isConc ? 'Concentration active' : 'Concentration'}>
                         <span className={`conc-dot${isConc ? ' conc-dot--on' : ''}`} />
                       </span>
                       <span className="spell-name">{spell.name}</span>
@@ -210,7 +373,6 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                       <button className="spell-xbtn">{expanded ? '▲' : '▾'}</button>
                     </div>
 
-                    {/* Expanded detail */}
                     {expanded && (
                       <div className="spell-detail">
                         {(castTime || range || duration || components) && (
@@ -223,14 +385,26 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                           </div>
                         )}
                         {desc && <p className="spell-desc">{desc.slice(0, 400)}{desc.length > 400 ? '…' : ''}</p>}
-                        {lvlNum > 0 && isOwner && !locked && (
-                          <button
-                            className={`spell-prep-btn${isPrep ? ' spell-prep-btn--on' : ''}`}
-                            onClick={() => togglePrepared(spell.id)}
-                          >
-                            {isPrep ? '★ Prepared' : '☆ Add to prepared'}
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          {lvlNum > 0 && isOwner && !locked && (
+                            <button
+                              className={`spell-prep-btn${isPrep ? ' spell-prep-btn--on' : ''}`}
+                              onClick={() => togglePrepared(spell.id)}
+                            >
+                              {isPrep ? '★ Prepared' : '☆ Add to prepared'}
+                            </button>
+                          )}
+                          {isOwner && !locked && (
+                            <button
+                              className="spell-xbtn"
+                              style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--danger)' }}
+                              onClick={() => removeSpell(spell.id)}
+                              title="Remove spell"
+                            >
+                              ✕ Remove
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
