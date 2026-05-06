@@ -264,9 +264,10 @@ function App() {
       user={user}
       campaign={selectedCampaign}
       onBack={() => setScreen('dm-home')}
-      onOpenSession={(session, campaign) => {
+      onOpenSession={(session, campaign, party) => {
         setSelectedSession(session)
         setSelectedCampaign(campaign)
+        setSessionParty(party ?? [])
         setScreen('dm-session')
       }}
     />

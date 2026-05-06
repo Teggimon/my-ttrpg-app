@@ -951,7 +951,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
     setSessions(updated)
     await saveFile('sessions.json', { sessions: updated })
     setShowStartSession(false)
-    onOpenSession(newSession, campaign)
+    onOpenSession(newSession, campaign, party)
   }
 
   // ── Party tab actions ──
@@ -1059,7 +1059,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
               <span className="sidebar-live-label">Live Session</span>
             </div>
             <div className="sidebar-live-session">{liveSession.name}</div>
-            <button className="sidebar-resume-btn" onClick={() => onOpenSession(liveSession, campaign)}>
+            <button className="sidebar-resume-btn" onClick={() => onOpenSession(liveSession, campaign, party)}>
               ▶ Resume
             </button>
           </div>
@@ -1133,7 +1133,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                         key={session.sessionId}
                         session={session}
                         index={sessions.length - 1 - i}
-                        onOpen={(s) => onOpenSession(s, campaign)}
+                        onOpen={(s) => onOpenSession(s, campaign, party)}
                       />
                     ))
                   }
