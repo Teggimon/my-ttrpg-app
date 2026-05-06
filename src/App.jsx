@@ -98,6 +98,9 @@ function App() {
 
   // ── Save character to GitHub ────────────────────────────────
   const saveCharacter = async (character) => {
+    // Update local state immediately so controlled inputs reflect changes
+    setSelectedCharacter(character)
+
     const fileName = character._fileName
       ?? character.identity.name.toLowerCase().replace(/\s+/g, '-') + '.json'
     const path    = `characters/${fileName}`
