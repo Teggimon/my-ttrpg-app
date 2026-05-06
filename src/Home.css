@@ -391,6 +391,7 @@
   background: var(--bg-surface);
 }
 
+/* Name — Cinzel display font as per spec */
 .char-card-name {
   font-family: var(--font-display);
   font-size: 15px;
