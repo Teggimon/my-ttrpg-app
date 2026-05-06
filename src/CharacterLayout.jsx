@@ -6,14 +6,16 @@ import StatsTab from './tabs/StatsTab'
 import SpellsTab from './tabs/SpellsTab'
 import InventoryTab from './tabs/InventoryTab'
 import NotesTab from './tabs/NotesTab'
+import BackgroundTab from './tabs/BackgroundTab'
 import './CharacterLayout.css'
 
 const TABS = [
-  { id: 'combat',    label: 'Combat',  icon: '⚔' },
-  { id: 'stats',     label: 'Stats',   icon: '🎲' },
-  { id: 'spells',    label: 'Spells',  icon: '✨' },
-  { id: 'inventory', label: 'Gear',    icon: '🎒' },
-  { id: 'notes',     label: 'Notes',   icon: '📝' },
+  { id: 'combat',     label: 'Combat',     icon: '⚔' },
+  { id: 'stats',      label: 'Stats',      icon: '🎲' },
+  { id: 'spells',     label: 'Spells',     icon: '✨' },
+  { id: 'inventory',  label: 'Gear',       icon: '🎒' },
+  { id: 'background', label: 'Background', icon: '📖' },
+  { id: 'notes',      label: 'Notes',      icon: '📝' },
 ]
 
 function useIsLandscape() {
@@ -58,8 +60,9 @@ export default function CharacterLayout({
       {activeTab === 'combat'    && <CombatTab    {...tabProps} />}
       {activeTab === 'stats'     && <StatsTab     {...tabProps} />}
       {activeTab === 'spells'    && <SpellsTab    {...tabProps} />}
-      {activeTab === 'inventory' && <InventoryTab {...tabProps} />}
-      {activeTab === 'notes'     && <NotesTab     {...tabProps} />}
+      {activeTab === 'inventory'  && <InventoryTab  {...tabProps} />}
+      {activeTab === 'background' && <BackgroundTab {...tabProps} />}
+      {activeTab === 'notes'      && <NotesTab      {...tabProps} />}
     </div>
   )
 
