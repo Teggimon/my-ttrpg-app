@@ -27,28 +27,53 @@ const SKILLS = [
   { key:'survival',       ability:'wis', label:'Survival' },
 ]
 
-// Pair skills alphabetically into two columns
-const SKILL_PAIRS = []
-for (let i = 0; i < SKILLS.length; i += 2) {
-  SKILL_PAIRS.push([SKILLS[i], SKILLS[i + 1]].filter(Boolean))
-}
-
-// Pair saves into two columns: str/dex, con/int, wis/cha
-const SAVE_PAIRS = [
-  ['str','dex'], ['con','int'], ['wis','cha']
-]
-
+const SAVE_PAIRS  = [['str','dex'], ['con','int'], ['wis','cha']]
 const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
 const DEFAULT_PROF_CATS = ['Armour', 'Weapons', 'Tools', 'Languages']
+
+// Matches InventoryTab's MAGIC_AC_BONUS
+const MAGIC_AC_BONUS = {
+  'ring-of-protection':    1,
+  'cloak-of-protection':   1,
+  'ioun-stone-protection': 1,
+}
 
 function mod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)    { return n >= 0 ? `+${n}` : `${n}` }
 
+// ── Effect dot with hover tooltip ─────────────────────────────────────────────
+function EffectDot({ infos }) {
+  const [show, setShow] = useState(false)
+  if (!infos?.length) return null
+  return (
+    <span
+      className="effect-dot-wrap"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span className="effect-pip" />
+      {show && (
+        <div className="effect-tooltip">
+          {infos.map((info, i) => (
+            <div key={i} className="effect-tooltip-line">
+              <span className="effect-tooltip-gem">♦</span>
+              <span>{info.bonus}</span>
+              <span className="effect-tooltip-sep">·</span>
+              <span className="effect-tooltip-item">{info.itemName}</span>
+              {info.state && <span className="effect-tooltip-state">({info.state})</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
+  )
+}
+
 export default function StatsTab({ char, locked, isOwner, updateChar }) {
-  const [editing,  setEditing]  = useState(false)
-  const [newProf,  setNewProf]  = useState({})
-  const [newCat,   setNewCat]   = useState('')
-  const [addingCat,setAddingCat]= useState(false)
+  const [editing,   setEditing]   = useState(false)
+  const [newProf,   setNewProf]   = useState({})
+  const [newCat,    setNewCat]    = useState('')
+  const [addingCat, setAddingCat] = useState(false)
 
   const scores = char.stats?.abilityScores ?? {}
   const skills = char.stats?.skills ?? {}
@@ -67,11 +92,42 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
   const profList = typeof proficiencies === 'object' && !Array.isArray(proficiencies)
     ? proficiencies
     : { Armour: [], Weapons: [], Tools: [], Languages: Array.isArray(char.identity?.languages) ? char.identity.languages : [] }
-
   const allCats = [...new Set([...DEFAULT_PROF_CATS, ...Object.keys(profList).filter(k => !DEFAULT_PROF_CATS.includes(k))])]
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  // ── Item effect helpers ───────────────────────────────────────────────────
+  const activeItems = (char.inventory ?? []).filter(i => i.equipped || i.attuned)
 
+  function itemEffectsFor(statName) {
+    // statName matches effect.stat (e.g. 'AC', 'STR', 'Saving Throws', 'Speed')
+    const results = []
+    for (const item of activeItems) {
+      // Explicit effects
+      for (const ef of item.effects ?? []) {
+        if (ef.stat === statName) {
+          const val = ef.mode === 'add'
+            ? (ef.value >= 0 ? `+${ef.value}` : String(ef.value))
+            : `=${ef.value}`
+          const state = [item.equipped && 'equipped', item.attuned && 'attuned'].filter(Boolean).join(' · ')
+          results.push({ bonus: `${val} ${statName}`, itemName: item.name, state })
+        }
+      }
+      // Implicit: MAGIC_AC_BONUS items
+      if (statName === 'AC') {
+        const bonus = MAGIC_AC_BONUS[item.index]
+        if (bonus != null) {
+          const state = [item.equipped && 'equipped', item.attuned && 'attuned'].filter(Boolean).join(' · ')
+          results.push({ bonus: `+${bonus} AC`, itemName: item.name, state })
+        }
+        if (item.ac_bonus != null) {
+          const state = [item.equipped && 'equipped', item.attuned && 'attuned'].filter(Boolean).join(' · ')
+          results.push({ bonus: `+${item.ac_bonus} AC`, itemName: item.name, state })
+        }
+      }
+    }
+    return results
+  }
+
+  // ── Stat helpers ──────────────────────────────────────────────────────────
   function setScore(ability, val) {
     const v = Math.max(1, Math.min(30, Number(val) || 10))
     updateChar({ stats: { ...char.stats, abilityScores: { ...scores, [ability]: v } } })
@@ -91,8 +147,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
 
   function cycleSkill(key) {
     if (!isOwner || locked) return
-    const next = (skillLevel(key) + 1) % 3
-    updateChar({ stats: { ...char.stats, skills: { ...skills, [key]: next } } })
+    updateChar({ stats: { ...char.stats, skills: { ...skills, [key]: (skillLevel(key) + 1) % 3 } } })
   }
 
   function skillBonus(sk) {
@@ -102,20 +157,16 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
   }
 
   function saveBonus(ab) {
-    const prof = saves[ab]?.proficient ?? saves[ab] ?? false
-    return mod(scores[ab] ?? 10) + (prof ? pb : 0)
+    return mod(scores[ab] ?? 10) + (isProfSave(ab) ? pb : 0)
   }
 
-  function isProfSave(ab) {
-    return !!(saves[ab]?.proficient ?? saves[ab])
-  }
+  function isProfSave(ab) { return !!(saves[ab]?.proficient ?? saves[ab]) }
 
   function addProf(cat, val) {
-    const trimmed = val.trim()
-    if (!trimmed) return
+    const t = val.trim(); if (!t) return
     const existing = profList[cat] ?? []
-    if (existing.includes(trimmed)) return
-    updateChar({ stats: { ...char.stats, proficiencies: { ...profList, [cat]: [...existing, trimmed] } } })
+    if (existing.includes(t)) return
+    updateChar({ stats: { ...char.stats, proficiencies: { ...profList, [cat]: [...existing, t] } } })
     setNewProf(p => ({ ...p, [cat]: '' }))
   }
 
@@ -124,14 +175,15 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
   }
 
   function addCategory(name) {
-    const trimmed = name.trim()
-    if (!trimmed || profList[trimmed]) return
-    updateChar({ stats: { ...char.stats, proficiencies: { ...profList, [trimmed]: [] } } })
-    setNewCat('')
-    setAddingCat(false)
+    const t = name.trim(); if (!t || profList[t]) return
+    updateChar({ stats: { ...char.stats, proficiencies: { ...profList, [t]: [] } } })
+    setNewCat(''); setAddingCat(false)
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
+
+  const acEffects    = itemEffectsFor('AC')
+  const speedEffects = itemEffectsFor('Speed')
 
   return (
     <div className="stats-root">
@@ -139,14 +191,17 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
       {/* ── Summary strip ── */}
       <div className="stats-summary">
         {[
-          { val: fmtB(pb),          lbl: 'Prof Bonus'   },
-          { val: fmtB(initiative),  lbl: 'Initiative'   },
-          { val: passivePerc,       lbl: 'Passive Perc' },
-          { val: ac,                lbl: 'AC'           },
-          { val: `${speed}ft`,      lbl: 'Speed'        },
-        ].map(({ val, lbl }) => (
+          { val: fmtB(pb),          lbl: 'Prof Bonus',   effects: [] },
+          { val: fmtB(initiative),  lbl: 'Initiative',   effects: itemEffectsFor('Initiative') },
+          { val: passivePerc,       lbl: 'Passive Perc', effects: [] },
+          { val: ac,                lbl: 'AC',            effects: acEffects },
+          { val: `${speed}ft`,      lbl: 'Speed',         effects: speedEffects },
+        ].map(({ val, lbl, effects }) => (
           <div key={lbl} className="summary-cell">
-            <span className="summary-val">{val}</span>
+            <div className="summary-val-wrap">
+              <span className="summary-val">{val}</span>
+              {effects.length > 0 && <EffectDot infos={effects} />}
+            </div>
             <span className="summary-lbl">{lbl}</span>
           </div>
         ))}
@@ -162,9 +217,15 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
 
         <div className="ability-grid">
           {ABILITIES.map(ab => {
-            const profSave = isProfSave(ab)
+            const profSave  = isProfSave(ab)
+            const abEffects = itemEffectsFor(ABILITY_LABELS[ab]) // 'STR','DEX' etc.
             return (
               <div key={ab} className="ability-card card">
+                {abEffects.length > 0 && (
+                  <span className="ability-effect-dot-wrap">
+                    <EffectDot infos={abEffects} />
+                  </span>
+                )}
                 <span className="ability-mod">{fmtB(mod(scores[ab] ?? 10))}</span>
                 {editing ? (
                   <input className="ability-input" type="number" min="1" max="30"
@@ -177,7 +238,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
                   className={`ability-save-dot${profSave ? ' ability-save-dot--on' : ''}`}
                   onClick={() => toggleSave(ab)}
                   disabled={!isOwner || locked}
-                  title={`${ABILITY_FULL[ab]} saving throw ${profSave ? '(proficient — click to remove)' : '(click to add proficiency)'}`}
+                  title={`${ABILITY_FULL[ab]} saving throw ${profSave ? '(proficient)' : '(click to add)'}`}
                 />
               </div>
             )
@@ -191,8 +252,9 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
           {SAVE_PAIRS.map(pair => (
             <div key={pair.join()} className="save-pair">
               {pair.map(ab => {
-                const prof  = isProfSave(ab)
-                const bonus = saveBonus(ab)
+                const prof      = isProfSave(ab)
+                const bonus     = saveBonus(ab)
+                const saveEffects = itemEffectsFor('Saving Throws')
                 return (
                   <div
                     key={ab}
@@ -205,6 +267,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
                       <span className="save-abbr"> ({ABILITY_LABELS[ab].toLowerCase()})</span>
                     </span>
                     <span className={`save-bonus${prof ? ' save-bonus--prof' : ''}`}>{fmtB(bonus)}</span>
+                    {saveEffects.length > 0 && <EffectDot infos={saveEffects} />}
                   </div>
                 )
               })}
@@ -215,29 +278,35 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
         {/* ── Skills ── */}
         <div className="sec-head">Skills</div>
         <div className="card skill-grid">
-          {SKILL_PAIRS.map((pair, pi) => (
-            <div key={pi} className="skill-pair">
-              {pair.map(sk => {
-                const lvl = skillLevel(sk.key)
-                const bonus = skillBonus(sk)
-                return (
-                  <div
-                    key={sk.key}
-                    className={`skill-row${isOwner && !locked ? ' skill-row--clickable' : ''}`}
-                    onClick={() => cycleSkill(sk.key)}
-                    title={lvl === 0 ? 'Click for proficiency' : lvl === 1 ? 'Click for expertise' : 'Click to remove'}
-                  >
-                    <span className={`skill-dot skill-dot--${lvl}`} />
-                    <span className="skill-name">
-                      {sk.label}
-                      <span className="skill-abbr"> ({ABILITY_LABELS[sk.ability].toLowerCase()})</span>
-                    </span>
-                    <span className={`skill-bonus skill-bonus--${lvl}`}>{fmtB(bonus)}</span>
-                  </div>
-                )
-              })}
-            </div>
-          ))}
+          {Array.from({ length: Math.ceil(SKILLS.length / 2) }, (_, pi) => {
+            const pair = [SKILLS[pi * 2], SKILLS[pi * 2 + 1]].filter(Boolean)
+            return (
+              <div key={pi} className="skill-pair">
+                {pair.map(sk => {
+                  const lvl   = skillLevel(sk.key)
+                  const bonus = skillBonus(sk)
+                  return (
+                    <div
+                      key={sk.key}
+                      className={`skill-row${isOwner && !locked ? ' skill-row--clickable' : ''}`}
+                      onClick={() => cycleSkill(sk.key)}
+                      title={['Click for proficiency','Click for expertise','Click to remove'][lvl]}
+                    >
+                      {/* Prof / expertise indicator */}
+                      <span className={`skill-dot skill-dot--${lvl}`}>
+                        {lvl === 2 && <span className="skill-dot-star">★</span>}
+                      </span>
+                      <span className="skill-name">
+                        {sk.label}
+                        <span className="skill-abbr"> ({ABILITY_LABELS[sk.ability].toLowerCase()})</span>
+                      </span>
+                      <span className={`skill-bonus skill-bonus--${lvl}`}>{fmtB(bonus)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
         </div>
 
         {/* ── Other Proficiencies ── */}
@@ -271,19 +340,12 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
             </div>
           ))}
 
-          {/* Add category */}
           {isOwner && !locked && (
             <div className="prof-add-cat-row">
               {addingCat ? (
                 <form onSubmit={e => { e.preventDefault(); addCategory(newCat) }} style={{ display:'flex', gap:6, width:'100%' }}>
-                  <input
-                    className="prof-add-input"
-                    placeholder="Category name…"
-                    value={newCat}
-                    onChange={e => setNewCat(e.target.value)}
-                    autoFocus
-                    style={{ flex:1, width:'auto' }}
-                  />
+                  <input className="prof-add-input" placeholder="Category name…" value={newCat}
+                    onChange={e => setNewCat(e.target.value)} autoFocus style={{ flex:1, width:'auto' }} />
                   <button type="submit" style={{ background:'var(--accent)', border:'none', borderRadius:'var(--radius-md)', color:'#fff', fontSize:11, fontWeight:700, padding:'4px 10px', cursor:'pointer', fontFamily:'var(--font-body)' }}>Add</button>
                   <button type="button" onClick={() => setAddingCat(false)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:13, fontFamily:'var(--font-body)' }}>Cancel</button>
                 </form>

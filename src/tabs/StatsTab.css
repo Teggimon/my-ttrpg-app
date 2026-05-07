@@ -19,6 +19,13 @@
 }
 .summary-cell:last-child { border-right: none; }
 
+.summary-val-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
 .summary-val {
   font-family: var(--font-mono);
   font-size: 22px;
@@ -194,34 +201,56 @@
 .skill-row {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   padding: 7px 10px;
 }
 .skill-row:first-child { border-right: 0.5px solid var(--border); }
 .skill-row--clickable { cursor: pointer; }
 .skill-row--clickable:hover { background: rgba(255,255,255,.025); }
 
-/* Skill proficiency dot */
+/* Skill proficiency dot — 3 levels */
 .skill-dot {
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  border: 1.5px solid var(--border-hi);
+  border: 1.5px solid var(--border-strong);
   background: transparent;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, border-color 0.15s;
+  position: relative;
+  transition: border-color 0.15s, background 0.15s;
 }
+
+/* Level 0: empty circle — default styles above */
+
+/* Level 1: circle outline (accent) with filled inner dot */
 .skill-dot--1 {
-  background: var(--accent);
   border-color: var(--accent);
+  background: rgba(124,111,245,0.08);
 }
+.skill-dot--1::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  position: absolute;
+}
+
+/* Level 2: filled circle with star */
 .skill-dot--2 {
   background: var(--accent);
   border-color: var(--accent-light);
-  box-shadow: 0 0 0 2px rgba(124,111,245,0.25);
+}
+
+.skill-dot-star {
+  font-size: 9px;
+  color: #fff;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
 }
 
 .skill-name {
@@ -248,7 +277,7 @@
   flex-shrink: 0;
 }
 .skill-bonus--1 { color: var(--accent-light); }
-.skill-bonus--2 { color: #a89fff; font-weight: 700; }
+.skill-bonus--2 { color: #b8aeff; font-weight: 700; }
 
 /* ── Other proficiencies ── */
 .prof-card {
@@ -349,4 +378,69 @@
 .prof-add-cat-btn:hover {
   color: var(--accent-light);
   border-color: var(--accent-border);
+}
+
+/* ── Effect dots (gold item indicator) ── */
+.effect-dot-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.effect-pip {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c9a227;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.effect-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  border: 1px solid rgba(201,162,39,0.4);
+  border-radius: var(--radius-md);
+  padding: 7px 10px;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+.effect-tooltip-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.effect-tooltip-gem { color: #c9a227; flex-shrink: 0; }
+.effect-tooltip-sep { color: var(--text-faint); }
+.effect-tooltip-item { color: var(--text-primary); font-weight: 600; }
+.effect-tooltip-state { color: var(--text-faint); font-size: 10px; }
+
+/* Gold dot in ability card top-right */
+.ability-effect-dot-wrap {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+}
+.ability-effect-dot-wrap .effect-tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/* Gold dot in save row — tooltip goes up */
+.save-row .effect-dot-wrap .effect-tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
 }
