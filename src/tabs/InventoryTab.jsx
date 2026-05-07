@@ -6,83 +6,110 @@ import './InventoryTab.css'
 
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 
-// Flat AC bonus granted by specific magic items when equipped/attuned.
-// Items not listed here but with a stored `ac_bonus` field are also handled below.
 const MAGIC_AC_BONUS = {
-  'ring-of-protection':        1,
-  'cloak-of-protection':       1,
-  'ioun-stone-protection':     1,
-  'periapt-of-proof-against-poison': 0, // no AC — listed so it shows equip button
-  // +X armor and shields come through armor_class.base from SRD directly
+  'ring-of-protection':  1,
+  'cloak-of-protection': 1,
+  'ioun-stone-protection': 1,
 }
-
-// Bracers of Defense give +2 only when not wearing armor and no shield
 const BRACERS_INDEX = 'bracers-of-defense'
 
-// Determine whether an item should show an equip button
 export function isItemEquippable(item, srdMap) {
-  if (item.damage)                       return true  // stored weapon
-  if (item.ac_bonus != null)             return true  // stored magic bonus
+  if (item.damage)                        return true
+  if (item.ac_bonus != null)              return true
   if (MAGIC_AC_BONUS[item.index] != null) return true
-  if (item.index === BRACERS_INDEX)      return true
+  if (item.index === BRACERS_INDEX)       return true
   const srd = srdMap[item.index] ?? {}
-  if (srd.damage)                        return true  // SRD weapon
-  if (srd.armor_class)                   return true  // SRD armor / shield
-  if (item.armor_class)                  return true  // stored armor stats
+  if (srd.damage)       return true
+  if (srd.armor_class)  return true
+  if (item.armor_class) return true
   return false
 }
 
-// Compute AC from equipped inventory using D&D 5e rules
 export function computeAC(inventory, abilityScores, srdMap) {
-  const dexMod = abilityMod(abilityScores?.dex ?? 10)
+  const dexMod  = abilityMod(abilityScores?.dex ?? 10)
   const equipped = inventory.filter(i => i.equipped)
 
-  let armorBase    = null
-  let armorCat     = null   // 'Light' | 'Medium' | 'Heavy'
-  let shieldAC     = 0
-  let flatACBonus  = 0
-  let hasBracers   = false
+  let armorBase   = null
+  let armorCat    = null
+  let shieldAC    = 0
+  let flatACBonus = 0
+  let hasBracers  = false
 
   for (const item of equipped) {
     const srd = srdMap[item.index] ?? {}
     const ac  = item.armor_class ?? srd.armor_class
     const cat = item.armor_category ?? srd.armor_category
 
-    // Standard armor / shield (from SRD or stored on item)
     if (ac && cat) {
-      if (cat === 'Shield') {
-        shieldAC += ac.base ?? 2
-      } else if (cat === 'Light' || cat === 'Medium' || cat === 'Heavy') {
-        armorBase = ac.base
-        armorCat  = cat
-      }
+      if (cat === 'Shield') { shieldAC += ac.base ?? 2 }
+      else if (['Light', 'Medium', 'Heavy'].includes(cat)) { armorBase = ac.base; armorCat = cat }
       continue
     }
-
-    // Bracers of Defense — handled after loop so we know if armor is worn
     if (item.index === BRACERS_INDEX) { hasBracers = true; continue }
-
-    // Known magic item flat bonus
     const knownBonus = MAGIC_AC_BONUS[item.index]
     if (knownBonus != null) { flatACBonus += knownBonus; continue }
-
-    // Manually stored ac_bonus (lets DMs add custom magic items)
     if (item.ac_bonus != null) flatACBonus += item.ac_bonus
   }
 
-  // Bracers of Defense: +2 only when not wearing armor (any category)
   if (hasBracers && armorBase === null) flatACBonus += 2
 
   let baseAC
   if (armorBase !== null) {
     if      (armorCat === 'Light')  baseAC = armorBase + dexMod
     else if (armorCat === 'Medium') baseAC = armorBase + Math.min(dexMod, 2)
-    else                             baseAC = armorBase              // Heavy: no DEX
+    else                             baseAC = armorBase
   } else {
-    baseAC = 10 + dexMod                                             // Unarmored
+    baseAC = 10 + dexMod
   }
 
   return baseAC + shieldAC + flatACBonus
+}
+
+function itemCategory(item, srdMap) {
+  const srd = srdMap[item.index] ?? {}
+  if (item.damage || srd.damage)        return 'weapon'
+  const cat = item.armor_category ?? srd.armor_category
+  if (cat === 'Shield')                 return 'shield'
+  if (cat === 'Light' || cat === 'Medium' || cat === 'Heavy') return 'armor'
+  if (MAGIC_AC_BONUS[item.index] != null || item.ac_bonus != null || item.index === BRACERS_INDEX) return 'magic'
+  return 'gear'
+}
+
+const SECTIONS = [
+  { key: 'weapon', label: 'Weapons' },
+  { key: 'armor',  label: 'Armour' },
+  { key: 'shield', label: 'Shields' },
+  { key: 'magic',  label: 'Magic Items' },
+  { key: 'gear',   label: 'Gear' },
+]
+
+function equipLabel(item, srdMap) {
+  const srd = srdMap[item.index] ?? {}
+  const cat = item.armor_category ?? srd.armor_category
+  if (item.damage || srd.damage) return item.equipped ? 'Equipped' : 'Equip'
+  if (cat === 'Shield')          return item.equipped ? 'Equipped' : 'Equip'
+  if (cat)                       return item.equipped ? 'Equipped' : 'Equip'
+  return item.equipped ? 'Attuned' : 'Attune'
+}
+
+function acHint(item, srdMap, abilityScores) {
+  const srd    = srdMap[item.index] ?? {}
+  const ac     = item.armor_class ?? srd.armor_class
+  const cat    = item.armor_category ?? srd.armor_category
+  const dexMod = abilityMod(abilityScores?.dex ?? 10)
+
+  if (ac && cat && cat !== 'Shield') {
+    const shown = cat === 'Heavy' ? ac.base
+      : cat === 'Medium' ? ac.base + Math.min(dexMod, 2)
+      : ac.base + dexMod
+    return `AC ${shown}`
+  }
+  if (ac && cat === 'Shield')        return `+${ac.base ?? 2} AC`
+  const bonus = MAGIC_AC_BONUS[item.index]
+  if (bonus)                         return `+${bonus} AC`
+  if (item.ac_bonus)                 return `+${item.ac_bonus} AC`
+  if (item.index === BRACERS_INDEX)  return '+2 AC (unarmored)'
+  return null
 }
 
 export default function InventoryTab({ char, locked, isOwner, updateChar }) {
@@ -94,8 +121,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
       .catch(() => {})
   }, [])
 
-  // Migrate: backfill itemId for old characters that lack it.
-  // tempIds ref gives stable IDs for the current render before the write completes.
+  // Backfill itemId for old characters
   const rawInventory = char.inventory ?? []
   const tempIds = useRef({})
   const inventory = rawInventory.map((i, idx) => {
@@ -105,8 +131,9 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   })
   useEffect(() => {
     if (rawInventory.every(i => i.itemId)) return
-    updateChar({ inventory: inventory })
+    updateChar({ inventory })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const tracking    = char.settings?.encumbranceTracking
   const strScore    = char.stats?.abilityScores?.str ?? 10
   const capacity    = strScore * 15
@@ -114,48 +141,19 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const pct = tracking ? Math.min(100, Math.round((totalWeight / capacity) * 100)) : 0
 
   function toggleEquip(itemId) {
-    const newInventory = inventory.map(i =>
-      i.itemId === itemId ? { ...i, equipped: !i.equipped } : i
-    )
-    updateChar({
-      inventory: newInventory,
-      combat: { ...char.combat, ac: computeAC(newInventory, char.stats?.abilityScores, srdMap) },
-    })
+    const newInv = inventory.map(i => i.itemId === itemId ? { ...i, equipped: !i.equipped } : i)
+    updateChar({ inventory: newInv, combat: { ...char.combat, ac: computeAC(newInv, char.stats?.abilityScores, srdMap) } })
   }
 
   function removeItem(itemId) {
-    const newInventory = inventory.filter(i => i.itemId !== itemId)
-    updateChar({
-      inventory: newInventory,
-      combat: { ...char.combat, ac: computeAC(newInventory, char.stats?.abilityScores, srdMap) },
-    })
+    const newInv = inventory.filter(i => i.itemId !== itemId)
+    updateChar({ inventory: newInv, combat: { ...char.combat, ac: computeAC(newInv, char.stats?.abilityScores, srdMap) } })
   }
 
-  function itemLabel(item) {
-    const srd = srdMap[item.index] ?? {}
-    const cat = item.armor_category ?? srd.armor_category
-    if (item.damage || srd.damage) return item.equipped ? '⚔ Equipped' : '⚔ Equip'
-    if (cat === 'Shield')          return item.equipped ? '🛡 Equipped' : '🛡 Equip'
-    if (cat)                       return item.equipped ? '🥋 Equipped' : '🥋 Equip'
-    return item.equipped ? '✦ Attuned' : '✦ Attune'
-  }
-
-  function acHint(item) {
-    const srd = srdMap[item.index] ?? {}
-    const ac  = item.armor_class ?? srd.armor_class
-    const cat = item.armor_category ?? srd.armor_category
-    if (ac && cat && cat !== 'Shield') {
-      const dexMod = abilityMod(char.stats?.abilityScores?.dex ?? 10)
-      const shown  = cat === 'Heavy' ? ac.base
-        : cat === 'Medium' ? ac.base + Math.min(dexMod, 2)
-        : ac.base + dexMod
-      return `AC ${shown}`
-    }
-    const knownBonus = MAGIC_AC_BONUS[item.index]
-    if (knownBonus) return `+${knownBonus} AC`
-    if (item.ac_bonus) return `+${item.ac_bonus} AC`
-    if (item.index === BRACERS_INDEX) return '+2 AC (unarmored)'
-    return null
+  const grouped = {}
+  for (const item of inventory) {
+    const cat = itemCategory(item, srdMap)
+    ;(grouped[cat] ??= []).push(item)
   }
 
   return (
@@ -174,31 +172,37 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
 
       {inventory.length === 0 && <p className="empty-hint">No items. Add from the Content Library.</p>}
 
-      {inventory.map(item => {
-        const hint = item.equipped ? acHint(item) : null
-        return (
-          <div key={item.itemId} className="inv-row card">
-            <div className="inv-info">
-              <span className="inv-name">{item.name}</span>
-              {item.quantity > 1 && <span className="inv-qty">×{item.quantity}</span>}
-              {hint && <span className="inv-ac-hint"> · {hint}</span>}
-            </div>
-            <div className="inv-actions">
-              {isItemEquippable(item, srdMap) && isOwner && !locked && (
-                <span
-                  className={`equip-badge ${item.equipped ? 'equip-badge--on' : ''}`}
-                  onClick={() => toggleEquip(item.itemId)}
-                >
-                  {itemLabel(item)}
-                </span>
-              )}
-              {isOwner && !locked && (
-                <button className="inv-remove" onClick={() => removeItem(item.itemId)}>×</button>
-              )}
-            </div>
-          </div>
-        )
-      })}
+      {SECTIONS.filter(s => grouped[s.key]?.length).map(section => (
+        <div key={section.key}>
+          <div className="sec-head">{section.label}</div>
+          {grouped[section.key].map(item => {
+            const hint      = item.equipped ? acHint(item, srdMap, char.stats?.abilityScores) : null
+            const equippable = isItemEquippable(item, srdMap)
+            return (
+              <div key={item.itemId} className="inv-row card">
+                <div className="inv-info">
+                  <span className="inv-name">{item.name}</span>
+                  {item.quantity > 1 && <span className="inv-qty">×{item.quantity}</span>}
+                  {hint && <span className="inv-ac-hint">· {hint}</span>}
+                </div>
+                <div className="inv-actions">
+                  {equippable && isOwner && !locked && (
+                    <span
+                      className={`equip-badge ${item.equipped ? 'equip-badge--on' : ''}`}
+                      onClick={() => toggleEquip(item.itemId)}
+                    >
+                      {equipLabel(item, srdMap)}
+                    </span>
+                  )}
+                  {isOwner && !locked && (
+                    <button className="inv-remove" onClick={() => removeItem(item.itemId)}>×</button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }
