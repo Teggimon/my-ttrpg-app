@@ -27,49 +27,60 @@ const SKILLS = [
   { key:'survival',       ability:'wis', label:'Survival' },
 ]
 
-const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
-const PROF_ICONS  = ['◇','◆','★']
+// Pair skills alphabetically into two columns
+const SKILL_PAIRS = []
+for (let i = 0; i < SKILLS.length; i += 2) {
+  SKILL_PAIRS.push([SKILLS[i], SKILLS[i + 1]].filter(Boolean))
+}
 
-// Default proficiency categories — built from char data
+// Pair saves into two columns: str/dex, con/int, wis/cha
+const SAVE_PAIRS = [
+  ['str','dex'], ['con','int'], ['wis','cha']
+]
+
+const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
 const DEFAULT_PROF_CATS = ['Armour', 'Weapons', 'Tools', 'Languages']
 
-function mod(score)  { return Math.floor((score - 10) / 2) }
-function fmtB(n)     { return n >= 0 ? `+${n}` : `${n}` }
+function mod(score) { return Math.floor((score - 10) / 2) }
+function fmtB(n)    { return n >= 0 ? `+${n}` : `${n}` }
 
 export default function StatsTab({ char, locked, isOwner, updateChar }) {
-  const [editing, setEditing]   = useState(false)
-  const [newProf, setNewProf]   = useState({}) // {catName: inputValue}
+  const [editing,  setEditing]  = useState(false)
+  const [newProf,  setNewProf]  = useState({})
+  const [newCat,   setNewCat]   = useState('')
+  const [addingCat,setAddingCat]= useState(false)
 
-  const scores  = char.stats?.abilityScores ?? {}
-  const skills  = char.stats?.skills ?? {}
-  const saves   = char.stats?.savingThrows ?? {}
-  const level   = char.identity.class?.[0]?.level ?? 1
-  const pb      = PROFICIENCY[level] ?? 2
-  const dexMod  = mod(scores.dex ?? 10)
-  const wisMod  = mod(scores.wis ?? 10)
+  const scores = char.stats?.abilityScores ?? {}
+  const skills = char.stats?.skills ?? {}
+  const saves  = char.stats?.savingThrows ?? {}
+  const level  = char.identity.class?.[0]?.level ?? 1
+  const pb     = PROFICIENCY[level] ?? 2
+  const dexMod = mod(scores.dex ?? 10)
 
-  // Summary row values
-  const initiative     = dexMod + (char.combat?.initiativeBonus ?? 0)
-  const ac             = char.combat?.ac ?? 10
-  const speed          = char.combat?.speed ?? char.identity?.speed ?? 30
-  const passivePerc    = 10 + mod(scores.wis ?? 10) + (skills.perception === 1 ? pb : skills.perception === 2 ? pb * 2 : 0)
+  const initiative  = dexMod + (char.combat?.initiativeBonus ?? 0)
+  const ac          = char.combat?.ac ?? 10
+  const speed       = char.combat?.speed ?? char.identity?.speed ?? 30
+  const percLvl     = skillLevel('perception')
+  const passivePerc = 10 + mod(scores.wis ?? 10) + (percLvl === 1 ? pb : percLvl === 2 ? pb * 2 : 0)
 
-  // Other proficiencies stored as { Armour:[], Weapons:[], Tools:[], Languages:[], ...custom }
   const proficiencies = char.stats?.proficiencies ?? {}
-  // Build initial from class/background proficiency strings if not yet an object
   const profList = typeof proficiencies === 'object' && !Array.isArray(proficiencies)
     ? proficiencies
     : { Armour: [], Weapons: [], Tools: [], Languages: Array.isArray(char.identity?.languages) ? char.identity.languages : [] }
+
+  const allCats = [...new Set([...DEFAULT_PROF_CATS, ...Object.keys(profList).filter(k => !DEFAULT_PROF_CATS.includes(k))])]
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   function setScore(ability, val) {
     const v = Math.max(1, Math.min(30, Number(val) || 10))
     updateChar({ stats: { ...char.stats, abilityScores: { ...scores, [ability]: v } } })
   }
 
-  function cycleSkill(key) {
-    const current = typeof skills[key] === 'number' ? skills[key] : (skills[key]?.proficient ? 1 : 0)
-    const next    = (current + 1) % 3
-    updateChar({ stats: { ...char.stats, skills: { ...skills, [key]: next } } })
+  function toggleSave(ab) {
+    if (!isOwner || locked) return
+    const current = saves[ab]?.proficient ?? saves[ab] ?? false
+    updateChar({ stats: { ...char.stats, savingThrows: { ...saves, [ab]: !current } } })
   }
 
   function skillLevel(key) {
@@ -78,10 +89,25 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
     return v?.proficient ? 1 : 0
   }
 
-  function skillBonus(skill) {
-    const lvl   = skillLevel(skill.key)
-    const base  = mod(scores[skill.ability] ?? 10)
-    return fmtB(lvl === 0 ? base : lvl === 1 ? base + pb : base + pb * 2)
+  function cycleSkill(key) {
+    if (!isOwner || locked) return
+    const next = (skillLevel(key) + 1) % 3
+    updateChar({ stats: { ...char.stats, skills: { ...skills, [key]: next } } })
+  }
+
+  function skillBonus(sk) {
+    const lvl  = skillLevel(sk.key)
+    const base = mod(scores[sk.ability] ?? 10)
+    return lvl === 0 ? base : lvl === 1 ? base + pb : base + pb * 2
+  }
+
+  function saveBonus(ab) {
+    const prof = saves[ab]?.proficient ?? saves[ab] ?? false
+    return mod(scores[ab] ?? 10) + (prof ? pb : 0)
+  }
+
+  function isProfSave(ab) {
+    return !!(saves[ab]?.proficient ?? saves[ab])
   }
 
   function addProf(cat, val) {
@@ -97,45 +123,46 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
     updateChar({ stats: { ...char.stats, proficiencies: { ...profList, [cat]: (profList[cat] ?? []).filter(p => p !== item) } } })
   }
 
-  const allCats = [...new Set([...DEFAULT_PROF_CATS, ...Object.keys(profList).filter(k => !DEFAULT_PROF_CATS.includes(k))])]
+  function addCategory(name) {
+    const trimmed = name.trim()
+    if (!trimmed || profList[trimmed]) return
+    updateChar({ stats: { ...char.stats, proficiencies: { ...profList, [trimmed]: [] } } })
+    setNewCat('')
+    setAddingCat(false)
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="stats-root">
 
       {/* ── Summary strip ── */}
       <div className="stats-summary">
-        <div className="summary-cell">
-          <span className="summary-val">{fmtB(pb)}</span>
-          <span className="summary-lbl">Prof Bonus</span>
-        </div>
-        <div className="summary-cell">
-          <span className="summary-val">{fmtB(initiative)}</span>
-          <span className="summary-lbl">Initiative</span>
-        </div>
-        <div className="summary-cell">
-          <span className="summary-val">{ac}</span>
-          <span className="summary-lbl">AC</span>
-        </div>
-        <div className="summary-cell">
-          <span className="summary-val">{speed}ft</span>
-          <span className="summary-lbl">Speed</span>
-        </div>
-        <div className="summary-cell">
-          <span className="summary-val">{passivePerc}</span>
-          <span className="summary-lbl">Passive Perc</span>
-        </div>
+        {[
+          { val: fmtB(pb),          lbl: 'Prof Bonus'   },
+          { val: fmtB(initiative),  lbl: 'Initiative'   },
+          { val: passivePerc,       lbl: 'Passive Perc' },
+          { val: ac,                lbl: 'AC'           },
+          { val: `${speed}ft`,      lbl: 'Speed'        },
+        ].map(({ val, lbl }) => (
+          <div key={lbl} className="summary-cell">
+            <span className="summary-val">{val}</span>
+            <span className="summary-lbl">{lbl}</span>
+          </div>
+        ))}
       </div>
 
       <div className="stats-scroll">
 
-        {/* ── Ability scores ── */}
+        {/* ── Ability Scores ── */}
         <div className="sec-head" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           <span>Ability Scores</span>
           {isOwner && <button className="add-link" onClick={() => setEditing(e => !e)}>{editing ? 'Done' : 'Edit'}</button>}
         </div>
+
         <div className="ability-grid">
           {ABILITIES.map(ab => {
-            const profSave = saves[ab]?.proficient ?? saves[ab] ?? false
+            const profSave = isProfSave(ab)
             return (
               <div key={ab} className="ability-card card">
                 <span className="ability-mod">{fmtB(mod(scores[ab] ?? 10))}</span>
@@ -146,69 +173,82 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
                   <span className="ability-score">{scores[ab] ?? 10}</span>
                 )}
                 <span className="ability-label">{ABILITY_LABELS[ab]}</span>
-                {profSave && <span className="save-prof-dot" title={`${ABILITY_FULL[ab]} save proficient`}>💪</span>}
+                <button
+                  className={`ability-save-dot${profSave ? ' ability-save-dot--on' : ''}`}
+                  onClick={() => toggleSave(ab)}
+                  disabled={!isOwner || locked}
+                  title={`${ABILITY_FULL[ab]} saving throw ${profSave ? '(proficient — click to remove)' : '(click to add proficiency)'}`}
+                />
               </div>
             )
           })}
         </div>
+        <p className="stat-legend">· bottom-right dot = saving throw proficiency</p>
 
-        {/* ── Saving throws ── */}
+        {/* ── Saving Throws ── */}
         <div className="sec-head">Saving Throws</div>
-        <div className="card save-list">
-          {ABILITIES.map(ab => {
-            const profSave = saves[ab]?.proficient ?? saves[ab] ?? false
-            const bonus    = mod(scores[ab] ?? 10) + (profSave ? pb : 0)
-            return (
-              <div key={ab} className="save-row">
-                <span className={`save-dot${profSave ? ' save-dot--prof' : ''}`} />
-                <span className="save-name">{ABILITY_FULL[ab]}</span>
-                <span className="save-ability">{ABILITY_LABELS[ab]}</span>
-                <span className="save-bonus">{fmtB(bonus)}</span>
-              </div>
-            )
-          })}
+        <div className="card save-grid">
+          {SAVE_PAIRS.map(pair => (
+            <div key={pair.join()} className="save-pair">
+              {pair.map(ab => {
+                const prof  = isProfSave(ab)
+                const bonus = saveBonus(ab)
+                return (
+                  <div
+                    key={ab}
+                    className={`save-row${isOwner && !locked ? ' save-row--clickable' : ''}`}
+                    onClick={() => toggleSave(ab)}
+                  >
+                    <span className={`save-dot${prof ? ' save-dot--prof' : ''}`} />
+                    <span className="save-name">
+                      {ABILITY_FULL[ab]}
+                      <span className="save-abbr"> ({ABILITY_LABELS[ab].toLowerCase()})</span>
+                    </span>
+                    <span className={`save-bonus${prof ? ' save-bonus--prof' : ''}`}>{fmtB(bonus)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
         {/* ── Skills ── */}
         <div className="sec-head">Skills</div>
-        <div className="card skill-list">
-          {SKILLS.map(sk => {
-            const lvl      = skillLevel(sk.key)
-            const canEdit  = isOwner && !locked
-            return (
-              <div
-                key={sk.key}
-                className={`skill-row${canEdit ? ' skill-row--editable' : ''}`}
-                onClick={() => canEdit && cycleSkill(sk.key)}
-              >
-                <span className="skill-prof">{PROF_ICONS[lvl]}</span>
-                <span className="skill-name">{sk.label}</span>
-                <span className="skill-ability">{ABILITY_LABELS[sk.ability]}</span>
-                <span className="skill-bonus">{skillBonus(sk)}</span>
-              </div>
-            )
-          })}
+        <div className="card skill-grid">
+          {SKILL_PAIRS.map((pair, pi) => (
+            <div key={pi} className="skill-pair">
+              {pair.map(sk => {
+                const lvl = skillLevel(sk.key)
+                const bonus = skillBonus(sk)
+                return (
+                  <div
+                    key={sk.key}
+                    className={`skill-row${isOwner && !locked ? ' skill-row--clickable' : ''}`}
+                    onClick={() => cycleSkill(sk.key)}
+                    title={lvl === 0 ? 'Click for proficiency' : lvl === 1 ? 'Click for expertise' : 'Click to remove'}
+                  >
+                    <span className={`skill-dot skill-dot--${lvl}`} />
+                    <span className="skill-name">
+                      {sk.label}
+                      <span className="skill-abbr"> ({ABILITY_LABELS[sk.ability].toLowerCase()})</span>
+                    </span>
+                    <span className={`skill-bonus skill-bonus--${lvl}`}>{fmtB(bonus)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
-        {/* ── Other proficiencies ── */}
+        {/* ── Other Proficiencies ── */}
         <div className="sec-head">Other Proficiencies</div>
-        <div className="prof-cats">
-          {allCats.map(cat => (
-            <div key={cat} className="prof-cat">
-              <div className="prof-cat-head">
+        <div className="card prof-card">
+          {allCats.map((cat, ci) => (
+            <div key={cat} className={`prof-row${ci < allCats.length - 1 ? ' prof-row--border' : ''}`}>
+              <div className="prof-row-head">
                 <span className="prof-cat-label">{cat}</span>
-              </div>
-              <div className="prof-pills">
-                {(profList[cat] ?? []).map(item => (
-                  <span key={item} className="prof-pill">
-                    {item}
-                    {isOwner && !locked && (
-                      <button className="prof-pill-remove" onClick={() => removeProf(cat, item)}>×</button>
-                    )}
-                  </span>
-                ))}
                 {isOwner && !locked && (
-                  <form onSubmit={e => { e.preventDefault(); addProf(cat, newProf[cat] ?? '') }} style={{ display:'inline-flex' }}>
+                  <form onSubmit={e => { e.preventDefault(); addProf(cat, newProf[cat] ?? '') }}>
                     <input
                       className="prof-add-input"
                       placeholder="+ Add"
@@ -218,8 +258,40 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
                   </form>
                 )}
               </div>
+              <div className="prof-pills">
+                {(profList[cat] ?? []).map(item => (
+                  <span key={item} className={`prof-pill${item.includes('½') ? ' prof-pill--half' : ''}`}>
+                    {item}
+                    {isOwner && !locked && (
+                      <button className="prof-pill-remove" onClick={() => removeProf(cat, item)}>×</button>
+                    )}
+                  </span>
+                ))}
+              </div>
             </div>
           ))}
+
+          {/* Add category */}
+          {isOwner && !locked && (
+            <div className="prof-add-cat-row">
+              {addingCat ? (
+                <form onSubmit={e => { e.preventDefault(); addCategory(newCat) }} style={{ display:'flex', gap:6, width:'100%' }}>
+                  <input
+                    className="prof-add-input"
+                    placeholder="Category name…"
+                    value={newCat}
+                    onChange={e => setNewCat(e.target.value)}
+                    autoFocus
+                    style={{ flex:1, width:'auto' }}
+                  />
+                  <button type="submit" style={{ background:'var(--accent)', border:'none', borderRadius:'var(--radius-md)', color:'#fff', fontSize:11, fontWeight:700, padding:'4px 10px', cursor:'pointer', fontFamily:'var(--font-body)' }}>Add</button>
+                  <button type="button" onClick={() => setAddingCat(false)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:13, fontFamily:'var(--font-body)' }}>Cancel</button>
+                </form>
+              ) : (
+                <button className="prof-add-cat-btn" onClick={() => setAddingCat(true)}>+ Add category</button>
+              )}
+            </div>
+          )}
         </div>
 
       </div>
