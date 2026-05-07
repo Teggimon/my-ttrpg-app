@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { v4 as uuidv4 } from 'uuid'
 import { getEquipment } from '../srdContent'
 import '../TabShared.css'
 import './InventoryTab.css'
@@ -93,7 +94,19 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
       .catch(() => {})
   }, [])
 
-  const inventory   = char.inventory ?? []
+  // Migrate: backfill itemId for old characters that lack it.
+  // tempIds ref gives stable IDs for the current render before the write completes.
+  const rawInventory = char.inventory ?? []
+  const tempIds = useRef({})
+  const inventory = rawInventory.map((i, idx) => {
+    if (i.itemId) return i
+    if (!tempIds.current[idx]) tempIds.current[idx] = uuidv4()
+    return { ...i, itemId: tempIds.current[idx] }
+  })
+  useEffect(() => {
+    if (rawInventory.every(i => i.itemId)) return
+    updateChar({ inventory: inventory })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const tracking    = char.settings?.encumbranceTracking
   const strScore    = char.stats?.abilityScores?.str ?? 10
   const capacity    = strScore * 15

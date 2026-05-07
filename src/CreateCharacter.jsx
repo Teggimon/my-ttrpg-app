@@ -96,16 +96,16 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
   // 8. Inventory: class starting_equipment + chosen class equipment + background equipment
   const inventory = []
   for (const item of (classData?.starting_equipment ?? [])) {
-    inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
+    inventory.push({ itemId: uuidv4(), index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of classEquipment) {
-    inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
+    inventory.push({ itemId: uuidv4(), index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
   }
   for (const item of (backgroundData?.starting_equipment ?? [])) {
-    inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
+    inventory.push({ itemId: uuidv4(), index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of backgroundEquipment) {
-    inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
+    inventory.push({ itemId: uuidv4(), index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
   }
 
   // 9. Racial traits
