@@ -109,6 +109,65 @@ const SKILLS = [
 
 const ABILITY_SCORES = ['STR','DEX','CON','INT','WIS','CHA']
 
+// ── Spell slot tables ─────────────────────────────────────────
+
+// Full caster slots per class level (index 0 = level 1)
+const FULL_CASTER_SLOTS = [
+  [2,0,0,0,0,0,0,0,0],[3,0,0,0,0,0,0,0,0],[4,2,0,0,0,0,0,0,0],[4,3,0,0,0,0,0,0,0],
+  [4,3,2,0,0,0,0,0,0],[4,3,3,0,0,0,0,0,0],[4,3,3,1,0,0,0,0,0],[4,3,3,2,0,0,0,0,0],
+  [4,3,3,3,1,0,0,0,0],[4,3,3,3,2,0,0,0,0],[4,3,3,3,2,1,0,0,0],[4,3,3,3,2,1,0,0,0],
+  [4,3,3,3,2,1,1,0,0],[4,3,3,3,2,1,1,0,0],[4,3,3,3,2,1,1,1,0],[4,3,3,3,2,1,1,1,0],
+  [4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1],
+]
+
+// Half caster (Paladin, Ranger) — only 5 spell levels, starts at class lv 2
+const HALF_CASTER_SLOTS = [
+  [0,0,0,0,0],[2,0,0,0,0],[3,0,0,0,0],[3,0,0,0,0],[4,2,0,0,0],
+  [4,2,0,0,0],[4,3,0,0,0],[4,3,0,0,0],[4,3,2,0,0],[4,3,2,0,0],
+  [4,3,3,0,0],[4,3,3,0,0],[4,3,3,1,0],[4,3,3,1,0],[4,3,3,2,0],
+  [4,3,3,2,0],[4,3,3,3,1],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2],
+]
+
+// Warlock Pact Magic — all slots at same slot level
+const WARLOCK_PACT = [
+  {lv:1,n:1},{lv:1,n:2},{lv:2,n:2},{lv:2,n:2},{lv:3,n:2},
+  {lv:3,n:2},{lv:4,n:2},{lv:4,n:2},{lv:5,n:2},{lv:5,n:2},
+  {lv:5,n:3},{lv:5,n:3},{lv:5,n:3},{lv:5,n:3},{lv:5,n:3},
+  {lv:5,n:3},{lv:5,n:4},{lv:5,n:4},{lv:5,n:4},{lv:5,n:4},
+]
+
+const FULL_CASTERS = new Set(['bard','cleric','druid','sorcerer','wizard'])
+const HALF_CASTERS = new Set(['paladin','ranger'])
+
+export function getSlotsForClass(classIndex, classLevel) {
+  if (!classIndex || classLevel < 1) return {}
+  const idx = classLevel - 1
+  if (classIndex === 'warlock') {
+    const row = WARLOCK_PACT[idx]
+    return row ? { [row.lv]: { total: row.n, used: 0 } } : {}
+  }
+  const table = FULL_CASTERS.has(classIndex) ? FULL_CASTER_SLOTS
+    : HALF_CASTERS.has(classIndex) ? HALF_CASTER_SLOTS : null
+  if (!table || !table[idx]) return {}
+  const slots = {}
+  table[idx].forEach((count, i) => { if (count > 0) slots[i + 1] = { total: count, used: 0 } })
+  return slots
+}
+
+// Merge new slot totals with existing used counts (used capped at new total)
+export function mergeSlots(existing, newSlots) {
+  const merged = {}
+  for (const [lvl, slot] of Object.entries(newSlots)) {
+    const prev = existing?.[lvl]
+    merged[lvl] = { total: slot.total, used: Math.min(prev?.used ?? 0, slot.total) }
+  }
+  return merged
+}
+
+// Starting cantrips and spells known per class at level 1
+export const CANTRIPS_KNOWN = { bard:2, cleric:3, druid:2, sorcerer:4, warlock:2, wizard:3 }
+export const SPELLS_KNOWN_L1 = { bard:2, sorcerer:2, warlock:2, wizard:6, cleric:4, druid:4 }
+
 // ── D&D logic helpers ─────────────────────────────────────────
 
 export function xpToLevel(xp) {
@@ -568,6 +627,17 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
         }
       }
     })
+
+    // Recalculate spell slots based on new class level
+    const updatedCls = updatedChar.identity.class ?? []
+    const chosenCls  = updatedCls[classIdx]
+    if (chosenCls) {
+      const newSlots = getSlotsForClass(chosenCls.index ?? chosenCls.name?.toLowerCase(), chosenCls.level)
+      if (Object.keys(newSlots).length > 0) {
+        const merged = mergeSlots(updatedChar.spells?.slots ?? {}, newSlots)
+        updatedChar = { ...updatedChar, spells: { ...(updatedChar.spells ?? {}), slots: merged } }
+      }
+    }
 
     onConfirm(updatedChar)
   }

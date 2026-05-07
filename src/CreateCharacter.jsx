@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
 import { v4 as uuidv4 } from 'uuid'
 import { getClasses, getRaces, getBackgrounds } from './srdContent'
-import { SUBCLASSES, SUBCLASS_LEVELS } from './LevelUpModal'
+import { SUBCLASSES, SUBCLASS_LEVELS, getSlotsForClass, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
+import { getSpells } from './srdContent'
 
 // ─── SRD helpers ─────────────────────────────────────────────────────────────
 
@@ -24,7 +25,7 @@ const SPELLCASTING_ABILITY = {
 
 // ─── Character builder ────────────────────────────────────────────────────────
 
-function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores }) {
+function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores, startingCantrips, startingSpells }) {
   const {
     raceBonusOptions = [],   // [{ability_score:{index}, bonus}]
     classSkills = [],        // ['skill-perception', ...]
@@ -164,9 +165,9 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     racialTraits,
     spells: {
       spellcastingAbility: SPELLCASTING_ABILITY[classData?.index] ?? null,
-      slots: {},
-      known: [],
-      prepared: [],
+      slots: getSlotsForClass(classData?.index ?? null, 1),
+      known: [...(startingCantrips ?? []), ...(startingSpells ?? [])],
+      prepared: (startingSpells ?? []).map(s => s.index),
       concentration: null,
     },
     notes: {
@@ -553,6 +554,111 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
   )
 }
 
+// ─── Step: Starting Spells ────────────────────────────────────────────────────
+
+function SpellPicker({ label, spells, selected, max, onToggle }) {
+  const [search, setSearch] = useState('')
+  const filtered = spells.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).slice(0, 80)
+  return (
+    <div style={{ marginBottom: '1rem' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
+        <label style={S.label}>{label}</label>
+        <span style={{ fontSize:'0.75rem', color: selected.length === max ? '#6fde8f' : '#888' }}>
+          {selected.length} / {max}
+        </span>
+      </div>
+      <input style={{ ...S.input, marginBottom:'0.4rem' }} placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
+      <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid #2a2a4a', borderRadius:6 }}>
+        {filtered.map(sp => {
+          const sel = selected.some(s => s.index === sp.index)
+          const disabled = !sel && selected.length >= max
+          return (
+            <div key={sp.index}
+              style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.45rem 0.75rem',
+                background: sel ? '#1e1560' : 'transparent',
+                borderBottom:'1px solid #1a1a35', cursor: disabled ? 'default' : 'pointer',
+                opacity: disabled ? 0.4 : 1 }}
+              onClick={() => !disabled && onToggle(sp)}
+            >
+              <span style={{ color: sel ? '#c9b8ff' : '#555', fontSize:'1rem', lineHeight:1 }}>{sel ? '◉' : '○'}</span>
+              <span style={{ fontSize:'0.87rem', fontWeight: sel ? 600 : 400, color: sel ? '#e8e0f0' : '#aaa' }}>{sp.name}</span>
+              {sp.level === 0 && <span style={{ fontSize:'0.7rem', color:'#7c5fff', marginLeft:'auto' }}>cantrip</span>}
+              {sp.level > 0  && <span style={{ fontSize:'0.7rem', color:'#555', marginLeft:'auto' }}>Lv {sp.level}</span>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, onSpells, onNext, onBack }) {
+  const [allSpells, setAllSpells] = useState([])
+  const classIdx   = classData?.index ?? ''
+  const cantripMax = CANTRIPS_KNOWN[classIdx] ?? 0
+  const spellMax   = SPELLS_KNOWN_L1[classIdx] ?? 0
+
+  useEffect(() => {
+    getSpells().then(all => setAllSpells(all)).catch(() => {})
+  }, [])
+
+  const classSpells   = allSpells.filter(s => s.classes?.some(c => c.index === classIdx))
+  const cantrips      = classSpells.filter(s => s.level === 0)
+  const leveledSpells = classSpells.filter(s => s.level === 1) // level 1 only at creation
+
+  const toggleCantrip = (sp) => {
+    if (selectedCantrips.some(s => s.index === sp.index))
+      onCantrips(selectedCantrips.filter(s => s.index !== sp.index))
+    else if (selectedCantrips.length < cantripMax)
+      onCantrips([...selectedCantrips, { id: sp.index, index: sp.index, name: sp.name, level: 0 }])
+  }
+  const toggleSpell = (sp) => {
+    if (selectedSpells.some(s => s.index === sp.index))
+      onSpells(selectedSpells.filter(s => s.index !== sp.index))
+    else if (selectedSpells.length < spellMax)
+      onSpells([...selectedSpells, { id: sp.index, index: sp.index, name: sp.name, level: sp.level }])
+  }
+
+  const cantripDone = cantripMax === 0 || selectedCantrips.length === cantripMax
+  const spellDone   = spellMax   === 0 || selectedSpells.length   === spellMax
+
+  return (
+    <div style={S.wrap}>
+      <div style={S.h1}>Starting Spells — {classData?.name}</div>
+      <div style={S.sub}>Choose your starting cantrips and spells.</div>
+
+      {allSpells.length === 0 && <div style={{ color:'#888', fontSize:'0.85rem' }}>Loading spells…</div>}
+
+      {cantripMax > 0 && (
+        <SpellPicker
+          label={`Cantrips (choose ${cantripMax})`}
+          spells={cantrips}
+          selected={selectedCantrips}
+          max={cantripMax}
+          onToggle={toggleCantrip}
+        />
+      )}
+
+      {spellMax > 0 && (
+        <SpellPicker
+          label={`1st-Level Spells (choose ${spellMax})`}
+          spells={leveledSpells}
+          selected={selectedSpells}
+          max={spellMax}
+          onToggle={toggleSpell}
+        />
+      )}
+
+      <div style={S.row}>
+        <button style={S.btn(false)} onClick={onBack}>← Back</button>
+        <button style={S.btn(true)} onClick={onNext} disabled={!cantripDone || !spellDone}>
+          Next: Ability Scores →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Step: Subclass (for classes that choose at level 1) ─────────────────────
 
 function StepSubclass({ classData, selected, onSelect, onNext, onBack }) {
@@ -701,12 +807,13 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
     return count >= g.choose
   })
   const allEquipSelected = equipGroups.every(g => {
-    // For each choice in the group, category picks need `choose` items; others need 1
     const groupSelections = selectedEquipment.filter(e => e.groupIndex === g.groupIndex)
     if (groupSelections.length === 0) return false
-    // Check all category choices within this group are fully satisfied
-    return g.choices.every(choice => {
-      if (!choice.isCategory) return true // non-category: just need group to have any selection
+    const selectedChoiceIds = new Set(groupSelections.map(e => e.choiceId))
+    // At least one choice in the group must be fully satisfied
+    return g.choices.some(choice => {
+      if (!selectedChoiceIds.has(choice.id)) return false
+      if (!choice.isCategory) return true
       const need = choice.choose ?? 1
       const have = groupSelections.filter(e => e.choiceId === choice.id).length
       return have >= need
@@ -1118,6 +1225,8 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const [classSkills, setClassSkills] = useState([])
   const [classEquipment, setClassEquipment] = useState([])
   const [abilityScores, setAbilityScores] = useState({ str:10, dex:10, con:10, int:10, wis:10, cha:10 })
+  const [startingCantrips, setStartingCantrips] = useState([])
+  const [startingSpells,   setStartingSpells]   = useState([])
   const [backgroundData, setBackgroundData] = useState(null)
   const [backgroundLanguages, setBackgroundLanguages] = useState([])
   const [backgroundEquipment, setBackgroundEquipment] = useState([])
@@ -1134,6 +1243,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
 
   const hasSubrace = raceData?.subraces?.length > 0 || !!raceData?.ability_bonus_options
   const hasSubclassAtCreation = !!(classData && (SUBCLASS_LEVELS[classData.index] ?? []).includes(1))
+  const isSpellcaster = !!(classData && (CANTRIPS_KNOWN[classData.index] || SPELLS_KNOWN_L1[classData.index]))
 
   // Compute step indices dynamically
   const STEP_NAME       = 0
@@ -1142,7 +1252,8 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const STEP_CLASS      = hasSubrace ? 3 : 2
   const STEP_SUBCLASS   = STEP_CLASS + 1                          // may be skipped
   const STEP_CLASS_SETUP    = hasSubclassAtCreation ? STEP_SUBCLASS + 1 : STEP_CLASS + 1
-  const STEP_ABILITY_SCORES = STEP_CLASS_SETUP + 1
+  const STEP_SPELLS         = STEP_CLASS_SETUP + 1                // may be skipped
+  const STEP_ABILITY_SCORES = isSpellcaster ? STEP_SPELLS + 1 : STEP_CLASS_SETUP + 1
   const STEP_BACKGROUND     = STEP_ABILITY_SCORES + 1
   const STEP_BG_SETUP       = STEP_ABILITY_SCORES + 2
   const STEP_ALIGNMENT      = STEP_ABILITY_SCORES + 3
@@ -1156,6 +1267,8 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
         user, name,
         raceData, subraceData, classData, subclassChoice, backgroundData, alignment,
         baseAbilityScores: abilityScores,
+        startingCantrips,
+        startingSpells,
         choices: {
           raceBonusOptions,
           classSkills,
@@ -1195,6 +1308,8 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
     setSubclassChoice(null)
     setClassSkills([])
     setClassEquipment([])
+    setStartingCantrips([])
+    setStartingSpells([])
   }
 
   // When background changes, reset downstream
@@ -1262,8 +1377,20 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           onSkillsChange={setClassSkills}
           selectedEquipment={classEquipment}
           onEquipmentChange={setClassEquipment}
-          onNext={() => goTo(STEP_ABILITY_SCORES)}
+          onNext={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_ABILITY_SCORES)}
           onBack={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS)}
+        />
+      )}
+
+      {step === STEP_SPELLS && classData && isSpellcaster && (
+        <StepSpells
+          classData={classData}
+          selectedCantrips={startingCantrips}
+          onCantrips={setStartingCantrips}
+          selectedSpells={startingSpells}
+          onSpells={setStartingSpells}
+          onNext={() => goTo(STEP_ABILITY_SCORES)}
+          onBack={() => goTo(STEP_CLASS_SETUP)}
         />
       )}
 
@@ -1274,7 +1401,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           raceBonusOptions={raceBonusOptions}
           onChange={setAbilityScores}
           onNext={() => goTo(STEP_BACKGROUND)}
-          onBack={() => goTo(STEP_CLASS_SETUP)}
+          onBack={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_CLASS_SETUP)}
         />
       )}
 
