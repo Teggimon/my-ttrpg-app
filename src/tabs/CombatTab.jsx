@@ -80,13 +80,35 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     return { toHit, dmgStr, breakdown }
   }
 
-  // Equipped weapons — any equipped item that has damage (stored or via SRD)
+  // Equipped weapons — any equipped/attuned item that has damage dice
   const equippedWeapons = (char.inventory ?? []).filter(item => {
-    if (!item.equipped) return false
+    if (!item.equipped && !item.attuned) return false
     if (item.damage?.dice) return true
     const srd = srdMap[item.index]
     return !!srd?.damage?.damage_dice
   })
+
+  // Charged items — wands, staves, rods with limited uses (equipped or attuned, no damage dice)
+  const chargedItems = (char.inventory ?? []).filter(item =>
+    (item.equipped || item.attuned) && item.chargesMax &&
+    !item.damage?.dice && !srdMap[item.index]?.damage?.damage_dice
+  )
+
+  function useCharge(item) {
+    const current = item.chargesCurrent ?? item.chargesMax
+    if (current <= 0) return
+    updateChar({ inventory: (char.inventory ?? []).map(i =>
+      i.itemId === item.itemId ? { ...i, chargesCurrent: current - 1 } : i
+    )})
+  }
+
+  function restoreCharge(item) {
+    const current = item.chargesCurrent ?? item.chargesMax
+    if (current >= item.chargesMax) return
+    updateChar({ inventory: (char.inventory ?? []).map(i =>
+      i.itemId === item.itemId ? { ...i, chargesCurrent: current + 1 } : i
+    )})
+  }
 
   // Spell slots
   const slotEntries = Object.entries(char.spells?.slots ?? {})
@@ -142,7 +164,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     updateChar({ combat: { ...char.combat, conditions: (char.combat.conditions ?? []).filter(c => c !== cond) } })
   }
 
-  const hasAnything = equippedWeapons.length > 0 || racialCombatTraits.length > 0
+  const hasAnything = equippedWeapons.length > 0 || racialCombatTraits.length > 0 || chargedItems.length > 0
 
   return (
     <div className="tab-combat">
@@ -169,6 +191,43 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
               <span className="badge">{dmgStr}</span>
               <div className="atk-btns">
                 <button className="atk-btn atk-btn--roll">Roll</button>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+
+      {/* Charged item cards — wands, staves, rods etc. */}
+      {chargedItems.map(item => {
+        const current = item.chargesCurrent ?? item.chargesMax
+        const pct     = item.chargesMax > 0 ? current / item.chargesMax : 0
+        return (
+          <div key={item.itemId ?? item.index} className="attack-card">
+            <div className="atk-line1">
+              <span className="atk-source">ITEM</span>
+              <span className="atk-name">{item.name}</span>
+            </div>
+            <div className="atk-line2">
+              <span className="badge" style={{ color: pct === 0 ? '#f09090' : pct < 0.34 ? '#efa027' : undefined }}>
+                {current} / {item.chargesMax} charges
+              </span>
+              {item.description && <span className="badge badge--dim" style={{ maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {item.description.split('.')[0]}
+              </span>}
+              <div className="atk-btns">
+                <button
+                  className="atk-btn atk-btn--use"
+                  onClick={() => isOwner && !locked && useCharge(item)}
+                  disabled={!isOwner || locked || current <= 0}
+                  title="Use one charge"
+                >Use</button>
+                <button
+                  className="atk-btn"
+                  onClick={() => isOwner && !locked && restoreCharge(item)}
+                  disabled={!isOwner || locked || current >= item.chargesMax}
+                  title="Restore one charge"
+                  style={{ fontSize:12 }}
+                >+</button>
               </div>
             </div>
           </div>

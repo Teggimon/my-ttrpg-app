@@ -265,6 +265,16 @@
   text-align: center;
   min-width: 28px;
 }
+.inv-qty-inline-val--charges {
+  min-width: 48px;
+  color: #c9a227;
+}
+.inv-qty-inline--charges {
+  border-color: rgba(201,162,39,0.4);
+}
+.inv-qty-inline--charges .inv-qty-inline-btn {
+  border-color: rgba(201,162,39,0.2);
+}
 
 /* ── Chevron ── */
 .inv-chevron-btn {

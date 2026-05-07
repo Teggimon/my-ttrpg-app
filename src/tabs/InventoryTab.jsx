@@ -18,16 +18,21 @@ const CURRENCY_NAMES = new Set([
 ])
 
 export function isItemEquippable(item, srdMap) {
+  if (item.equipped)                      return true  // already marked by user
   if (item.damage)                        return true
   if (item.ac_bonus != null)              return true
   if (MAGIC_AC_BONUS[item.index] != null) return true
   if (item.index === BRACERS_INDEX)       return true
   if (item.requiresAttunement)            return true
+  if (item.chargesMax)                    return true  // wands, staves, etc.
+  if (item.rarity)                        return true  // any magic item is holdable
+  if (item.type === 'Magic Item')         return true
   const srd = srdMap[item.index] ?? {}
   if (srd.damage)              return true
   if (srd.armor_class)         return true
   if (item.armor_class)        return true
   if (srd.requires_attunement) return true
+  if (srd.rarity)              return true
   return false
 }
 
@@ -137,7 +142,7 @@ function rowChips(item, srdMap, abilityScores) {
 
 // ── Item row ──────────────────────────────────────────────────────────────────
 
-function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onRemove, onEdit, showQty, attunedCount }) {
+function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onCharges, onRemove, onEdit, showQty, attunedCount }) {
   const chips     = rowChips(item, srdMap, abilityScores)
   const reqAttune = needsAttunement(item, srdMap)
   const canEquip  = isItemEquippable(item, srdMap)
@@ -182,8 +187,23 @@ function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onTog
           </div>
         )}
 
-        {/* Inline qty stepper — bag items only */}
-        {showQty && isOwner && !locked && (
+        {/* Charges stepper — shown for any item with charges (wands, staves, etc.) */}
+        {item.chargesMax && isOwner && !locked && (
+          <div className="inv-qty-inline inv-qty-inline--charges" onClick={e => e.stopPropagation()}>
+            <button className="inv-qty-inline-btn"
+              onClick={() => onCharges(Math.max(0, (item.chargesCurrent ?? item.chargesMax) - 1))}
+              disabled={(item.chargesCurrent ?? item.chargesMax) <= 0}>−</button>
+            <span className="inv-qty-inline-val inv-qty-inline-val--charges">
+              {item.chargesCurrent ?? item.chargesMax} / {item.chargesMax}
+            </span>
+            <button className="inv-qty-inline-btn"
+              onClick={() => onCharges(Math.min(item.chargesMax, (item.chargesCurrent ?? item.chargesMax) + 1))}
+              disabled={(item.chargesCurrent ?? item.chargesMax) >= item.chargesMax}>+</button>
+          </div>
+        )}
+
+        {/* Qty stepper — bag items without charges */}
+        {showQty && !item.chargesMax && isOwner && !locked && (
           <div className="inv-qty-inline" onClick={e => e.stopPropagation()}>
             <button className="inv-qty-inline-btn" onClick={() => onQty((item.quantity ?? 1) - 1)}>−</button>
             <span className="inv-qty-inline-val">{item.quantity ?? 1}</span>
@@ -329,6 +349,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
   const [dmgType,  setDmgType]  = useState(initial?.damage?.type ?? 'Slashing')
   const [versOn,   setVersOn]   = useState(!!(initial?.damage?.versatile))
   const [versDice, setVersDice] = useState(initial?.damage?.versatile ?? '1d10')
+  const [chargesMax, setChargesMax] = useState(initial?.chargesMax ?? '')
   const [attune,   setAttune]   = useState(initial?.requiresAttunement ?? false)
   const [equipped, setEquipped] = useState(initial?.equipped ?? false)
   const [effects,  setEffects]  = useState(initial?.effects ?? [])
@@ -349,6 +370,10 @@ function CustomItemForm({ initial, onSave, onCancel }) {
       enhancement: enh || undefined,
       equipped,
       requiresAttunement: attune || undefined,
+      ...(chargesMax !== '' && Number(chargesMax) > 0 && {
+        chargesMax: Number(chargesMax),
+        chargesCurrent: initial?.chargesCurrent ?? Number(chargesMax),
+      }),
       effects: effects.length ? effects : undefined,
       ...(isWeapon && {
         damage: { dice: dmgDice, type: dmgType, ...(versOn && { versatile: versDice }) }
@@ -387,13 +412,17 @@ function CustomItemForm({ initial, onSave, onCancel }) {
         </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
         <div>
           <label style={lbl}>Weight (lbs)</label>
           <input style={inp} type="number" min="0" step="0.5" value={weight} onChange={e => setWeight(e.target.value)} placeholder="—" />
         </div>
         <div>
-          <label style={lbl}>Magic Bonus (Attack + Damage)</label>
+          <label style={lbl}>Max Charges</label>
+          <input style={{ ...inp, textAlign:'center' }} type="number" min="0" value={chargesMax} onChange={e => setChargesMax(e.target.value)} placeholder="—" />
+        </div>
+        <div>
+          <label style={lbl}>Magic Bonus</label>
           <select style={sel} value={enh} onChange={e => setEnh(Number(e.target.value))}>
             {[0,1,2,3].map(n => <option key={n} value={n}>+{n}</option>)}
           </select>
@@ -597,6 +626,10 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     save(inventory.map(i => i.itemId === itemId ? { ...i, quantity: qty } : i))
   }
 
+  function updateCharges(itemId, charges) {
+    save(inventory.map(i => i.itemId === itemId ? { ...i, chargesCurrent: charges } : i))
+  }
+
   function addItem(item) {
     const finalItem = addEquipped ? { ...item, equipped: true } : item
     save([...inventory, finalItem])
@@ -653,6 +686,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
         onEquip={() => toggleEquip(item.itemId)}
         onAttune={() => toggleAttune(item.itemId)}
         onQty={qty => updateQty(item.itemId, qty)}
+        onCharges={c => updateCharges(item.itemId, c)}
         onRemove={() => removeItem(item.itemId)}
         onEdit={() => { setEditItem(item); setExpandedId(null) }}
         showQty={showQty}
