@@ -176,6 +176,34 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
 const DAMAGE_DICE   = ['1d4','1d6','1d8','1d10','1d12','2d6','2d8']
 const DAMAGE_TYPES  = ['Slashing','Piercing','Bludgeoning','Fire','Cold','Lightning','Poison','Acid','Necrotic','Radiant','Psychic','Thunder','Force']
 const ITEM_TYPES    = ['Weapon','Armour','Shield','Gear','Magic Item']
+const EFFECT_STATS  = ['STR','DEX','CON','INT','WIS','CHA','AC','Attack Roll','Damage','Speed','HP Max','Saving Throws','Spell Save DC','Spell Attack']
+
+const BLANK_EFFECT = { stat: 'AC', mode: 'add', value: 1, notes: '' }
+
+function EffectRow({ effect, onChange, onRemove }) {
+  const s = { background:'var(--bg-inset)', border:'0.5px solid var(--border-strong)', borderRadius:'var(--radius-md)', color:'var(--text-primary)', fontFamily:'var(--font-body)', fontSize:12, outline:'none', padding:'5px 7px' }
+  return (
+    <div className="effect-row">
+      <select style={{ ...s, flex:2 }} value={effect.stat} onChange={e => onChange({ ...effect, stat: e.target.value })}>
+        {EFFECT_STATS.map(st => <option key={st}>{st}</option>)}
+      </select>
+      <div className="effect-mode-toggle">
+        {['add','set'].map(m => (
+          <button key={m} type="button"
+            className={`effect-mode-btn${effect.mode === m ? ' effect-mode-btn--on' : ''}`}
+            onClick={() => onChange({ ...effect, mode: m })}
+          >{m === 'add' ? '+ Add' : '= Set'}</button>
+        ))}
+      </div>
+      <input style={{ ...s, width:44, textAlign:'center' }} type="number"
+        value={effect.value} onChange={e => onChange({ ...effect, value: Number(e.target.value) })} />
+      <input style={{ ...s, flex:3 }} placeholder="Notes (optional)"
+        value={effect.notes} onChange={e => onChange({ ...effect, notes: e.target.value })} />
+      <button type="button" onClick={onRemove}
+        style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, padding:'0 2px', fontFamily:'var(--font-body)' }}>×</button>
+    </div>
+  )
+}
 
 function CustomItemForm({ initial, onSave, onCancel }) {
   const [name,    setName]    = useState(initial?.name ?? '')
@@ -190,8 +218,12 @@ function CustomItemForm({ initial, onSave, onCancel }) {
   const [versDice,setVersDice]= useState(initial?.damage?.versatile ?? '1d10')
   const [attune,  setAttune]  = useState(initial?.requiresAttunement ?? false)
   const [equipped,setEquipped]= useState(initial?.equipped ?? false)
+  const [effects, setEffects] = useState(initial?.effects ?? [])
 
   const isWeapon = type === 'Weapon'
+
+  const updateEffect = (i, ef) => setEffects(prev => prev.map((e, j) => j === i ? ef : e))
+  const removeEffect = (i)     => setEffects(prev => prev.filter((_, j) => j !== i))
 
   function save() {
     const item = {
@@ -205,6 +237,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
       enhancement: enh || undefined,
       equipped,
       requiresAttunement: attune || undefined,
+      effects: effects.length ? effects : undefined,
       ...(isWeapon && {
         damage: { dice: dmgDice, type: dmgType, ...(versOn && { versatile: versDice }) }
       }),
@@ -249,7 +282,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
           <input style={inp} type="number" min="0" step="0.5" value={weight} onChange={e => setWeight(e.target.value)} placeholder="—" />
         </div>
         <div>
-          <label style={lbl}>Magic Bonus</label>
+          <label style={lbl}>Magic Bonus (Attack + Damage)</label>
           <select style={sel} value={enh} onChange={e => setEnh(Number(e.target.value))}>
             {[0,1,2,3].map(n => <option key={n} value={n}>+{n}</option>)}
           </select>
@@ -283,6 +316,23 @@ function CustomItemForm({ initial, onSave, onCancel }) {
           </div>
         </>
       )}
+
+      {/* ── Effects ── */}
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', ...lbl, marginBottom:4 }}>
+        <span>Effects</span>
+        <button type="button" onClick={() => setEffects(prev => [...prev, { ...BLANK_EFFECT }])}
+          style={{ background:'none', border:'0.5px solid var(--border-strong)', borderRadius:'var(--radius-md)', color:'var(--accent-light)', fontSize:11, fontWeight:700, padding:'2px 8px', cursor:'pointer', fontFamily:'var(--font-body)' }}>
+          + Add Effect
+        </button>
+      </div>
+      {effects.length === 0 && (
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>
+          No effects — use effects to grant bonuses to AC, ability scores, speed, etc.
+        </div>
+      )}
+      {effects.map((ef, i) => (
+        <EffectRow key={i} effect={ef} onChange={upd => updateEffect(i, upd)} onRemove={() => removeEffect(i)} />
+      ))}
 
       <div style={{ display:'flex', gap:16, marginTop:12 }}>
         <label style={tog(attune)} onClick={() => setAttune(v => !v)}>

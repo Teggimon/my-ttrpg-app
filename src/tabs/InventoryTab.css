@@ -339,3 +339,92 @@
 }
 .ip-row-tag--magic { background: rgba(201,162,39,0.12); color: #c9a227; }
 .ip-row-tag--dim   { color: var(--text-faint); }
+
+/* ── Effects list ── */
+.effects-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 10px 0 5px;
+}
+
+.effect-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.effect-row select,
+.effect-row input[type="number"],
+.effect-row input[type="text"] {
+  background: var(--bg-inset);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 5px 7px;
+  outline: none;
+}
+
+.effect-row select { flex: 0 0 auto; min-width: 110px; }
+.effect-row input[type="number"] { width: 52px; flex-shrink: 0; }
+.effect-row input[type="text"]   { flex: 1; min-width: 0; }
+
+.effect-mode-toggle {
+  display: flex;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 0.5px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+.effect-mode-btn {
+  padding: 5px 8px;
+  background: var(--bg-inset);
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.effect-mode-btn--on {
+  background: var(--accent);
+  color: #fff;
+}
+
+.effect-remove {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 4px;
+  flex-shrink: 0;
+  transition: color 0.1s;
+}
+.effect-remove:hover { color: #f09090; }
+
+.effect-add-btn {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-top: 3px;
+}
+.effect-add-btn:hover {
+  color: var(--accent-light);
+  border-color: var(--accent-border);
+}
