@@ -8,12 +8,18 @@
 }
 
 .atk-line1 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
   padding: 9px 12px 5px;
 }
 
 .atk-source {
-  font-size: 10px;
+  font-size: 9px;
+  font-weight: 700;
   font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--text-faint);
   flex-shrink: 0;
 }
