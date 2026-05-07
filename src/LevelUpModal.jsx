@@ -111,6 +111,10 @@ const ABILITY_SCORES = ['STR','DEX','CON','INT','WIS','CHA']
 
 // ── D&D logic helpers ─────────────────────────────────────────
 
+export function xpToLevel(xp) {
+  return Math.max(1, XP_THRESHOLDS.filter(t => xp >= t).length)
+}
+
 function rollHpIncrease(className, conMod) {
   const die = HIT_DICE[className?.toLowerCase()] ?? 8
   const roll = Math.floor(Math.random() * die) + 1
@@ -122,40 +126,42 @@ function getConMod(char) {
   return Math.floor((con - 10) / 2)
 }
 
-function classKey(char) {
-  return (char.identity?.class?.[0]?.name ?? '').toLowerCase()
-}
-
-function currentLevel(char) {
+// Total levels assigned across all classes (the distribution)
+function assignedLevel(char) {
   return (char.identity?.class ?? []).reduce((s, c) => s + (c.level ?? 0), 0)
 }
 
-function newLevel(char) {
-  return currentLevel(char) + 1
+// Level the chosen class will become after this level-up
+function nextClassLevel(char, classIdx) {
+  return (char.identity?.class?.[classIdx]?.level ?? 0) + 1
 }
 
-function hasASI(char) {
-  const cls  = classKey(char)
-  const lvl  = newLevel(char)
+function hasASI(char, classIdx) {
+  const cls = (char.identity?.class?.[classIdx]?.name ?? '').toLowerCase()
+  const lvl = nextClassLevel(char, classIdx)
   return (ASI_LEVELS[cls] ?? []).includes(lvl)
 }
 
-function hasSubclassChoice(char) {
-  const cls = classKey(char)
-  const lvl = newLevel(char)
-  const already = char.identity?.subclass ?? char.identity?.class?.[0]?.subclass
+function hasSubclassChoice(char, classIdx) {
+  const cls = (char.identity?.class?.[classIdx]?.name ?? '').toLowerCase()
+  const lvl = nextClassLevel(char, classIdx)
+  const already = char.identity?.class?.[classIdx]?.subclass
+    ?? (classIdx === 0 ? char.identity?.subclass : undefined)
   return !already && (SUBCLASS_LEVELS[cls] ?? []).includes(lvl)
 }
 
-// Build the list of steps for this level up
-function buildSteps(char) {
+// Build step list once class is chosen
+function buildSteps(char, classIdx) {
   const steps = []
-  // Always: new features + HP
+  const isMulticlass = (char.identity?.class ?? []).length > 1
+  if (isMulticlass && classIdx == null) {
+    steps.push({ type: 'classChoice' })
+    return steps
+  }
+  const idx = classIdx ?? 0
   steps.push({ type: 'features' })
-  // ASI or Feat?
-  if (hasASI(char)) steps.push({ type: 'asi' })
-  // Subclass?
-  if (hasSubclassChoice(char)) steps.push({ type: 'subclass' })
+  if (hasASI(char, idx))           steps.push({ type: 'asi' })
+  if (hasSubclassChoice(char, idx)) steps.push({ type: 'subclass' })
   return steps
 }
 
@@ -173,19 +179,52 @@ function StepIndicator({ total, current }) {
   )
 }
 
+// ── Step: Class choice (multiclass) ──────────────────────────
+function ClassChoiceStep({ char, onNext, onBack }) {
+  const classes = char.identity?.class ?? []
+  const [selected, setSelected] = useState(null)
+  return (
+    <div className="lu-step">
+      <div className="lu-title">⬆ Level Up — Choose Class</div>
+      <div className="lu-sub">Which class gains this level?</div>
+      <div className="lu-class-choices">
+        {classes.map((cls, i) => (
+          <button
+            key={i}
+            className={`lu-class-choice-btn${selected === i ? ' lu-class-choice-btn--active' : ''}`}
+            onClick={() => setSelected(i)}
+          >
+            <span className="lu-class-choice-name">{cls.name}</span>
+            <span className="lu-class-choice-level">Lv {cls.level} → {cls.level + 1}</span>
+          </button>
+        ))}
+      </div>
+      <div className="lu-actions">
+        <button className="lu-btn lu-btn--ghost" onClick={onBack}>← Back</button>
+        <button
+          className="lu-btn lu-btn--primary"
+          onClick={() => onNext({ type: 'classChoice', classIdx: selected })}
+          disabled={selected == null}
+        >Next →</button>
+      </div>
+    </div>
+  )
+}
+
 // ── Step: New Features (simple level) ────────────────────────
-function FeaturesStep({ char, hpResult, onNext, isLast }) {
-  const lvl        = newLevel(char)
-  const cls        = char.identity?.class?.[0]?.name ?? 'your class'
-  const oldProf    = PROF_BONUS[lvl - 2] ?? 2
-  const newProf    = PROF_BONUS[lvl - 1] ?? 2
+function FeaturesStep({ char, classIdx, hpResult, onNext, isLast }) {
+  const lvl        = nextClassLevel(char, classIdx)
+  const cls        = char.identity?.class?.[classIdx]?.name ?? 'your class'
+  const totalLvl   = assignedLevel(char) + 1
+  const oldProf    = PROF_BONUS[totalLvl - 2] ?? 2
+  const newProf    = PROF_BONUS[totalLvl - 1] ?? 2
   const profChange = newProf > oldProf
 
   return (
     <div className="lu-step">
       <div className="lu-title">⬆ Level Up — {cls} {lvl}</div>
       <div className="lu-sub">
-        {hasASI(char) || hasSubclassChoice(char)
+        {hasASI(char, classIdx) || hasSubclassChoice(char, classIdx)
           ? 'You gain the following automatically. More choices coming next.'
           : 'No choices required at this level. Everything below is applied automatically.'
         }
@@ -233,7 +272,7 @@ function FeaturesStep({ char, hpResult, onNext, isLast }) {
 }
 
 // ── Step: ASI or Feat ─────────────────────────────────────────
-function ASIStep({ char, onNext, onBack }) {
+function ASIStep({ char, classIdx, onNext, onBack }) {
   const [choice, setChoice]     = useState(null)  // 'asi' | 'feat'
   const [asiPoints, setAsiPoints] = useState({ STR:0, DEX:0, CON:0, INT:0, WIS:0, CHA:0 })
   const [selectedFeat, setSelectedFeat] = useState(null)
@@ -284,7 +323,7 @@ function ASIStep({ char, onNext, onBack }) {
 
   return (
     <div className="lu-step">
-      <div className="lu-title lu-title--gold">⬆ Level {newLevel(char)} — Improvement</div>
+      <div className="lu-title lu-title--gold">⬆ Level {nextClassLevel(char, classIdx)} — Improvement</div>
       <div className="lu-sub">Choose between an Ability Score Improvement or a Feat.</div>
 
       {/* Choice selector */}
@@ -393,17 +432,18 @@ function ASIStep({ char, onNext, onBack }) {
 }
 
 // ── Step: Subclass choice ─────────────────────────────────────
-function SubclassStep({ char, onNext, onBack }) {
+function SubclassStep({ char, classIdx, onNext, onBack }) {
   const [selected, setSelected] = useState(null)
-  const cls      = classKey(char)
-  const lvl      = newLevel(char)
+  const clsObj   = char.identity?.class?.[classIdx] ?? char.identity?.class?.[0]
+  const cls      = (clsObj?.name ?? '').toLowerCase()
+  const lvl      = nextClassLevel(char, classIdx)
   const options  = SUBCLASSES[cls] ?? []
 
   return (
     <div className="lu-step">
       <div className="lu-title lu-title--gold">Choose Your Archetype</div>
       <div className="lu-sub">
-        At {char.identity?.class?.[0]?.name} level {lvl}, you choose a subclass that defines your path.
+        At {clsObj?.name} level {lvl}, you choose a subclass that defines your path.
       </div>
 
       <div className="lu-warning lu-warning--gold">
@@ -443,21 +483,29 @@ function SubclassStep({ char, onNext, onBack }) {
 //  Main LevelUpModal
 // ════════════════════════════════════════════════════════════════
 export default function LevelUpModal({ char, onConfirm, onClose }) {
-  const steps     = useMemo(() => buildSteps(char), [char])
+  const isMulticlass = (char.identity?.class ?? []).length > 1
+  const [chosenClassIdx, setChosenClassIdx] = useState(isMulticlass ? null : 0)
+  const steps     = useMemo(() => buildSteps(char, chosenClassIdx), [char, chosenClassIdx])
   const [stepIdx, setStepIdx] = useState(0)
   const [results, setResults] = useState([])
 
-  // Pre-roll HP increase
+  // Pre-roll HP increase for the chosen class
   const hpResult = useMemo(() => {
-    const conMod = getConMod(char)
-    const cls    = classKey(char)
-    return rollHpIncrease(cls, conMod)
-  }, [char])
+    const idx    = chosenClassIdx ?? 0
+    const clsName = char.identity?.class?.[idx]?.name ?? ''
+    return rollHpIncrease(clsName, getConMod(char))
+  }, [char, chosenClassIdx])
 
   const currentStep = steps[stepIdx]
   const isLast      = stepIdx === steps.length - 1
 
   const handleNext = (result = null) => {
+    if (result?.type === 'classChoice') {
+      setChosenClassIdx(result.classIdx)
+      setStepIdx(0)
+      setResults([])
+      return
+    }
     const newResults = result ? [...results, result] : results
     if (isLast) {
       applyLevelUp(newResults)
@@ -468,16 +516,18 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
   }
 
   const handleBack = () => {
-    if (stepIdx === 0) { onClose(); return }
+    if (stepIdx === 0) {
+      if (isMulticlass) { setChosenClassIdx(null); return }
+      onClose(); return
+    }
     setResults(prev => prev.slice(0, -1))
     setStepIdx(i => i - 1)
   }
 
   const applyLevelUp = (allResults) => {
-    // Build updated character
-    const lvl    = newLevel(char)
-    const cls    = char.identity?.class ?? []
-    const newCls = cls.map((c, i) => i === 0 ? { ...c, level: (c.level ?? 0) + 1 } : c)
+    const classIdx = chosenClassIdx ?? 0
+    const cls      = char.identity?.class ?? []
+    const newCls   = cls.map((c, i) => i === classIdx ? { ...c, level: (c.level ?? 0) + 1 } : c)
 
     let updatedChar = {
       ...char,
@@ -489,7 +539,6 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
       },
     }
 
-    // Apply each step result
     allResults.forEach(r => {
       if (r.type === 'asi' && r.choice === 'asi' && r.asiDeltas) {
         const prevAb = updatedChar.stats?.abilityScores ?? {}
@@ -508,7 +557,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
       }
       if (r.type === 'subclass' && r.subclass) {
         const updatedCls = (updatedChar.identity.class ?? []).map((c, i) =>
-          i === 0 ? { ...c, subclass: r.subclass } : c
+          i === classIdx ? { ...c, subclass: r.subclass } : c
         )
         updatedChar = {
           ...updatedChar,
@@ -527,9 +576,14 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
 
         <StepIndicator total={steps.length} current={stepIdx} />
 
-        {currentStep?.type === 'features' && (
+        {currentStep?.type === 'classChoice' && (
+          <ClassChoiceStep char={char} onNext={handleNext} onBack={onClose} />
+        )}
+
+        {currentStep?.type === 'features' && chosenClassIdx != null && (
           <FeaturesStep
             char={char}
+            classIdx={chosenClassIdx}
             hpResult={hpResult}
             onNext={() => handleNext()}
             onBack={handleBack}
@@ -537,17 +591,19 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
           />
         )}
 
-        {currentStep?.type === 'asi' && (
+        {currentStep?.type === 'asi' && chosenClassIdx != null && (
           <ASIStep
             char={char}
+            classIdx={chosenClassIdx}
             onNext={handleNext}
             onBack={handleBack}
           />
         )}
 
-        {currentStep?.type === 'subclass' && (
+        {currentStep?.type === 'subclass' && chosenClassIdx != null && (
           <SubclassStep
             char={char}
+            classIdx={chosenClassIdx}
             onNext={handleNext}
             onBack={handleBack}
           />
@@ -558,11 +614,10 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
 }
 
 // ── Helper export for triggering the modal ────────────────────
-// Call this when XP is updated to check if level up is needed
 export function checkLevelUp(char) {
   if (char.settings?.milestoneMode) return false
-  const xp  = char.identity?.xp ?? 0
-  const lvl = currentLevel(char)
-  if (lvl >= 20) return false
-  return xp >= XP_THRESHOLDS[lvl]  // lvl is 0-indexed here, XP_THRESHOLDS[1] = 300 for level 2
+  const xp       = char.identity?.xp ?? 0
+  const total    = xpToLevel(xp)
+  const assigned = assignedLevel(char)
+  return total > assigned && assigned < 20
 }

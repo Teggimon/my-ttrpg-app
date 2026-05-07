@@ -524,3 +524,20 @@
   padding: 13px 20px;
 }
 .lu-btn--ghost:hover { color: var(--text-primary); }
+
+/* ── Class choice step (multiclass) ── */
+.lu-class-choices {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 0 20px 8px;
+}
+.lu-class-choice-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-radius: var(--radius-md);
+  background: var(--bg-inset); border: 1.5px solid var(--border-strong);
+  cursor: pointer; text-align: left; transition: border-color .15s, background .15s;
+  font-family: var(--font-body);
+}
+.lu-class-choice-btn:hover { border-color: var(--accent-border); background: var(--bg-elevated); }
+.lu-class-choice-btn--active { border-color: var(--accent); background: var(--accent-bg); }
+.lu-class-choice-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.lu-class-choice-level { font-size: 12px; font-family: var(--font-mono); color: var(--accent-light); }

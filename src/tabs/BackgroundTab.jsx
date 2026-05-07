@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getClasses, getRaces, getBackgrounds } from '../srdContent'
+import { xpToLevel } from '../LevelUpModal'
 import '../TabShared.css'
 import './BackgroundTab.css'
 
@@ -119,7 +120,7 @@ function AllyCard({ ally, isOwner, locked, onUpdate, onRemove }) {
   )
 }
 
-function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove, onSetPrimary, onLevelChange }) {
+function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove, onSetPrimary, onLevelChange, canLevelUp }) {
   const [expanded, setExpanded] = useState(isPrimary)
   const [expandedLevels, setExpandedLevels] = useState({})
 
@@ -184,9 +185,9 @@ function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove
           {isOwner && !locked && (
             <div className="detail-actions">
               <div className="level-stepper">
-                <button className="level-step-btn" onClick={() => onLevelChange(Math.max(1, cls.level - 1))} disabled={cls.level <= 1}>−</button>
+                <button className="level-step-btn" onClick={() => onLevelChange(Math.max(0, cls.level - 1))} disabled={cls.level <= 0}>−</button>
                 <span className="level-step-val">Lv {cls.level}</span>
-                <button className="level-step-btn" onClick={() => onLevelChange(Math.min(20, cls.level + 1))} disabled={cls.level >= 20}>+</button>
+                <button className="level-step-btn" onClick={() => onLevelChange(cls.level + 1)} disabled={!canLevelUp || cls.level >= 20}>+</button>
               </div>
               {!isPrimary && <button className="dact" onClick={onSetPrimary}>Set as primary</button>}
               <button className="dact" onClick={onEdit}>✎ Edit</button>
@@ -207,13 +208,14 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
   const [pendingAlign,   setPendingAlign]   = useState(null)
   const [raceExpanded,   setRaceExpanded]   = useState(true)
 
-  const classes    = char.identity.class ?? []
-  const primaryIdx = char.identity.primaryClassIndex ?? 0
-  const alignment  = char.identity.alignment ?? ''
-  const subrace    = char.identity.subrace ?? ''
+  const classes     = char.identity.class ?? []
+  const primaryIdx  = char.identity.primaryClassIndex ?? 0
+  const alignment   = char.identity.alignment ?? ''
+  const subrace     = char.identity.subrace ?? ''
   const personality = char.identity.personality ?? {}
-  const allies     = char.allies ?? []
-  const totalLevel = classes.reduce((s, c) => s + (c.level ?? 0), 0)
+  const allies      = char.allies ?? []
+  const totalLevel  = xpToLevel(char.identity?.xp ?? 0)
+  const assignedLvl = classes.reduce((s, c) => s + (c.level ?? 0), 0)
 
   useEffect(() => {
     getClasses().then(all => {
@@ -366,6 +368,7 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
                 onRemove={() => removeClass(idx)}
                 onSetPrimary={() => setPrimary(idx)}
                 onLevelChange={lv => patchIdentity({ class: classes.map((c, i) => i === idx ? { ...c, level: lv } : c) })}
+                canLevelUp={assignedLvl < totalLevel}
               />
             ))}
           </div>

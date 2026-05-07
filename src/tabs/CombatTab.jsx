@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getEquipment, getSpells } from '../srdContent'
+import { xpToLevel } from '../LevelUpModal'
 import '../TabShared.css'
 import './CombatTab.css'
 
@@ -36,7 +37,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const [srdMap,         setSrdMap]         = useState({})
   const [spellMap,       setSpellMap]       = useState({})
 
-  const level  = char.identity.class?.reduce((s, c) => s + (c.level ?? 0), 0) ?? 1
+  const level  = xpToLevel(char.identity?.xp ?? 0)
   const pb     = PROFICIENCY[level] ?? 2
   const scores = char.stats?.abilityScores ?? {}
   const strMod = abilityMod(scores.str ?? 10)

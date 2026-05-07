@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import { ShortRestModal, LongRestModal } from './RestModals'
-import LevelUpModal, { checkLevelUp } from './LevelUpModal'
+import LevelUpModal, { checkLevelUp, xpToLevel } from './LevelUpModal'
 import './LeftPanel.css'
 
 const XP_THRESHOLDS = [0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000]
 
 function fmtBonus(n) { return n >= 0 ? `+${n}` : `${n}` }
+
+function trimClassLevels(classes, targetTotal) {
+  let toRemove = classes.reduce((s, c) => s + (c.level ?? 0), 0) - targetTotal
+  if (toRemove <= 0) return classes
+  return [...classes].reverse().map(c => {
+    const remove = Math.min(c.level ?? 0, toRemove)
+    toRemove -= remove
+    return { ...c, level: (c.level ?? 0) - remove }
+  }).reverse()
+}
 
 export default function LeftPanel({
   char, isOwner, locked, onToggleLock,
@@ -21,7 +31,9 @@ export default function LeftPanel({
 
   if (!char) return null
 
-  const level    = char.identity.class?.reduce((s, c) => s + (c.level ?? 0), 0) ?? 1
+  const xp    = char.identity.xp ?? 0
+  const level = xpToLevel(xp)
+
   const dexScore = char.stats?.abilityScores?.dex ?? 10
   const dexMod   = Math.floor((dexScore - 10) / 2)
   const initBonus = dexMod + (char.combat?.initiativeBonus ?? 0)
@@ -31,7 +43,6 @@ export default function LeftPanel({
   const hpPct = Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100)))
   const hpColor = hpPct > 66 ? 'var(--hp-high)' : hpPct > 33 ? 'var(--hp-mid)' : 'var(--hp-low)'
 
-  const xp   = char.identity.xp ?? 0
   const next = XP_THRESHOLDS[level]
   const prev = XP_THRESHOLDS[level - 1] ?? 0
   const xpPct = next ? Math.max(0, Math.min(100, Math.round(((xp - prev) / (next - prev)) * 100))) : 100
@@ -170,8 +181,10 @@ export default function LeftPanel({
               e.preventDefault()
               const delta = Number(xpInput)
               if (!isNaN(delta) && delta !== 0) {
-                const newXp = Math.max(0, xp + delta)
-                const updated = { ...char, identity: { ...char.identity, xp: newXp } }
+                const newXp      = Math.max(0, xp + delta)
+                const newTotal   = xpToLevel(newXp)
+                const classes    = trimClassLevels(char.identity.class ?? [], newTotal)
+                const updated    = { ...char, identity: { ...char.identity, xp: newXp, class: classes } }
                 updateChar({ identity: updated.identity })
                 if (checkLevelUp(updated)) setShowLevelUp(true)
               }
