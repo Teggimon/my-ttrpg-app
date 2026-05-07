@@ -137,35 +137,39 @@ function rowChips(item, srdMap, abilityScores) {
 
 // ── Item row ──────────────────────────────────────────────────────────────────
 
-function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onRemove, onEdit, showQty }) {
+function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onRemove, onEdit, showQty, attunedCount }) {
   const chips     = rowChips(item, srdMap, abilityScores)
   const reqAttune = needsAttunement(item, srdMap)
   const canEquip  = isItemEquippable(item, srdMap)
-  const isActive  = item.equipped || item.attuned
-
-  function handleCircle(e) {
-    e.stopPropagation()
-    if (!isOwner || locked) return
-    if (reqAttune) onAttune()
-    else if (canEquip) onEquip()
-  }
 
   return (
     <div className={`inv-row card${expanded ? ' inv-row--expanded' : ''}`}>
       <div className="inv-row-main">
-        {/* Equip / attune circle */}
+        {/* Blue equip circle */}
         <button
-          className={`inv-circle${isActive ? ' inv-circle--on' : ''}${!canEquip && !reqAttune ? ' inv-circle--inert' : ''}`}
-          onClick={handleCircle}
+          className={`inv-circle${item.equipped || item.attuned ? ' inv-circle--on' : ''}${!canEquip && !reqAttune ? ' inv-circle--inert' : ''}`}
+          onClick={e => { e.stopPropagation(); if (isOwner && !locked) onEquip() }}
           disabled={!isOwner || locked || (!canEquip && !reqAttune)}
-          aria-label={isActive ? 'Unequip' : 'Equip'}
+          aria-label={item.equipped ? 'Unequip' : 'Equip'}
         >
-          {isActive && <span className="inv-circle-check" />}
+          {(item.equipped || item.attuned) && <span className="inv-circle-check" />}
         </button>
+
+        {/* Gold attune dot — only for items that require attunement */}
+        {reqAttune ? (
+          <button
+            className={`inv-attune-dot${item.attuned ? ' inv-attune-dot--on' : ''}`}
+            onClick={e => { e.stopPropagation(); if (isOwner && !locked) onAttune() }}
+            disabled={!isOwner || locked || (!item.attuned && attunedCount >= 3)}
+            title={item.attuned ? 'Unattune' : attunedCount >= 3 ? 'Max 3 items attuned' : 'Attune'}
+            aria-label={item.attuned ? 'Unattune' : 'Attune'}
+          />
+        ) : (
+          <span className="inv-dot-spacer" />
+        )}
 
         {/* Name */}
         <div className="inv-row-name">
-          {item.attuned && <span className="inv-attune-gem">♦ </span>}
           {item.name}
         </div>
 
@@ -562,7 +566,13 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   }
 
   function toggleEquip(itemId) {
-    save(inventory.map(i => i.itemId === itemId ? { ...i, equipped: !i.equipped } : i))
+    const item       = inventory.find(i => i.itemId === itemId)
+    const nowEquipped = !item?.equipped
+    // Unequipping an attuned item also breaks attunement
+    save(inventory.map(i => i.itemId === itemId
+      ? { ...i, equipped: nowEquipped, attuned: nowEquipped ? i.attuned : false }
+      : i
+    ))
   }
 
   function toggleAttune(itemId) {
@@ -570,7 +580,11 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     const attuning = !item?.attuned
     const count    = inventory.filter(i => i.attuned && i.itemId !== itemId).length
     if (attuning && count >= 3) return
-    save(inventory.map(i => i.itemId === itemId ? { ...i, attuned: !i.attuned } : i))
+    // Attuning auto-equips; unattuning leaves equipped state alone
+    save(inventory.map(i => i.itemId === itemId
+      ? { ...i, attuned: attuning, equipped: attuning ? true : i.equipped }
+      : i
+    ))
   }
 
   function removeItem(itemId) {
@@ -603,7 +617,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
 
   // ── Categorise inventory ──
   const attunedItems  = inventory.filter(i => i.attuned)
-  const equippedItems = inventory.filter(i => i.equipped && !i.attuned)
+  const equippedItems = inventory.filter(i => i.equipped && !i.attuned)   // equipped but not yet attuned
   const bagItems      = inventory.filter(i => !i.equipped && !i.attuned)
   const attunedCount  = attunedItems.length
 
