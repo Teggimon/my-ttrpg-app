@@ -93,6 +93,25 @@
   color: var(--accent-light);
 }
 
+.equip-badge--attune {
+  border-color: rgba(201,162,39,0.35);
+  color: #c9a227;
+}
+.equip-badge--attuned {
+  background: rgba(201,162,39,0.12);
+  border-color: rgba(201,162,39,0.5);
+  color: #e8bb30;
+}
+
+.attune-counter {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.attune-counter--max { color: #c9a227; }
+
 /* ── Expanded detail panel ── */
 .inv-detail {
   padding: 0 12px 12px;

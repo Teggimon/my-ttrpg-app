@@ -18,11 +18,19 @@ export function isItemEquippable(item, srdMap) {
   if (item.ac_bonus != null)              return true
   if (MAGIC_AC_BONUS[item.index] != null) return true
   if (item.index === BRACERS_INDEX)       return true
+  if (item.requiresAttunement)            return true
   const srd = srdMap[item.index] ?? {}
-  if (srd.damage)       return true
-  if (srd.armor_class)  return true
-  if (item.armor_class) return true
+  if (srd.damage)              return true
+  if (srd.armor_class)         return true
+  if (item.armor_class)        return true
+  if (srd.requires_attunement) return true
   return false
+}
+
+function needsAttunement(item, srdMap) {
+  if (item.requiresAttunement) return true
+  const srd = srdMap[item.index] ?? {}
+  return !!(srd.requires_attunement)
 }
 
 export function computeAC(inventory, abilityScores, srdMap) {
@@ -34,6 +42,9 @@ export function computeAC(inventory, abilityScores, srdMap) {
     const srd = srdMap[item.index] ?? {}
     const ac  = item.armor_class ?? srd.armor_class
     const cat = item.armor_category ?? srd.armor_category
+    // Attunement-required items only apply if actually attuned
+    const attReq = needsAttunement(item, srdMap)
+    if (attReq && !item.attuned) continue
     if (ac && cat) {
       if (cat === 'Shield') shieldAC += ac.base ?? 2
       else if (['Light','Medium','Heavy'].includes(cat)) { armorBase = ac.base; armorCat = cat }
@@ -399,6 +410,14 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     save(inventory.map(i => i.itemId === itemId ? { ...i, equipped: !i.equipped } : i))
   }
 
+  function toggleAttune(itemId) {
+    const item     = inventory.find(i => i.itemId === itemId)
+    const attuning = !item?.attuned
+    const attuned  = inventory.filter(i => i.attuned && i.itemId !== itemId).length
+    if (attuning && attuned >= 3) return   // D&D 5e: max 3 attuned items
+    save(inventory.map(i => i.itemId === itemId ? { ...i, attuned: !i.attuned } : i))
+  }
+
   function removeItem(itemId) {
     setExpandedId(null)
     save(inventory.filter(i => i.itemId !== itemId))
@@ -467,12 +486,22 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
         <p className="empty-hint">No items yet — use the buttons above to add gear.</p>
       )}
 
-      {SECTIONS.filter(s => grouped[s.key]?.length).map(section => (
+      {(() => {
+        const attunedCount = inventory.filter(i => i.attuned).length
+        return SECTIONS.filter(s => grouped[s.key]?.length).map(section => (
         <div key={section.key}>
-          <div className="sec-head">{section.label}</div>
+          <div className="sec-head" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span>{section.label}</span>
+            {section.key === 'magic' && (
+              <span className={`attune-counter${attunedCount >= 3 ? ' attune-counter--max' : ''}`}>
+                {attunedCount}/3 attuned
+              </span>
+            )}
+          </div>
           {grouped[section.key].map(item => {
-            const hint       = item.equipped ? acHint(item, srdMap, char.stats?.abilityScores) : null
+            const hint       = (item.equipped || item.attuned) ? acHint(item, srdMap, char.stats?.abilityScores) : null
             const equippable = isItemEquippable(item, srdMap)
+            const reqAttune  = needsAttunement(item, srdMap)
             const expanded   = expandedId === item.itemId
 
             return (
@@ -485,12 +514,23 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
                     {hint && <span className="inv-ac-hint">· {hint}</span>}
                   </div>
                   <div className="inv-actions" onClick={e => e.stopPropagation()}>
-                    {equippable && isOwner && !locked && (
+                    {/* Equip badge (non-attunement equippable items) */}
+                    {equippable && !reqAttune && isOwner && !locked && (
                       <span
                         className={`equip-badge ${item.equipped ? 'equip-badge--on' : ''}`}
                         onClick={() => toggleEquip(item.itemId)}
                       >
-                        {equipLabel(item)}
+                        {item.equipped ? 'Equipped' : 'Equip'}
+                      </span>
+                    )}
+                    {/* Attune badge */}
+                    {reqAttune && isOwner && !locked && (
+                      <span
+                        className={`equip-badge equip-badge--attune ${item.attuned ? 'equip-badge--attuned' : ''}`}
+                        onClick={() => toggleAttune(item.itemId)}
+                        title={!item.attuned && attunedCount >= 3 ? 'Already attuned to 3 items (maximum)' : ''}
+                      >
+                        {item.attuned ? '✦ Attuned' : '✦ Attune'}
                       </span>
                     )}
                     <span className={`inv-chevron${expanded ? ' inv-chevron--open' : ''}`}>›</span>
@@ -513,7 +553,8 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
             )
           })}
         </div>
-      ))}
+      ))
+      })()}
     </div>
   )
 }
