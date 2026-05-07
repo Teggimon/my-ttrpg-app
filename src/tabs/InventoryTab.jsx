@@ -349,7 +349,9 @@ function CustomItemForm({ initial, onSave, onCancel }) {
   const [dmgType,  setDmgType]  = useState(initial?.damage?.type ?? 'Slashing')
   const [versOn,   setVersOn]   = useState(!!(initial?.damage?.versatile))
   const [versDice, setVersDice] = useState(initial?.damage?.versatile ?? '1d10')
-  const [chargesMax, setChargesMax] = useState(initial?.chargesMax ?? '')
+  const [chargesMax,   setChargesMax]   = useState(initial?.chargesMax ?? '')
+  const [useDice,      setUseDice]      = useState(initial?.useDice ?? '')
+  const [useDiceType,  setUseDiceType]  = useState(initial?.useDiceType ?? 'Force')
   const [attune,   setAttune]   = useState(initial?.requiresAttunement ?? false)
   const [equipped, setEquipped] = useState(initial?.equipped ?? false)
   const [effects,  setEffects]  = useState(initial?.effects ?? [])
@@ -373,6 +375,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
       ...(chargesMax !== '' && Number(chargesMax) > 0 && {
         chargesMax: Number(chargesMax),
         chargesCurrent: initial?.chargesCurrent ?? Number(chargesMax),
+        ...(useDice.trim() && { useDice: useDice.trim(), useDiceType }),
       }),
       effects: effects.length ? effects : undefined,
       ...(isWeapon && {
@@ -428,6 +431,19 @@ function CustomItemForm({ initial, onSave, onCancel }) {
           </select>
         </div>
       </div>
+
+      {chargesMax !== '' && Number(chargesMax) > 0 && (
+        <>
+          <label style={lbl}>Use Dice &amp; Damage Type</label>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginTop:4 }}>
+            <input style={inp} value={useDice} onChange={e => setUseDice(e.target.value)}
+              placeholder="e.g. 1d4+1 or 3d4+3" />
+            <select style={sel} value={useDiceType} onChange={e => setUseDiceType(e.target.value)}>
+              {DAMAGE_TYPES.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+        </>
+      )}
 
       <label style={lbl}>Description</label>
       <textarea style={{ ...inp, minHeight:56, resize:'vertical' }} value={desc} onChange={e => setDesc(e.target.value)} placeholder="Optional description…" />

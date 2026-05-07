@@ -201,19 +201,23 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       {chargedItems.map(item => {
         const current = item.chargesCurrent ?? item.chargesMax
         const pct     = item.chargesMax > 0 ? current / item.chargesMax : 0
+        const enh     = item.enhancement ?? 0
+        const useDice = item.useDice
+        const useType = item.useDiceType ?? ''
         return (
           <div key={item.itemId ?? item.index} className="attack-card">
             <div className="atk-line1">
-              <span className="atk-source">ITEM</span>
               <span className="atk-name">{item.name}</span>
             </div>
             <div className="atk-line2">
               <span className="badge" style={{ color: pct === 0 ? '#f09090' : pct < 0.34 ? '#efa027' : undefined }}>
                 {current} / {item.chargesMax} charges
               </span>
-              {item.description && <span className="badge badge--dim" style={{ maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {item.description.split('.')[0]}
-              </span>}
+              {useDice && (
+                <span className="badge">
+                  {useDice}{enh > 0 ? `+${enh}` : ''}{useType ? ` ${useType}` : ''}
+                </span>
+              )}
               <div className="atk-btns">
                 <button
                   className="atk-btn atk-btn--use"
