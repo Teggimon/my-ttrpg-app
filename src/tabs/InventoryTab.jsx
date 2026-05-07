@@ -74,7 +74,7 @@ function itemCategory(item, srdMap) {
   const cat = item.armor_category ?? srd.armor_category
   if (cat === 'Shield') return 'shield'
   if (['Light','Medium','Heavy'].includes(cat)) return 'armor'
-  if (MAGIC_AC_BONUS[item.index] != null || item.ac_bonus != null || item.index === BRACERS_INDEX || srd.rarity) return 'magic'
+  if (MAGIC_AC_BONUS[item.index] != null || item.ac_bonus != null || item.index === BRACERS_INDEX || item.rarity || srd.rarity || item.type === 'Magic Item' || item.requiresAttunement || srd.requires_attunement) return 'magic'
   return 'gear'
 }
 
@@ -152,6 +152,18 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
         ))}
       </div>
 
+      {/* Effects list */}
+      {(item.effects ?? []).length > 0 && (
+        <div className="inv-detail-stats" style={{ marginTop: 0 }}>
+          {item.effects.map((ef, i) => (
+            <span key={i} className="inv-detail-tag inv-detail-tag--attune">
+              {ef.stat} {ef.mode === 'add' ? (ef.value >= 0 ? `+${ef.value}` : ef.value) : `= ${ef.value}`}
+              {ef.notes ? ` (${ef.notes})` : ''}
+            </span>
+          ))}
+        </div>
+      )}
+
       {isOwner && !locked && (
         <div className="inv-detail-actions">
           <div className="inv-qty-stepper">
@@ -160,9 +172,7 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
             <button className="inv-qty-btn" onClick={() => onQty(item.quantity + 1)}>+</button>
           </div>
           <div style={{ display:'flex', gap: 6 }}>
-            {item.index?.startsWith('custom-') && (
-              <button className="inv-action-btn" onClick={onEdit}>Edit</button>
-            )}
+            <button className="inv-action-btn" onClick={onEdit}>Edit</button>
             <button className="inv-action-btn inv-action-btn--danger" onClick={onRemove}>Remove</button>
           </div>
         </div>
@@ -384,11 +394,13 @@ function SrdPicker({ onAdd, onClose }) {
       name:     srdItem.name,
       quantity: 1,
       equipped: false,
-      ...(srdItem.armor_class    && { armor_class:    srdItem.armor_class }),
-      ...(srdItem.armor_category && { armor_category: srdItem.armor_category }),
-      ...(srdItem.weight         && { weight:          srdItem.weight }),
-      ...(srdItem.damage         && { damage: { dice: srdItem.damage.damage_dice, type: srdItem.damage.damage_type?.name } }),
-      ...(srdItem.rarity         && { rarity: srdItem.rarity.name }),
+      ...(srdItem.armor_class         && { armor_class:          srdItem.armor_class }),
+      ...(srdItem.armor_category      && { armor_category:       srdItem.armor_category }),
+      ...(srdItem.weight              && { weight:                srdItem.weight }),
+      ...(srdItem.damage              && { damage: { dice: srdItem.damage.damage_dice, type: srdItem.damage.damage_type?.name } }),
+      ...(srdItem.rarity              && { rarity:               typeof srdItem.rarity === 'string' ? srdItem.rarity : srdItem.rarity.name }),
+      ...(srdItem.requires_attunement && { requiresAttunement:   true }),
+      ...(srdItem.desc?.length        && { description:          srdItem.desc.join(' ') }),
     })
   }
 
@@ -428,9 +440,12 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const [expandedId, setExpandedId] = useState(null)   // itemId expanded for details
 
   useEffect(() => {
-    getEquipment()
-      .then(all => setSrdMap(Object.fromEntries(all.map(e => [e.index, e]))))
-      .catch(() => {})
+    Promise.all([
+      getEquipment().catch(() => []),
+      getMagicItems().catch(() => []),
+    ]).then(([equip, magic]) => {
+      setSrdMap(Object.fromEntries([...equip, ...magic].map(e => [e.index, e])))
+    })
   }, [])
 
   // Backfill itemId for old characters
