@@ -13,6 +13,10 @@ const MAGIC_AC_BONUS = {
 }
 const BRACERS_INDEX = 'bracers-of-defense'
 
+const CURRENCY_NAMES = new Set([
+  'Gold Pieces','Silver Pieces','Copper Pieces','Electrum Pieces','Platinum Pieces',
+])
+
 export function isItemEquippable(item, srdMap) {
   if (item.damage)                        return true
   if (item.ac_bonus != null)              return true
@@ -29,20 +33,18 @@ export function isItemEquippable(item, srdMap) {
 
 function needsAttunement(item, srdMap) {
   if (item.requiresAttunement) return true
-  const srd = srdMap[item.index] ?? {}
-  return !!(srd.requires_attunement)
+  return !!(srdMap[item.index]?.requires_attunement)
 }
 
 export function computeAC(inventory, abilityScores, srdMap) {
   const dexMod   = abilityMod(abilityScores?.dex ?? 10)
-  const equipped = inventory.filter(i => i.equipped)
+  const active   = inventory.filter(i => i.equipped || i.attuned)
   let armorBase = null, armorCat = null, shieldAC = 0, flatACBonus = 0, hasBracers = false
 
-  for (const item of equipped) {
-    const srd = srdMap[item.index] ?? {}
-    const ac  = item.armor_class ?? srd.armor_class
-    const cat = item.armor_category ?? srd.armor_category
-    // Attunement-required items only apply if actually attuned
+  for (const item of active) {
+    const srd    = srdMap[item.index] ?? {}
+    const ac     = item.armor_class ?? srd.armor_class
+    const cat    = item.armor_category ?? srd.armor_category
     const attReq = needsAttunement(item, srdMap)
     if (attReq && !item.attuned) continue
     if (ac && cat) {
@@ -74,44 +76,141 @@ function itemCategory(item, srdMap) {
   const cat = item.armor_category ?? srd.armor_category
   if (cat === 'Shield') return 'shield'
   if (['Light','Medium','Heavy'].includes(cat)) return 'armor'
-  if (MAGIC_AC_BONUS[item.index] != null || item.ac_bonus != null || item.index === BRACERS_INDEX || item.rarity || srd.rarity || item.type === 'Magic Item' || item.requiresAttunement || srd.requires_attunement) return 'magic'
+  if (
+    MAGIC_AC_BONUS[item.index] != null || item.ac_bonus != null ||
+    item.index === BRACERS_INDEX || item.rarity || srd.rarity ||
+    item.type === 'Magic Item' || item.requiresAttunement || srd.requires_attunement
+  ) return 'magic'
+  if (CURRENCY_NAMES.has(item.name) || item.isCurrency) return 'currency'
+  const eqCat = srd.equipment_category?.index
+  if (eqCat === 'ammunition') return 'ammo'
   return 'gear'
 }
 
-const SECTIONS = [
-  { key: 'weapon', label: 'Weapons' },
-  { key: 'armor',  label: 'Armour' },
-  { key: 'shield', label: 'Shields' },
-  { key: 'magic',  label: 'Magic Items' },
-  { key: 'gear',   label: 'Gear' },
-]
+// ── Row stat chips ────────────────────────────────────────────────────────────
 
-function equipLabel(item) {
-  if (MAGIC_AC_BONUS[item.index] != null || item.ac_bonus != null || item.index === BRACERS_INDEX)
-    return item.equipped ? 'Attuned' : 'Attune'
-  return item.equipped ? 'Equipped' : 'Equip'
-}
-
-function acHint(item, srdMap, abilityScores) {
+function rowChips(item, srdMap, abilityScores) {
+  const chips  = []
   const srd    = srdMap[item.index] ?? {}
-  const ac     = item.armor_class ?? srd.armor_class
-  const cat    = item.armor_category ?? srd.armor_category
   const dexMod = abilityMod(abilityScores?.dex ?? 10)
-  if (ac && cat && cat !== 'Shield') {
-    const shown = cat === 'Heavy' ? ac.base
-      : cat === 'Medium' ? ac.base + Math.min(dexMod, 2)
-      : ac.base + dexMod
-    return `AC ${shown}`
+
+  // Damage dice
+  const dmgDice = item.damage?.dice ?? srd.damage?.damage_dice
+  if (dmgDice) {
+    const enh = item.enhancement ?? 0
+    chips.push({ label: enh > 0 ? `${dmgDice}+${enh}` : dmgDice, cls: '' })
   }
-  if (ac && cat === 'Shield')       return `+${ac.base ?? 2} AC`
-  const bonus = MAGIC_AC_BONUS[item.index]
-  if (bonus)                        return `+${bonus} AC`
-  if (item.ac_bonus)                return `+${item.ac_bonus} AC`
-  if (item.index === BRACERS_INDEX) return '+2 AC (unarmored)'
-  return null
+
+  // Armor / Shield AC
+  const ac  = item.armor_class ?? srd.armor_class
+  const cat = item.armor_category ?? srd.armor_category
+  if (ac && cat) {
+    if (cat === 'Shield') {
+      chips.push({ label: `+${ac.base ?? 2} AC`, cls: '' })
+    } else {
+      const shown = cat === 'Heavy'  ? ac.base
+                  : cat === 'Medium' ? ac.base + Math.min(dexMod, 2)
+                  : ac.base + dexMod
+      chips.push({ label: `AC ${shown}`, cls: '' })
+    }
+  }
+
+  // Magic AC bonus
+  const magicAC = MAGIC_AC_BONUS[item.index]
+  if (magicAC)                chips.push({ label: `+${magicAC} AC`, cls: 'magic' })
+  if (item.ac_bonus)          chips.push({ label: `+${item.ac_bonus} AC`, cls: 'magic' })
+  if (item.index === BRACERS_INDEX) chips.push({ label: '+2 AC', cls: 'magic' })
+
+  // Custom effects
+  for (const ef of item.effects ?? []) {
+    const val = ef.mode === 'add'
+      ? (ef.value >= 0 ? `+${ef.value}` : String(ef.value))
+      : `=${ef.value}`
+    chips.push({ label: `${val} ${ef.stat}`, cls: 'magic' })
+  }
+
+  // Weight
+  if (item.weight != null) chips.push({ label: `${item.weight} lb`, cls: 'dim' })
+
+  return chips
 }
 
-// ── Expanded item detail panel ────────────────────────────────────────────────
+// ── Item row ──────────────────────────────────────────────────────────────────
+
+function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onRemove, onEdit, showQty }) {
+  const chips     = rowChips(item, srdMap, abilityScores)
+  const reqAttune = needsAttunement(item, srdMap)
+  const canEquip  = isItemEquippable(item, srdMap)
+  const isActive  = item.equipped || item.attuned
+
+  function handleCircle(e) {
+    e.stopPropagation()
+    if (!isOwner || locked) return
+    if (reqAttune) onAttune()
+    else if (canEquip) onEquip()
+  }
+
+  return (
+    <div className={`inv-row card${expanded ? ' inv-row--expanded' : ''}`}>
+      <div className="inv-row-main">
+        {/* Equip / attune circle */}
+        <button
+          className={`inv-circle${isActive ? ' inv-circle--on' : ''}${!canEquip && !reqAttune ? ' inv-circle--inert' : ''}`}
+          onClick={handleCircle}
+          disabled={!isOwner || locked || (!canEquip && !reqAttune)}
+          aria-label={isActive ? 'Unequip' : 'Equip'}
+        >
+          {isActive && <span className="inv-circle-check" />}
+        </button>
+
+        {/* Name */}
+        <div className="inv-row-name">
+          {item.attuned && <span className="inv-attune-gem">♦ </span>}
+          {item.name}
+        </div>
+
+        {/* Stat chips */}
+        {chips.length > 0 && (
+          <div className="inv-row-chips">
+            {chips.map((c, i) => (
+              <span key={i} className={`inv-chip${c.cls ? ` inv-chip--${c.cls}` : ''}`}>{c.label}</span>
+            ))}
+          </div>
+        )}
+
+        {/* Inline qty stepper — bag items only */}
+        {showQty && isOwner && !locked && (
+          <div className="inv-qty-inline" onClick={e => e.stopPropagation()}>
+            <button className="inv-qty-inline-btn" onClick={() => onQty((item.quantity ?? 1) - 1)}>−</button>
+            <span className="inv-qty-inline-val">{item.quantity ?? 1}</span>
+            <button className="inv-qty-inline-btn" onClick={() => onQty((item.quantity ?? 1) + 1)}>+</button>
+          </div>
+        )}
+
+        {/* Chevron */}
+        <button
+          className={`inv-chevron-btn${expanded ? ' inv-chevron-btn--open' : ''}`}
+          onClick={onToggleExpand}
+          aria-label="Toggle details"
+        >›</button>
+      </div>
+
+      {expanded && (
+        <ItemDetail
+          item={item}
+          srdMap={srdMap}
+          locked={locked}
+          isOwner={isOwner}
+          onQty={onQty}
+          onRemove={onRemove}
+          onEdit={onEdit}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Expanded detail panel ─────────────────────────────────────────────────────
 
 function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) {
   const srd  = srdMap[item.index] ?? {}
@@ -124,9 +223,9 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
   const cost    = srd.cost ? `${srd.cost.quantity} ${srd.cost.unit}` : null
   const ac      = item.armor_class ?? srd.armor_class ?? null
   const cat     = item.armor_category ?? srd.armor_category ?? null
-  const rarity  = item.rarity ?? srd.rarity?.name ?? null
+  const rarity  = item.rarity ?? (typeof srd.rarity === 'string' ? srd.rarity : srd.rarity?.name) ?? null
   const attune  = item.requiresAttunement ?? srd.requires_attunement ?? false
-  const enhancement = item.enhancement ?? 0
+  const enh     = item.enhancement ?? 0
 
   return (
     <div className="inv-detail">
@@ -134,17 +233,19 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
 
       <div className="inv-detail-stats">
         {dmgDice && (
+          <span className="inv-detail-tag">{dmgDice}{enh > 0 ? `+${enh}` : ''} {dmgType}</span>
+        )}
+        {ac && cat !== 'Shield' && (
           <span className="inv-detail-tag">
-            {dmgDice}{enhancement > 0 ? `+${enhancement}` : ''} {dmgType}
+            AC {ac.base}{cat === 'Light' ? ' + DEX' : cat === 'Medium' ? ' + DEX (max 2)' : ''}
           </span>
         )}
-        {ac && cat !== 'Shield' && <span className="inv-detail-tag">AC {ac.base}{cat === 'Light' ? ' + DEX' : cat === 'Medium' ? ' + DEX (max 2)' : ''}</span>}
-        {ac && cat === 'Shield' && <span className="inv-detail-tag">+{ac.base ?? 2} AC</span>}
-        {enhancement > 0 && !dmgDice && <span className="inv-detail-tag">+{enhancement} magic</span>}
-        {rarity && <span className="inv-detail-tag inv-detail-tag--magic">{rarity}</span>}
-        {attune && <span className="inv-detail-tag inv-detail-tag--attune">Requires Attunement</span>}
-        {weight != null && <span className="inv-detail-tag inv-detail-tag--dim">{weight} lb{weight !== 1 ? 's' : ''}</span>}
-        {cost && <span className="inv-detail-tag inv-detail-tag--dim">{cost}</span>}
+        {ac && cat === 'Shield' && <span className="inv-detail-tag">+{ac.base ?? 2} AC (Shield)</span>}
+        {enh > 0 && !dmgDice && <span className="inv-detail-tag">+{enh} magic</span>}
+        {rarity  && <span className="inv-detail-tag inv-detail-tag--magic">{rarity}</span>}
+        {attune  && <span className="inv-detail-tag inv-detail-tag--attune">Requires Attunement</span>}
+        {weight != null && <span className="inv-detail-tag inv-detail-tag--dim">{weight} lb</span>}
+        {cost    && <span className="inv-detail-tag inv-detail-tag--dim">{cost}</span>}
         {props.map(p => (
           <span key={typeof p === 'string' ? p : p.name} className="inv-detail-tag inv-detail-tag--dim">
             {typeof p === 'string' ? p : p.name}
@@ -152,7 +253,6 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
         ))}
       </div>
 
-      {/* Effects list */}
       {(item.effects ?? []).length > 0 && (
         <div className="inv-detail-stats" style={{ marginTop: 0 }}>
           {item.effects.map((ef, i) => (
@@ -167,11 +267,11 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
       {isOwner && !locked && (
         <div className="inv-detail-actions">
           <div className="inv-qty-stepper">
-            <button className="inv-qty-btn" onClick={() => onQty(Math.max(0, item.quantity - 1))} disabled={item.quantity <= 1}>−</button>
-            <span className="inv-qty-val">{item.quantity}</span>
-            <button className="inv-qty-btn" onClick={() => onQty(item.quantity + 1)}>+</button>
+            <button className="inv-qty-btn" onClick={() => onQty(Math.max(0, (item.quantity ?? 1) - 1))} disabled={(item.quantity ?? 1) <= 1}>−</button>
+            <span className="inv-qty-val">{item.quantity ?? 1}</span>
+            <button className="inv-qty-btn" onClick={() => onQty((item.quantity ?? 1) + 1)}>+</button>
           </div>
-          <div style={{ display:'flex', gap: 6 }}>
+          <div style={{ display:'flex', gap:6 }}>
             <button className="inv-action-btn" onClick={onEdit}>Edit</button>
             <button className="inv-action-btn inv-action-btn--danger" onClick={onRemove}>Remove</button>
           </div>
@@ -181,13 +281,12 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
   )
 }
 
-// ── Item picker ───────────────────────────────────────────────────────────────
+// ── Custom item form ──────────────────────────────────────────────────────────
 
-const DAMAGE_DICE   = ['1d4','1d6','1d8','1d10','1d12','2d6','2d8']
-const DAMAGE_TYPES  = ['Slashing','Piercing','Bludgeoning','Fire','Cold','Lightning','Poison','Acid','Necrotic','Radiant','Psychic','Thunder','Force']
-const ITEM_TYPES    = ['Weapon','Armour','Shield','Gear','Magic Item']
-const EFFECT_STATS  = ['STR','DEX','CON','INT','WIS','CHA','AC','Attack Roll','Damage','Speed','HP Max','Saving Throws','Spell Save DC','Spell Attack']
-
+const DAMAGE_DICE  = ['1d4','1d6','1d8','1d10','1d12','2d6','2d8']
+const DAMAGE_TYPES = ['Slashing','Piercing','Bludgeoning','Fire','Cold','Lightning','Poison','Acid','Necrotic','Radiant','Psychic','Thunder','Force']
+const ITEM_TYPES   = ['Weapon','Armour','Shield','Gear','Magic Item']
+const EFFECT_STATS = ['STR','DEX','CON','INT','WIS','CHA','AC','Attack Roll','Damage','Speed','HP Max','Saving Throws','Spell Save DC','Spell Attack']
 const BLANK_EFFECT = { stat: 'AC', mode: 'add', value: 1, notes: '' }
 
 function EffectRow({ effect, onChange, onRemove }) {
@@ -216,27 +315,26 @@ function EffectRow({ effect, onChange, onRemove }) {
 }
 
 function CustomItemForm({ initial, onSave, onCancel }) {
-  const [name,    setName]    = useState(initial?.name ?? '')
-  const [type,    setType]    = useState(initial?.type ?? 'Gear')
-  const [weight,  setWeight]  = useState(initial?.weight ?? '')
-  const [desc,    setDesc]    = useState(initial?.description ?? '')
-  const [enh,     setEnh]     = useState(initial?.enhancement ?? 0)
-  const [qty,     setQty]     = useState(initial?.quantity ?? 1)
-  const [dmgDice, setDmgDice] = useState(initial?.damage?.dice ?? '1d8')
-  const [dmgType, setDmgType] = useState(initial?.damage?.type ?? 'Slashing')
-  const [versOn,  setVersOn]  = useState(!!(initial?.damage?.versatile))
-  const [versDice,setVersDice]= useState(initial?.damage?.versatile ?? '1d10')
-  const [attune,  setAttune]  = useState(initial?.requiresAttunement ?? false)
-  const [equipped,setEquipped]= useState(initial?.equipped ?? false)
-  const [effects, setEffects] = useState(initial?.effects ?? [])
+  const [name,     setName]     = useState(initial?.name ?? '')
+  const [type,     setType]     = useState(initial?.type ?? 'Gear')
+  const [weight,   setWeight]   = useState(initial?.weight ?? '')
+  const [desc,     setDesc]     = useState(initial?.description ?? '')
+  const [enh,      setEnh]      = useState(initial?.enhancement ?? 0)
+  const [qty,      setQty]      = useState(initial?.quantity ?? 1)
+  const [dmgDice,  setDmgDice]  = useState(initial?.damage?.dice ?? '1d8')
+  const [dmgType,  setDmgType]  = useState(initial?.damage?.type ?? 'Slashing')
+  const [versOn,   setVersOn]   = useState(!!(initial?.damage?.versatile))
+  const [versDice, setVersDice] = useState(initial?.damage?.versatile ?? '1d10')
+  const [attune,   setAttune]   = useState(initial?.requiresAttunement ?? false)
+  const [equipped, setEquipped] = useState(initial?.equipped ?? false)
+  const [effects,  setEffects]  = useState(initial?.effects ?? [])
 
   const isWeapon = type === 'Weapon'
-
   const updateEffect = (i, ef) => setEffects(prev => prev.map((e, j) => j === i ? ef : e))
   const removeEffect = (i)     => setEffects(prev => prev.filter((_, j) => j !== i))
 
   function save() {
-    const item = {
+    onSave({
       itemId: initial?.itemId ?? uuidv4(),
       index:  initial?.index  ?? `custom-${uuidv4()}`,
       name: name.trim(),
@@ -251,8 +349,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
       ...(isWeapon && {
         damage: { dice: dmgDice, type: dmgType, ...(versOn && { versatile: versDice }) }
       }),
-    }
-    onSave(item)
+    })
   }
 
   const sel = { width:'100%', boxSizing:'border-box', padding:'7px 10px', background:'var(--bg-inset)', border:'0.5px solid var(--border-strong)', borderRadius:'var(--radius-md)', color:'var(--text-primary)', fontFamily:'var(--font-body)', fontSize:13, outline:'none', marginTop:4 }
@@ -327,7 +424,6 @@ function CustomItemForm({ initial, onSave, onCancel }) {
         </>
       )}
 
-      {/* ── Effects ── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', ...lbl, marginBottom:4 }}>
         <span>Effects</span>
         <button type="button" onClick={() => setEffects(prev => [...prev, { ...BLANK_EFFECT }])}
@@ -336,9 +432,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
         </button>
       </div>
       {effects.length === 0 && (
-        <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>
-          No effects — use effects to grant bonuses to AC, ability scores, speed, etc.
-        </div>
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>No effects — grant bonuses to AC, ability scores, speed, etc.</div>
       )}
       {effects.map((ef, i) => (
         <EffectRow key={i} effect={ef} onChange={upd => updateEffect(i, upd)} onRemove={() => removeEffect(i)} />
@@ -367,11 +461,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
   )
 }
 
-const PICKER_TABS = [
-  { key: 'equipment', label: 'Equipment' },
-  { key: 'magic',     label: 'Magic Items' },
-  { key: 'custom',    label: 'Custom' },
-]
+// ── SRD picker ────────────────────────────────────────────────────────────────
 
 function SrdPicker({ onAdd, onClose }) {
   const [tab,      setTab]      = useState('equipment')
@@ -394,20 +484,20 @@ function SrdPicker({ onAdd, onClose }) {
       name:     srdItem.name,
       quantity: 1,
       equipped: false,
-      ...(srdItem.armor_class         && { armor_class:          srdItem.armor_class }),
-      ...(srdItem.armor_category      && { armor_category:       srdItem.armor_category }),
-      ...(srdItem.weight              && { weight:                srdItem.weight }),
+      ...(srdItem.armor_class         && { armor_class:        srdItem.armor_class }),
+      ...(srdItem.armor_category      && { armor_category:     srdItem.armor_category }),
+      ...(srdItem.weight              && { weight:              srdItem.weight }),
       ...(srdItem.damage              && { damage: { dice: srdItem.damage.damage_dice, type: srdItem.damage.damage_type?.name } }),
-      ...(srdItem.rarity              && { rarity:               typeof srdItem.rarity === 'string' ? srdItem.rarity : srdItem.rarity.name }),
-      ...(srdItem.requires_attunement && { requiresAttunement:   true }),
-      ...(srdItem.desc?.length        && { description:          srdItem.desc.join(' ') }),
+      ...(srdItem.rarity              && { rarity:              typeof srdItem.rarity === 'string' ? srdItem.rarity : srdItem.rarity.name }),
+      ...(srdItem.requires_attunement && { requiresAttunement:  true }),
+      ...(srdItem.desc?.length        && { description:         srdItem.desc.join(' ') }),
     })
   }
 
   return (
     <div className="item-picker card">
       <div className="ip-tabs">
-        {PICKER_TABS.filter(t => t.key !== 'custom').map(t => (
+        {[{ key:'equipment', label:'Equipment' }, { key:'magic', label:'Magic Items' }].map(t => (
           <button key={t.key} className={`ip-tab${tab === t.key ? ' ip-tab--active' : ''}`}
             onClick={() => { setTab(t.key); setSearch('') }}>{t.label}</button>
         ))}
@@ -422,8 +512,8 @@ function SrdPicker({ onAdd, onClose }) {
             <span className="ip-row-name">{item.name}</span>
             {item.armor_class && <span className="ip-row-tag">AC {item.armor_class.base}</span>}
             {item.damage      && <span className="ip-row-tag">{item.damage.damage_dice}</span>}
-            {item.weight      && <span className="ip-row-tag ip-row-tag--dim">{item.weight}lb</span>}
-            {item.rarity      && <span className="ip-row-tag ip-row-tag--magic">{item.rarity.name}</span>}
+            {item.weight      && <span className="ip-row-tag ip-row-tag--dim">{item.weight} lb</span>}
+            {item.rarity      && <span className="ip-row-tag ip-row-tag--magic">{typeof item.rarity === 'string' ? item.rarity : item.rarity.name}</span>}
           </button>
         ))}
       </div>
@@ -431,41 +521,41 @@ function SrdPicker({ onAdd, onClose }) {
   )
 }
 
-// ── Main tab ─────────────────────────────────────────────────────────────────
+// ── Main tab ──────────────────────────────────────────────────────────────────
 
 export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const [srdMap,     setSrdMap]     = useState({})
   const [pickerMode, setPickerMode] = useState(null)   // null | 'srd' | 'custom'
-  const [editItem,   setEditItem]   = useState(null)   // item being edited
-  const [expandedId, setExpandedId] = useState(null)   // itemId expanded for details
+  const [editItem,   setEditItem]   = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
+  const [addEquipped,setAddEquipped]= useState(false)  // whether to equip newly added item
 
   useEffect(() => {
-    Promise.all([
-      getEquipment().catch(() => []),
-      getMagicItems().catch(() => []),
-    ]).then(([equip, magic]) => {
-      setSrdMap(Object.fromEntries([...equip, ...magic].map(e => [e.index, e])))
-    })
+    Promise.all([getEquipment().catch(() => []), getMagicItems().catch(() => [])])
+      .then(([equip, magic]) =>
+        setSrdMap(Object.fromEntries([...equip, ...magic].map(e => [e.index, e])))
+      )
   }, [])
 
-  // Backfill itemId for old characters
+  // Backfill itemId for legacy characters
   const rawInventory = char.inventory ?? []
   const tempIds = useRef({})
-  const inventory = rawInventory.map((i, idx) => {
-    if (i.itemId) return i
+  const inventory = rawInventory.map((item, idx) => {
+    if (item.itemId) return item
     if (!tempIds.current[idx]) tempIds.current[idx] = uuidv4()
-    return { ...i, itemId: tempIds.current[idx] }
+    return { ...item, itemId: tempIds.current[idx] }
   })
   useEffect(() => {
     if (rawInventory.every(i => i.itemId)) return
     updateChar({ inventory })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Weight tracking
   const tracking    = char.settings?.encumbranceTracking
   const strScore    = char.stats?.abilityScores?.str ?? 10
   const capacity    = strScore * 15
   const totalWeight = inventory.reduce((s, i) => s + (i.weight ?? 0) * (i.quantity ?? 1), 0)
-  const pct = tracking ? Math.min(100, Math.round((totalWeight / capacity) * 100)) : 0
+  const pct         = tracking ? Math.min(100, Math.round((totalWeight / capacity) * 100)) : 0
 
   function save(newInv) {
     updateChar({ inventory: newInv, combat: { ...char.combat, ac: computeAC(newInv, char.stats?.abilityScores, srdMap) } })
@@ -478,8 +568,8 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   function toggleAttune(itemId) {
     const item     = inventory.find(i => i.itemId === itemId)
     const attuning = !item?.attuned
-    const attuned  = inventory.filter(i => i.attuned && i.itemId !== itemId).length
-    if (attuning && attuned >= 3) return   // D&D 5e: max 3 attuned items
+    const count    = inventory.filter(i => i.attuned && i.itemId !== itemId).length
+    if (attuning && count >= 3) return
     save(inventory.map(i => i.itemId === itemId ? { ...i, attuned: !i.attuned } : i))
   }
 
@@ -494,9 +584,11 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   }
 
   function addItem(item) {
-    save([...inventory, item])
+    const finalItem = addEquipped ? { ...item, equipped: true } : item
+    save([...inventory, finalItem])
     setPickerMode(null)
     setEditItem(null)
+    setAddEquipped(false)
   }
 
   function saveEdit(updated) {
@@ -504,17 +596,62 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     setEditItem(null)
   }
 
-  const grouped = {}
-  for (const item of inventory) {
-    const cat = itemCategory(item, srdMap)
-    ;(grouped[cat] ??= []).push(item)
+  function openPicker(mode, equip = false) {
+    setAddEquipped(equip)
+    setPickerMode(mode)
   }
 
+  // ── Categorise inventory ──
+  const attunedItems  = inventory.filter(i => i.attuned)
+  const equippedItems = inventory.filter(i => i.equipped && !i.attuned)
+  const bagItems      = inventory.filter(i => !i.equipped && !i.attuned)
+  const attunedCount  = attunedItems.length
+
+  const eq = {
+    weapon: equippedItems.filter(i => itemCategory(i, srdMap) === 'weapon'),
+    armor:  equippedItems.filter(i => itemCategory(i, srdMap) === 'armor'),
+    shield: equippedItems.filter(i => itemCategory(i, srdMap) === 'shield'),
+    magic:  equippedItems.filter(i => itemCategory(i, srdMap) === 'magic'),
+    gear:   equippedItems.filter(i => !['weapon','armor','shield','magic'].includes(itemCategory(i, srdMap))),
+  }
+
+  const isCur  = i => CURRENCY_NAMES.has(i.name) || i.isCurrency
+  const isAmmo = i => srdMap[i.index]?.equipment_category?.index === 'ammunition' || i.isAmmo
+  const currencyItems = bagItems.filter(isCur)
+  const ammoItems     = bagItems.filter(i => !isCur(i) && isAmmo(i))
+  const gearItems     = bagItems.filter(i => !isCur(i) && !isAmmo(i))
+
+  const abilityScores = char.stats?.abilityScores
   const showingPicker = pickerMode === 'srd'
-  const showingCustom = pickerMode === 'custom' || editItem
+  const showingCustom = pickerMode === 'custom' || !!editItem
+
+  function renderRow(item, showQty = false) {
+    return (
+      <ItemRow
+        key={item.itemId}
+        item={item}
+        srdMap={srdMap}
+        abilityScores={abilityScores}
+        locked={locked}
+        isOwner={isOwner}
+        expanded={expandedId === item.itemId}
+        onToggleExpand={() => setExpandedId(expandedId === item.itemId ? null : item.itemId)}
+        onEquip={() => toggleEquip(item.itemId)}
+        onAttune={() => toggleAttune(item.itemId)}
+        onQty={qty => updateQty(item.itemId, qty)}
+        onRemove={() => removeItem(item.itemId)}
+        onEdit={() => { setEditItem(item); setExpandedId(null) }}
+        showQty={showQty}
+        attunedCount={attunedCount}
+      />
+    )
+  }
+
+  const hasEquipped = attunedItems.length > 0 || equippedItems.length > 0
 
   return (
     <div>
+      {/* Carry bar */}
       {tracking && (
         <div className="carry-bar-wrap">
           <div className="carry-meta">
@@ -527,99 +664,130 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
         </div>
       )}
 
-      {/* Add buttons */}
-      {isOwner && !locked && !showingPicker && !showingCustom && (
-        <div className="inv-add-row">
-          <button className="inv-add-btn" onClick={() => setPickerMode('srd')}>+ Add from SRD</button>
-          <button className="inv-add-btn" onClick={() => setPickerMode('custom')}>+ Custom Item</button>
-        </div>
-      )}
+      {/* SRD picker */}
+      {showingPicker && <SrdPicker onAdd={addItem} onClose={() => { setPickerMode(null); setAddEquipped(false) }} />}
 
-      {showingPicker && (
-        <SrdPicker onAdd={addItem} onClose={() => setPickerMode(null)} />
-      )}
-
+      {/* Custom item / edit form */}
       {showingCustom && (
         <CustomItemForm
           initial={editItem}
           onSave={editItem ? saveEdit : addItem}
-          onCancel={() => { setPickerMode(null); setEditItem(null) }}
+          onCancel={() => { setPickerMode(null); setEditItem(null); setAddEquipped(false) }}
         />
       )}
 
-      {inventory.length === 0 && !showingPicker && !showingCustom && (
-        <p className="empty-hint">No items yet — use the buttons above to add gear.</p>
-      )}
+      {!showingPicker && !showingCustom && (
+        <>
+          {/* ═══════════════ EQUIPPED ═══════════════ */}
+          <div className="inv-section">
+            <div className="inv-section-head">
+              <span className="inv-section-label">Equipped</span>
+              {isOwner && !locked && (
+                <div className="inv-section-adds">
+                  <button className="inv-section-add" onClick={() => openPicker('srd', true)}>+ From SRD</button>
+                  <button className="inv-section-add" onClick={() => openPicker('custom', true)}>+ Custom</button>
+                </div>
+              )}
+            </div>
 
-      {(() => {
-        const attunedCount = inventory.filter(i => i.attuned).length
-        return SECTIONS.filter(s => grouped[s.key]?.length).map(section => (
-        <div key={section.key}>
-          <div className="sec-head" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <span>{section.label}</span>
-            {section.key === 'magic' && (
-              <span className={`attune-counter${attunedCount >= 3 ? ' attune-counter--max' : ''}`}>
-                {attunedCount}/3 attuned
-              </span>
-            )}
-          </div>
-          {grouped[section.key].map(item => {
-            const hint       = (item.equipped || item.attuned) ? acHint(item, srdMap, char.stats?.abilityScores) : null
-            const equippable = isItemEquippable(item, srdMap)
-            const reqAttune  = needsAttunement(item, srdMap)
-            const expanded   = expandedId === item.itemId
-
-            return (
-              <div key={item.itemId} className={`inv-row card${expanded ? ' inv-row--expanded' : ''}`}>
-                {/* ── Summary row ── */}
-                <div className="inv-row-summary" onClick={() => setExpandedId(expanded ? null : item.itemId)}>
-                  <div className="inv-info">
-                    <span className="inv-name">{item.name}</span>
-                    <span className="inv-qty-badge">×{item.quantity}</span>
-                    {hint && <span className="inv-ac-hint">· {hint}</span>}
-                  </div>
-                  <div className="inv-actions" onClick={e => e.stopPropagation()}>
-                    {/* Equip badge (non-attunement equippable items) */}
-                    {equippable && !reqAttune && isOwner && !locked && (
-                      <span
-                        className={`equip-badge ${item.equipped ? 'equip-badge--on' : ''}`}
-                        onClick={() => toggleEquip(item.itemId)}
-                      >
-                        {item.equipped ? 'Equipped' : 'Equip'}
-                      </span>
-                    )}
-                    {/* Attune badge */}
-                    {reqAttune && isOwner && !locked && (
-                      <span
-                        className={`equip-badge equip-badge--attune ${item.attuned ? 'equip-badge--attuned' : ''}`}
-                        onClick={() => toggleAttune(item.itemId)}
-                        title={!item.attuned && attunedCount >= 3 ? 'Already attuned to 3 items (maximum)' : ''}
-                      >
-                        {item.attuned ? '✦ Attuned' : '✦ Attune'}
-                      </span>
-                    )}
-                    <span className={`inv-chevron${expanded ? ' inv-chevron--open' : ''}`}>›</span>
+            {/* Attuned */}
+            {attunedItems.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head">
+                  <span>Attuned</span>
+                  <div className="inv-attune-pips">
+                    {[0,1,2].map(i => <span key={i} className={`inv-pip${i < attunedCount ? ' inv-pip--on' : ''}`} />)}
+                    <span className="inv-pip-count">{attunedCount} / 3</span>
                   </div>
                 </div>
-
-                {/* ── Expanded detail ── */}
-                {expanded && (
-                  <ItemDetail
-                    item={item}
-                    srdMap={srdMap}
-                    locked={locked}
-                    isOwner={isOwner}
-                    onQty={qty => updateQty(item.itemId, qty)}
-                    onRemove={() => removeItem(item.itemId)}
-                    onEdit={() => { setEditItem(item); setExpandedId(null) }}
-                  />
-                )}
+                {attunedItems.map(item => renderRow(item))}
               </div>
-            )
-          })}
-        </div>
-      ))
-      })()}
+            )}
+
+            {/* Weapons */}
+            {eq.weapon.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head"><span>Weapons</span></div>
+                {eq.weapon.map(item => renderRow(item))}
+              </div>
+            )}
+
+            {/* Armour */}
+            {eq.armor.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head"><span>Armour</span></div>
+                {eq.armor.map(item => renderRow(item))}
+              </div>
+            )}
+
+            {/* Shields */}
+            {eq.shield.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head"><span>Shields</span></div>
+                {eq.shield.map(item => renderRow(item))}
+              </div>
+            )}
+
+            {/* Equipped magic (not attuned) */}
+            {eq.magic.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head"><span>Magic Items</span></div>
+                {eq.magic.map(item => renderRow(item))}
+              </div>
+            )}
+
+            {/* Other equipped */}
+            {eq.gear.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head"><span>Other</span></div>
+                {eq.gear.map(item => renderRow(item))}
+              </div>
+            )}
+
+            {!hasEquipped && (
+              <p className="empty-hint">Nothing equipped — tap the circle on any item below to equip it.</p>
+            )}
+          </div>
+
+          {/* ═══════════════ BAG ═══════════════ */}
+          <div className="inv-section">
+            <div className="inv-section-head">
+              <span className="inv-section-label">Bag</span>
+              {isOwner && !locked && (
+                <div className="inv-section-adds">
+                  <button className="inv-section-add" onClick={() => openPicker('srd', false)}>+ From SRD</button>
+                  <button className="inv-section-add" onClick={() => openPicker('custom', false)}>+ Custom</button>
+                </div>
+              )}
+            </div>
+
+            {ammoItems.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head"><span>Ammunition</span></div>
+                {ammoItems.map(item => renderRow(item, true))}
+              </div>
+            )}
+
+            {gearItems.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head"><span>Adventuring Gear</span></div>
+                {gearItems.map(item => renderRow(item, true))}
+              </div>
+            )}
+
+            {currencyItems.length > 0 && (
+              <div className="inv-sub">
+                <div className="inv-sub-head"><span>Currency</span></div>
+                {currencyItems.map(item => renderRow(item, true))}
+              </div>
+            )}
+
+            {bagItems.length === 0 && (
+              <p className="empty-hint">Bag is empty.</p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
