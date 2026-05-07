@@ -34,7 +34,7 @@ export default function LeftPanel({
   const xp   = char.identity.xp ?? 0
   const next = XP_THRESHOLDS[level]
   const prev = XP_THRESHOLDS[level - 1] ?? 0
-  const xpPct = next ? Math.min(100, Math.round(((xp - prev) / (next - prev)) * 100)) : 100
+  const xpPct = next ? Math.max(0, Math.min(100, Math.round(((xp - prev) / (next - prev)) * 100))) : 100
 
   const className = char.identity.class?.[0]?.name ?? ''
   const race      = char.identity.race ?? ''
@@ -168,7 +168,7 @@ export default function LeftPanel({
             className="lp-xp-form"
             onSubmit={e => {
               e.preventDefault()
-              const delta = parseInt(xpInput, 10)
+              const delta = Number(xpInput)
               if (!isNaN(delta) && delta !== 0) {
                 const newXp = Math.max(0, xp + delta)
                 const updated = { ...char, identity: { ...char.identity, xp: newXp } }
@@ -181,8 +181,9 @@ export default function LeftPanel({
           >
             <input
               className="lp-xp-input"
-              type="number"
-              placeholder="e.g. 300"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g. −300"
               value={xpInput}
               onChange={e => setXpInput(e.target.value)}
               autoFocus

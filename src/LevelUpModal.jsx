@@ -118,7 +118,7 @@ function rollHpIncrease(className, conMod) {
 }
 
 function getConMod(char) {
-  const con = char.stats?.CON ?? char.abilities?.constitution ?? 10
+  const con = char.stats?.abilityScores?.con ?? char.stats?.CON ?? char.abilities?.constitution ?? 10
   return Math.floor((con - 10) / 2)
 }
 
@@ -143,7 +143,7 @@ function hasASI(char) {
 function hasSubclassChoice(char) {
   const cls = classKey(char)
   const lvl = newLevel(char)
-  const already = char.identity?.subclass
+  const already = char.identity?.subclass ?? char.identity?.class?.[0]?.subclass
   return !already && (SUBCLASS_LEVELS[cls] ?? []).includes(lvl)
 }
 
@@ -242,13 +242,14 @@ function ASIStep({ char, onNext, onBack }) {
   const pointsUsed = Object.values(asiPoints).reduce((a, b) => a + b, 0)
   const pointsLeft = 2 - pointsUsed
 
+  const ab = char.stats?.abilityScores ?? {}
   const currentScores = {
-    STR: char.stats?.STR ?? char.abilities?.strength      ?? 10,
-    DEX: char.stats?.DEX ?? char.abilities?.dexterity     ?? 10,
-    CON: char.stats?.CON ?? char.abilities?.constitution  ?? 10,
-    INT: char.stats?.INT ?? char.abilities?.intelligence  ?? 10,
-    WIS: char.stats?.WIS ?? char.abilities?.wisdom        ?? 10,
-    CHA: char.stats?.CHA ?? char.abilities?.charisma      ?? 10,
+    STR: ab.str ?? char.stats?.STR ?? 10,
+    DEX: ab.dex ?? char.stats?.DEX ?? 10,
+    CON: ab.con ?? char.stats?.CON ?? 10,
+    INT: ab.int ?? char.stats?.INT ?? 10,
+    WIS: ab.wis ?? char.stats?.WIS ?? 10,
+    CHA: ab.cha ?? char.stats?.CHA ?? 10,
   }
 
   const toggleASI = (stat) => {
@@ -491,20 +492,27 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
     // Apply each step result
     allResults.forEach(r => {
       if (r.type === 'asi' && r.choice === 'asi' && r.asiDeltas) {
-        const stats = { ...(char.stats ?? {}) }
+        const prevAb = updatedChar.stats?.abilityScores ?? {}
+        const newAb  = { ...prevAb }
         Object.entries(r.asiDeltas).forEach(([stat, delta]) => {
-          if (delta > 0) stats[stat] = Math.min(20, (stats[stat] ?? 10) + delta)
+          if (delta > 0) {
+            const key = stat.toLowerCase()
+            newAb[key] = Math.min(20, (prevAb[key] ?? 10) + delta)
+          }
         })
-        updatedChar = { ...updatedChar, stats }
+        updatedChar = { ...updatedChar, stats: { ...updatedChar.stats, abilityScores: newAb } }
       }
       if (r.type === 'asi' && r.choice === 'feat' && r.selectedFeat) {
-        const feats = [...(char.feats ?? []), { name: r.selectedFeat.name, desc: r.selectedFeat.desc }]
+        const feats = [...(updatedChar.feats ?? []), { name: r.selectedFeat.name, desc: r.selectedFeat.desc }]
         updatedChar = { ...updatedChar, feats }
       }
       if (r.type === 'subclass' && r.subclass) {
+        const updatedCls = (updatedChar.identity.class ?? []).map((c, i) =>
+          i === 0 ? { ...c, subclass: r.subclass } : c
+        )
         updatedChar = {
           ...updatedChar,
-          identity: { ...updatedChar.identity, subclass: r.subclass },
+          identity: { ...updatedChar.identity, subclass: r.subclass, class: updatedCls },
         }
       }
     })

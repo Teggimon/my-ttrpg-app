@@ -119,7 +119,7 @@ function AllyCard({ ally, isOwner, locked, onUpdate, onRemove }) {
   )
 }
 
-function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove, onSetPrimary }) {
+function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove, onSetPrimary, onLevelChange }) {
   const [expanded, setExpanded] = useState(isPrimary)
   const [expandedLevels, setExpandedLevels] = useState({})
 
@@ -183,6 +183,11 @@ function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove
 
           {isOwner && !locked && (
             <div className="detail-actions">
+              <div className="level-stepper">
+                <button className="level-step-btn" onClick={() => onLevelChange(Math.max(1, cls.level - 1))} disabled={cls.level <= 1}>−</button>
+                <span className="level-step-val">Lv {cls.level}</span>
+                <button className="level-step-btn" onClick={() => onLevelChange(Math.min(20, cls.level + 1))} disabled={cls.level >= 20}>+</button>
+              </div>
               {!isPrimary && <button className="dact" onClick={onSetPrimary}>Set as primary</button>}
               <button className="dact" onClick={onEdit}>✎ Edit</button>
               <button className="dact dact--danger" onClick={onRemove}>✕ Remove</button>
@@ -360,6 +365,7 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
                 onEdit={() => {}}
                 onRemove={() => removeClass(idx)}
                 onSetPrimary={() => setPrimary(idx)}
+                onLevelChange={lv => patchIdentity({ class: classes.map((c, i) => i === idx ? { ...c, level: lv } : c) })}
               />
             ))}
           </div>

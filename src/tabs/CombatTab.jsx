@@ -103,6 +103,21 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const racialCombatTraits = (char.identity.racialTraits ?? [])
     .filter(t => COMBAT_TRAIT_INDICES.has(t.index))
 
+  function castSpell(spellLevel) {
+    if (spellLevel === 0) return // cantrips use no slots
+    const slots = char.spells?.slots ?? {}
+    // Find lowest available slot at or above spell level
+    for (let lvl = spellLevel; lvl <= 9; lvl++) {
+      const slot = slots[lvl]
+      if (slot && slot.used < slot.total) {
+        const updated = { ...slots, [lvl]: { ...slot, used: slot.used + 1 } }
+        updateChar({ spells: { ...char.spells, slots: updated } })
+        return
+      }
+    }
+    // No slots available — nothing to do
+  }
+
   function toggleDeathSave(type, index) {
     const current = char.combat.deathSaves?.[type] ?? 0
     const updated = current > index ? index : index + 1
@@ -233,7 +248,11 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                   {isAtk && spellAtk != null && <span className="badge">{fmtB(spellAtk)} to hit</span>}
                   {isConc && <span className="badge badge--dim">Conc</span>}
                   {spell.level > 0 && <span className="badge badge--dim">Lv {spell.level}</span>}
-                  <button className="atk-btn atk-btn--roll">Cast</button>
+                  <button
+                    className="atk-btn atk-btn--roll"
+                    onClick={() => isOwner && !locked && castSpell(spell.level)}
+                    title={spell.level === 0 ? 'Cantrip — no slot used' : 'Cast — uses one spell slot'}
+                  >Cast</button>
                 </div>
               </div>
             )
