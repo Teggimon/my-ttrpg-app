@@ -717,15 +717,38 @@ function StepClass({ classes, selected, onSelect, onNext, onBack }) {
 
 // ─── Step 5: Class setup (skills + equipment choices) ─────────────────────────
 
-// Fetch all items in an equipment category from the SRD
+// Weapon category index → { weapon_category, weapon_range? }
+const WEAPON_CATEGORY_MAP = {
+  'simple-weapons':         { weapon_category: 'Simple' },
+  'martial-weapons':        { weapon_category: 'Martial' },
+  'simple-melee-weapons':   { weapon_category: 'Simple',  weapon_range: 'Melee' },
+  'simple-ranged-weapons':  { weapon_category: 'Simple',  weapon_range: 'Ranged' },
+  'martial-melee-weapons':  { weapon_category: 'Martial', weapon_range: 'Melee' },
+  'martial-ranged-weapons': { weapon_category: 'Martial', weapon_range: 'Ranged' },
+}
+
 async function fetchCategoryItems(categoryIndex) {
   const BASE = 'https://raw.githubusercontent.com/Teggimon/ttrpg-srd-content/master/5e_PHB_2014'
   try {
     const res = await fetch(`${BASE}/5e-SRD-Equipment.json`)
     if (!res.ok) return []
     const all = await res.json()
-    return all.filter(item => item.equipment_category?.index === categoryIndex)
-      .map(item => ({ index: item.index, name: item.name, quantity: 1 }))
+
+    // Try direct equipment_category.index match first
+    let items = all.filter(item => item.equipment_category?.index === categoryIndex)
+
+    // Fallback: weapon_category / weapon_range matching (SRD stores weapons this way)
+    if (items.length === 0) {
+      const wc = WEAPON_CATEGORY_MAP[categoryIndex]
+      if (wc) {
+        items = all.filter(item =>
+          item.weapon_category === wc.weapon_category &&
+          (!wc.weapon_range || item.weapon_range === wc.weapon_range)
+        )
+      }
+    }
+
+    return items.map(item => ({ index: item.index, name: item.name, quantity: 1 }))
   } catch { return [] }
 }
 
@@ -793,9 +816,11 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
   }).filter(g => g.choices.length > 0)
 
   // When user clicks a category card, fetch its items
-  const expandCategory = async (choice, groupIndex) => {
+  // null = not fetched; [] = fetched but empty; [...] = loaded
+  const expandCategory = async (choice) => {
     setExpandedChoice(choice.id)
-    if (categoryItems[choice.id]) return // already loaded
+    if (categoryItems[choice.id] !== undefined) return // already fetched
+    setCategoryItems(prev => ({ ...prev, [choice.id]: null })) // mark as loading
     const items = choice.categoryIndex
       ? await fetchCategoryItems(choice.categoryIndex)
       : []
@@ -876,11 +901,12 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
               const choose = choice.choose ?? 1
               const selectedForChoice = selectedEquipment.filter(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
               const choiceComplete = selectedForChoice.length >= choose
+              const loadedItems = categoryItems[choice.id] // null=loading, undefined=not started, []=empty, [...]
               return (
                 <div key={choice.id}>
                   <div
                     style={{ ...S.card(choiceComplete), opacity: 1, cursor: 'pointer' }}
-                    onClick={() => expandCategory(choice, group.groupIndex)}
+                    onClick={() => expandCategory(choice)}
                   >
                     <div style={S.cardName}>{choice.label}</div>
                     <div style={S.cardSub}>
@@ -891,29 +917,33 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                   </div>
                   {isExpanded && (
                     <div style={{ paddingLeft: '1rem', marginBottom: '0.5rem' }}>
-                      {catItems.length === 0 && <div style={S.cardSub}>Loading…</div>}
-                      {catItems.map(item => {
-                        const itemChecked = selectedForChoice.some(e => e.index === item.index)
-                        const disabled = !itemChecked && selectedForChoice.length >= choose
-                        return (
-                          <div
-                            key={item.index}
-                            style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: itemChecked ? '1px solid #7c5fff' : '1px solid #2a2a4a', marginBottom: '0.35rem' }}
-                            onClick={() => {
-                              if (disabled) return
-                              const withoutThis = selectedEquipment.filter(e => !(e.groupIndex === group.groupIndex && e.choiceId === choice.id && e.index === item.index))
-                              if (itemChecked) {
-                                onEquipmentChange(withoutThis)
-                              } else {
-                                onEquipmentChange([...withoutThis, { ...item, groupIndex: group.groupIndex, choiceId: choice.id }])
-                              }
-                            }}
-                          >
-                            <span style={{ color: itemChecked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{itemChecked ? '◉' : '○'}</span>
-                            <span>{item.name}</span>
-                          </div>
-                        )
-                      })}
+                      {loadedItems === null || loadedItems === undefined
+                        ? <div style={S.cardSub}>Loading…</div>
+                        : loadedItems.length === 0
+                        ? <div style={S.cardSub}>No items found for this category.</div>
+                        : loadedItems.map(item => {
+                            const itemChecked = selectedForChoice.some(e => e.index === item.index)
+                            const disabled = !itemChecked && selectedForChoice.length >= choose
+                            return (
+                              <div
+                                key={item.index}
+                                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: itemChecked ? '1px solid #7c5fff' : '1px solid #2a2a4a', marginBottom: '0.35rem' }}
+                                onClick={() => {
+                                  if (disabled) return
+                                  const withoutThis = selectedEquipment.filter(e => !(e.groupIndex === group.groupIndex && e.choiceId === choice.id && e.index === item.index))
+                                  if (itemChecked) {
+                                    onEquipmentChange(withoutThis)
+                                  } else {
+                                    onEquipmentChange([...withoutThis, { ...item, groupIndex: group.groupIndex, choiceId: choice.id }])
+                                  }
+                                }}
+                              >
+                                <span style={{ color: itemChecked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{itemChecked ? '◉' : '○'}</span>
+                                <span>{item.name}</span>
+                              </div>
+                            )
+                          })
+                      }
                     </div>
                   )}
                 </div>
