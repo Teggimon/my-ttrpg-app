@@ -31,7 +31,7 @@ const ASI_LEVELS = {
 }
 
 // Subclass pick levels per class
-const SUBCLASS_LEVELS = {
+export const SUBCLASS_LEVELS = {
   barbarian: [3], bard: [3], cleric: [1], druid: [2],
   fighter: [3], monk: [3], paladin: [3], ranger: [3],
   rogue: [3], sorcerer: [1], warlock: [1], wizard: [2],
@@ -39,7 +39,7 @@ const SUBCLASS_LEVELS = {
 }
 
 // Subclass options (condensed SRD set)
-const SUBCLASSES = {
+export const SUBCLASSES = {
   fighter:   ['Champion','Battle Master','Eldritch Knight'],
   wizard:    ['Evocation','Abjuration','Divination','Illusion','Necromancy','Conjuration','Transmutation','Enchantment'],
   rogue:     ['Thief','Assassin','Arcane Trickster'],
@@ -147,7 +147,10 @@ function hasSubclassChoice(char, classIdx) {
   const lvl = nextClassLevel(char, classIdx)
   const already = char.identity?.class?.[classIdx]?.subclass
     ?? (classIdx === 0 ? char.identity?.subclass : undefined)
-  return !already && (SUBCLASS_LEVELS[cls] ?? []).includes(lvl)
+  if (already) return false
+  const subclassLevels = SUBCLASS_LEVELS[cls] ?? []
+  // Fire at the exact subclass level, OR catch up if they're past it and never chose
+  return subclassLevels.includes(lvl) || subclassLevels.some(sl => sl < lvl)
 }
 
 // Build step list once class is chosen

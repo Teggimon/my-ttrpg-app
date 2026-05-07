@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
 import { v4 as uuidv4 } from 'uuid'
-import { getClasses, getRaces, getBackgrounds, getEquipment } from './srdContent'
+import { getClasses, getRaces, getBackgrounds } from './srdContent'
+import { SUBCLASSES, SUBCLASS_LEVELS } from './LevelUpModal'
 
 // ─── SRD helpers ─────────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ const SPELLCASTING_ABILITY = {
 
 // ─── Character builder ────────────────────────────────────────────────────────
 
-async function buildCharacter({ user, name, raceData, subraceData, classData, backgroundData, alignment, choices }) {
+function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores }) {
   const {
     raceBonusOptions = [],   // [{ability_score:{index}, bonus}]
     classSkills = [],        // ['skill-perception', ...]
@@ -33,10 +34,18 @@ async function buildCharacter({ user, name, raceData, subraceData, classData, ba
     backgroundFeature = null,
   } = choices
 
-  // 1. Base ability scores
-  const abilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }
+  // 1. Base ability scores from creation step (default 10 if not provided)
+  const abilityScores = {
+    str: baseAbilityScores?.str ?? 10,
+    dex: baseAbilityScores?.dex ?? 10,
+    con: baseAbilityScores?.con ?? 10,
+    int: baseAbilityScores?.int ?? 10,
+    wis: baseAbilityScores?.wis ?? 10,
+    cha: baseAbilityScores?.cha ?? 10,
+  }
 
-  // 2. Race ability bonuses (fixed)
+  // 2. Race ability bonuses (fixed) — StepAbilityScores shows these as preview but does NOT apply them;
+  //    buildCharacter applies them so the stored value is final.
   for (const bonus of (raceData?.ability_bonuses ?? [])) {
     abilityScores[bonus.ability_score.index] += bonus.bonus
   }
@@ -84,32 +93,18 @@ async function buildCharacter({ user, name, raceData, subraceData, classData, ba
     .map(p => p.name)
 
   // 8. Inventory: class starting_equipment + chosen class equipment + background equipment
-  // Packs are expanded into their individual contents using SRD data
-  const allEquipmentData = await getEquipment().catch(() => [])
-  const equipMap = Object.fromEntries(allEquipmentData.map(e => [e.index, e]))
-
-  const expandItem = ({ index, name, quantity }) => {
-    const srdItem = equipMap[index]
-    if (srdItem?.contents?.length > 0) {
-      return srdItem.contents.map(c => ({
-        index: c.item.index, name: c.item.name, quantity: c.quantity ?? 1, equipped: false,
-      }))
-    }
-    return [{ index, name, quantity: quantity ?? 1, equipped: false }]
-  }
-
   const inventory = []
   for (const item of (classData?.starting_equipment ?? [])) {
-    inventory.push(...expandItem({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity }))
+    inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of classEquipment) {
-    inventory.push(...expandItem(item))
+    inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
   }
   for (const item of (backgroundData?.starting_equipment ?? [])) {
-    inventory.push(...expandItem({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity }))
+    inventory.push({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of backgroundEquipment) {
-    inventory.push(...expandItem(item))
+    inventory.push({ index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
   }
 
   // 9. Racial traits
@@ -139,7 +134,7 @@ async function buildCharacter({ user, name, raceData, subraceData, classData, ba
       raceIndex: raceData?.index ?? null,
       subrace: subraceData?.name ?? null,
       subraceIndex: subraceData?.index ?? null,
-      class: [{ name: classData?.name ?? '', index: classData?.index ?? null, level: 1 }],
+      class: [{ name: classData?.name ?? '', index: classData?.index ?? null, level: 1, subclass: subclassChoice ?? null }],
       background: backgroundData?.name ?? '',
       backgroundIndex: backgroundData?.index ?? null,
       backgroundFeature: backgroundFeature ?? null,
@@ -227,6 +222,201 @@ const S = {
   featureDesc: { fontSize: '0.82rem', color: '#999', lineHeight: 1.5 },
   error: { color: '#ff6b6b', fontSize: '0.85rem', marginTop: '0.75rem' },
   scrollList: { marginTop: '0.5rem' },
+}
+
+// ─── Ability score constants ──────────────────────────────────────────────────
+
+const STANDARD_ARRAY  = [15, 14, 13, 12, 10, 8]
+const ABILITIES       = ['str', 'dex', 'con', 'int', 'wis', 'cha']
+const ABILITY_LABEL   = { str:'STR', dex:'DEX', con:'CON', int:'INT', wis:'WIS', cha:'CHA' }
+const ABILITY_NAME    = { str:'Strength', dex:'Dexterity', con:'Constitution', int:'Intelligence', wis:'Wisdom', cha:'Charisma' }
+// Point-buy cost per score value
+const PB_COST = { 8:0, 9:1, 10:2, 11:3, 12:4, 13:5, 14:7, 15:9 }
+
+function roll4d6dl() {
+  const d = [1,2,3,4].map(() => Math.ceil(Math.random() * 6))
+  d.sort((a,b) => a - b)
+  return d[1] + d[2] + d[3]
+}
+
+// ─── Step: Ability Scores ─────────────────────────────────────────────────────
+
+function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, onNext, onBack }) {
+  const [method, setMethod] = useState('standard')
+  const [assign,  setAssign]  = useState({})          // standard array assignments
+  const [pb,      setPb]      = useState({ str:8, dex:8, con:8, int:8, wis:8, cha:8 })
+  const [manual,  setManual]  = useState({ str:10, dex:10, con:10, int:10, wis:10, cha:10 })
+
+  // Racial bonuses (including chosen half-elf style options)
+  const racialBonus = {}
+  for (const b of (raceData?.ability_bonuses ?? []))
+    racialBonus[b.ability_score.index] = (racialBonus[b.ability_score.index] ?? 0) + b.bonus
+  for (const b of (subraceData?.ability_bonuses ?? []))
+    racialBonus[b.ability_score.index] = (racialBonus[b.ability_score.index] ?? 0) + b.bonus
+  for (const b of (raceBonusOptions ?? []))
+    racialBonus[b.ability_score.index] = (racialBonus[b.ability_score.index] ?? 0) + b.bonus
+
+  const base = method === 'standard'
+    ? Object.fromEntries(ABILITIES.map(a => [a, assign[a] ?? null]))
+    : method === 'pointbuy' ? pb : manual
+
+  const canNext = method === 'standard'
+    ? ABILITIES.every(a => assign[a] != null)
+    : method === 'pointbuy'
+    ? true
+    : ABILITIES.every(a => (manual[a] ?? 0) >= 3 && (manual[a] ?? 0) <= 20)
+
+  const used       = Object.values(assign).filter(Boolean)
+  const available  = STANDARD_ARRAY.filter(v => !used.includes(v))
+  const pbSpent    = ABILITIES.reduce((s, a) => s + (PB_COST[pb[a]] ?? 0), 0)
+  const pbLeft     = 27 - pbSpent
+
+  const handleNext = () => {
+    const scores = method === 'standard'
+      ? Object.fromEntries(ABILITIES.map(a => [a, assign[a] ?? 10]))
+      : method === 'pointbuy' ? { ...pb } : { ...manual }
+    onChange(scores)
+    onNext()
+  }
+
+  const tabBtn = (id, label) => ({
+    flex: 1, padding: '0.5rem', borderRadius: '6px', border: 'none', cursor: 'pointer',
+    fontWeight: 600, fontSize: '0.82rem', fontFamily: 'system-ui',
+    background: method === id ? '#6c3fff' : '#1a1a35',
+    color:      method === id ? '#fff'    : '#888',
+    border:     method === id ? 'none'    : '1px solid #2a2a4a',
+  })
+
+  const pbCanInc = (a) => pb[a] < 15 && pbLeft >= (PB_COST[pb[a]+1] ?? 99) - (PB_COST[pb[a]] ?? 0)
+  const pbCanDec = (a) => pb[a] > 8
+  const pbAdj    = (a, dir) => {
+    const next = pb[a] + dir
+    if (next < 8 || next > 15) return
+    const costDelta = (PB_COST[next] ?? 0) - (PB_COST[pb[a]] ?? 0)
+    if (dir > 0 && costDelta > pbLeft) return
+    setPb(p => ({ ...p, [a]: next }))
+  }
+
+  return (
+    <div style={S.wrap}>
+      <div style={S.h1}>Ability Scores</div>
+      <div style={S.sub}>Choose how to generate your six ability scores.</div>
+
+      {/* Method tabs */}
+      <div style={{ display:'flex', gap:'0.4rem', marginBottom:'1.25rem' }}>
+        <button style={tabBtn('standard',  'Standard')}  onClick={() => setMethod('standard')}>Standard Array</button>
+        <button style={tabBtn('pointbuy',  'Point Buy')} onClick={() => setMethod('pointbuy')}>Point Buy</button>
+        <button style={tabBtn('manual',    'Manual')}    onClick={() => setMethod('manual')}>Manual / Roll</button>
+      </div>
+
+      {/* ── Standard Array ── */}
+      {method === 'standard' && (
+        <>
+          <div style={{ fontSize:'0.8rem', color:'#888', marginBottom:'0.75rem' }}>
+            Assign each value to one ability. Values: {STANDARD_ARRAY.join(', ')}.
+          </div>
+          {ABILITIES.map(a => {
+            const bonus = racialBonus[a] ?? 0
+            const val   = assign[a]
+            const final = val != null ? val + bonus : null
+            return (
+              <div key={a} style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'0.5rem' }}>
+                <span style={{ width:36, fontSize:'0.8rem', color:'#aaa', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
+                <select
+                  style={{ ...S.input, flex:1, padding:'0.45rem 0.6rem' }}
+                  value={val ?? ''}
+                  onChange={e => {
+                    const v = e.target.value === '' ? null : Number(e.target.value)
+                    setAssign(p => ({ ...p, [a]: v }))
+                  }}
+                >
+                  <option value="">— pick —</option>
+                  {STANDARD_ARRAY.filter(v => v === val || !used.includes(v)).map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+                <span style={{ width:52, textAlign:'right', fontFamily:'monospace', fontSize:'0.95rem', color: final ? '#c9b8ff' : '#444' }}>
+                  {final != null ? `= ${final}` : '—'}
+                  {bonus !== 0 && val != null && <span style={{ fontSize:'0.7rem', color:'#7c5fff' }}> (+{bonus})</span>}
+                </span>
+              </div>
+            )
+          })}
+        </>
+      )}
+
+      {/* ── Point Buy ── */}
+      {method === 'pointbuy' && (
+        <>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.82rem', color:'#888', marginBottom:'0.75rem' }}>
+            <span>27-point budget. Scores 8–15 before racial bonuses.</span>
+            <span style={{ color: pbLeft === 0 ? '#6fde8f' : pbLeft < 0 ? '#ff6b6b' : '#c9b8ff', fontWeight:700 }}>
+              {pbLeft} pts left
+            </span>
+          </div>
+          {ABILITIES.map(a => {
+            const bonus = racialBonus[a] ?? 0
+            const final = pb[a] + bonus
+            return (
+              <div key={a} style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.45rem' }}>
+                <span style={{ width:36, fontSize:'0.8rem', color:'#aaa', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
+                <button onClick={() => pbAdj(a,-1)} disabled={!pbCanDec(a)}
+                  style={{ width:28, height:28, borderRadius:4, border:'1px solid #333', background:'#12122a', color:'#aaa', cursor:'pointer', fontSize:'1rem', fontFamily:'system-ui' }}>−</button>
+                <span style={{ width:24, textAlign:'center', fontFamily:'monospace', fontWeight:700, color:'#e8e0f0' }}>{pb[a]}</span>
+                <button onClick={() => pbAdj(a,+1)} disabled={!pbCanInc(a)}
+                  style={{ width:28, height:28, borderRadius:4, border:'1px solid #333', background:'#12122a', color:'#aaa', cursor:'pointer', fontSize:'1rem', fontFamily:'system-ui' }}>+</button>
+                <span style={{ fontSize:'0.75rem', color:'#555', width:32 }}>({PB_COST[pb[a]]}pt)</span>
+                <span style={{ marginLeft:'auto', fontFamily:'monospace', fontSize:'0.95rem', color:'#c9b8ff' }}>
+                  {final}{bonus !== 0 && <span style={{ fontSize:'0.7rem', color:'#7c5fff' }}> (+{bonus})</span>}
+                </span>
+              </div>
+            )
+          })}
+        </>
+      )}
+
+      {/* ── Manual / Roll ── */}
+      {method === 'manual' && (
+        <>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
+            <span style={{ fontSize:'0.8rem', color:'#888' }}>Enter scores or roll 4d6 drop lowest.</span>
+            <button
+              style={{ padding:'0.35rem 0.75rem', borderRadius:6, border:'1px solid #7c5fff', background:'transparent', color:'#c9b8ff', cursor:'pointer', fontSize:'0.8rem', fontFamily:'system-ui', fontWeight:600 }}
+              onClick={() => setManual(Object.fromEntries(ABILITIES.map(a => [a, roll4d6dl()])))}
+            >Roll All</button>
+          </div>
+          {ABILITIES.map(a => {
+            const bonus = racialBonus[a] ?? 0
+            const val   = manual[a] ?? 10
+            return (
+              <div key={a} style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'0.45rem' }}>
+                <span style={{ width:36, fontSize:'0.8rem', color:'#aaa', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
+                <span style={{ width:80, fontSize:'0.75rem', color:'#555' }}>{ABILITY_NAME[a]}</span>
+                <input
+                  type="number" min="3" max="20"
+                  style={{ ...S.input, width:70, padding:'0.4rem 0.5rem', textAlign:'center', fontFamily:'monospace' }}
+                  value={val}
+                  onChange={e => setManual(p => ({ ...p, [a]: Math.max(1, Math.min(20, Number(e.target.value))) }))}
+                />
+                <button
+                  style={{ padding:'0.3rem 0.6rem', borderRadius:4, border:'1px solid #333', background:'#12122a', color:'#888', cursor:'pointer', fontSize:'0.75rem', fontFamily:'system-ui' }}
+                  onClick={() => setManual(p => ({ ...p, [a]: roll4d6dl() }))}
+                >Roll</button>
+                <span style={{ marginLeft:'auto', fontFamily:'monospace', fontSize:'0.95rem', color:'#c9b8ff' }}>
+                  {val + bonus}{bonus !== 0 && <span style={{ fontSize:'0.7rem', color:'#7c5fff' }}> (+{bonus})</span>}
+                </span>
+              </div>
+            )
+          })}
+        </>
+      )}
+
+      <div style={S.row}>
+        <button style={S.btn(false)} onClick={onBack}>← Back</button>
+        <button style={S.btn(true)} onClick={handleNext} disabled={!canNext}>Next: Background →</button>
+      </div>
+    </div>
+  )
 }
 
 // ─── Step 1: Name ─────────────────────────────────────────────────────────────
@@ -363,6 +553,31 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
   )
 }
 
+// ─── Step: Subclass (for classes that choose at level 1) ─────────────────────
+
+function StepSubclass({ classData, selected, onSelect, onNext, onBack }) {
+  const options = SUBCLASSES[classData?.index] ?? []
+  return (
+    <div style={S.wrap}>
+      <div style={S.h1}>Choose Your {classData?.name} Subclass</div>
+      <div style={S.sub}>
+        {classData?.name}s choose their path at level 1. This choice is permanent.
+      </div>
+      <div style={S.scrollList}>
+        {options.map(name => (
+          <div key={name} style={S.card(selected === name)} onClick={() => onSelect(name)}>
+            <div style={S.cardName}>{name}</div>
+          </div>
+        ))}
+      </div>
+      <div style={S.row}>
+        <button style={S.btn(false)} onClick={onBack}>← Back</button>
+        <button style={S.btn(true)} onClick={onNext} disabled={!selected}>Next: Class Setup →</button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Step 4: Class ────────────────────────────────────────────────────────────
 
 function StepClass({ classes, selected, onSelect, onNext, onBack }) {
@@ -396,26 +611,14 @@ function StepClass({ classes, selected, onSelect, onNext, onBack }) {
 
 // ─── Step 5: Class setup (skills + equipment choices) ─────────────────────────
 
-// SRD equipment uses weapon_category/weapon_range/tool_category/gear_category fields
-// rather than hierarchical equipment_category.index values that class data references
-const CATEGORY_FILTERS = {
-  'martial-weapons':        i => i.weapon_category === 'Martial',
-  'martial-melee-weapons':  i => i.weapon_category === 'Martial' && i.weapon_range === 'Melee',
-  'martial-ranged-weapons': i => i.weapon_category === 'Martial' && i.weapon_range === 'Ranged',
-  'simple-weapons':         i => i.weapon_category === 'Simple',
-  'simple-melee-weapons':   i => i.weapon_category === 'Simple'  && i.weapon_range === 'Melee',
-  'simple-ranged-weapons':  i => i.weapon_category === 'Simple'  && i.weapon_range === 'Ranged',
-  'musical-instruments':    i => i.tool_category === 'Musical Instrument',
-  'arcane-foci':            i => i.gear_category?.index === 'arcane-foci',
-}
-
+// Fetch all items in an equipment category from the SRD
 async function fetchCategoryItems(categoryIndex) {
+  const BASE = 'https://raw.githubusercontent.com/Teggimon/ttrpg-srd-content/master/5e_PHB_2014'
   try {
-    const all = await getEquipment()
-    const filterFn = CATEGORY_FILTERS[categoryIndex]
-      ?? (i => i.equipment_category?.index === categoryIndex)
-    return all
-      .filter(filterFn)
+    const res = await fetch(`${BASE}/5e-SRD-Equipment.json`)
+    if (!res.ok) return []
+    const all = await res.json()
+    return all.filter(item => item.equipment_category?.index === categoryIndex)
       .map(item => ({ index: item.index, name: item.name, quantity: 1 }))
   } catch { return [] }
 }
@@ -486,8 +689,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
   // When user clicks a category card, fetch its items
   const expandCategory = async (choice, groupIndex) => {
     setExpandedChoice(choice.id)
-    if (categoryItems[choice.id] !== undefined) return // already loaded or loading
-    setCategoryItems(prev => ({ ...prev, [choice.id]: null })) // null = loading
+    if (categoryItems[choice.id]) return // already loaded
     const items = choice.categoryIndex
       ? await fetchCategoryItems(choice.categoryIndex)
       : []
@@ -561,7 +763,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
           {group.choices.map(choice => {
             const checked = selectedEquipment.some(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
             const isExpanded = expandedChoice === choice.id
-            const catItems = categoryItems[choice.id] // undefined=not started, null=loading, []=empty
+            const catItems = categoryItems[choice.id] ?? []
 
             if (choice.isCategory) {
               const choose = choice.choose ?? 1
@@ -582,9 +784,8 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                   </div>
                   {isExpanded && (
                     <div style={{ paddingLeft: '1rem', marginBottom: '0.5rem' }}>
-                      {(catItems === undefined || catItems === null) && <div style={S.cardSub}>Loading…</div>}
-                      {Array.isArray(catItems) && catItems.length === 0 && <div style={S.cardSub}>No items found in this category.</div>}
-                      {Array.isArray(catItems) && catItems.map(item => {
+                      {catItems.length === 0 && <div style={S.cardSub}>Loading…</div>}
+                      {catItems.map(item => {
                         const itemChecked = selectedForChoice.some(e => e.index === item.index)
                         const disabled = !itemChecked && selectedForChoice.length >= choose
                         return (
@@ -913,8 +1114,10 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const [subraceData, setSubraceData] = useState(null)
   const [raceBonusOptions, setRaceBonusOptions] = useState([])
   const [classData, setClassData] = useState(null)
+  const [subclassChoice, setSubclassChoice] = useState(null)
   const [classSkills, setClassSkills] = useState([])
   const [classEquipment, setClassEquipment] = useState([])
+  const [abilityScores, setAbilityScores] = useState({ str:10, dex:10, con:10, int:10, wis:10, cha:10 })
   const [backgroundData, setBackgroundData] = useState(null)
   const [backgroundLanguages, setBackgroundLanguages] = useState([])
   const [backgroundEquipment, setBackgroundEquipment] = useState([])
@@ -930,25 +1133,29 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   }, [])
 
   const hasSubrace = raceData?.subraces?.length > 0 || !!raceData?.ability_bonus_options
+  const hasSubclassAtCreation = !!(classData && (SUBCLASS_LEVELS[classData.index] ?? []).includes(1))
 
   // Compute step indices dynamically
-  const STEP_NAME = 0
-  const STEP_RACE = 1
-  const STEP_SUBRACE = 2          // may be skipped
-  const STEP_CLASS = hasSubrace ? 3 : 2
-  const STEP_CLASS_SETUP = hasSubrace ? 4 : 3
-  const STEP_BACKGROUND = hasSubrace ? 5 : 4
-  const STEP_BG_SETUP = hasSubrace ? 6 : 5
-  const STEP_ALIGNMENT = hasSubrace ? 7 : 6
-  const TOTAL_STEPS = hasSubrace ? 8 : 7
+  const STEP_NAME       = 0
+  const STEP_RACE       = 1
+  const STEP_SUBRACE    = 2                                        // may be skipped
+  const STEP_CLASS      = hasSubrace ? 3 : 2
+  const STEP_SUBCLASS   = STEP_CLASS + 1                          // may be skipped
+  const STEP_CLASS_SETUP    = hasSubclassAtCreation ? STEP_SUBCLASS + 1 : STEP_CLASS + 1
+  const STEP_ABILITY_SCORES = STEP_CLASS_SETUP + 1
+  const STEP_BACKGROUND     = STEP_ABILITY_SCORES + 1
+  const STEP_BG_SETUP       = STEP_ABILITY_SCORES + 2
+  const STEP_ALIGNMENT      = STEP_ABILITY_SCORES + 3
+  const TOTAL_STEPS         = STEP_ABILITY_SCORES + 4
 
   const finish = async () => {
     setCreating(true)
     setError(null)
     try {
-      const character = await buildCharacter({
+      const character = buildCharacter({
         user, name,
-        raceData, subraceData, classData, backgroundData, alignment,
+        raceData, subraceData, classData, subclassChoice, backgroundData, alignment,
+        baseAbilityScores: abilityScores,
         choices: {
           raceBonusOptions,
           classSkills,
@@ -985,6 +1192,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   // When class changes, reset downstream
   const selectClass = (c) => {
     setClassData(c)
+    setSubclassChoice(null)
     setClassSkills([])
     setClassEquipment([])
   }
@@ -1032,8 +1240,18 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           classes={classes}
           selected={classData}
           onSelect={selectClass}
-          onNext={() => goTo(STEP_CLASS_SETUP)}
+          onNext={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS_SETUP)}
           onBack={() => goTo(hasSubrace ? STEP_SUBRACE : STEP_RACE)}
+        />
+      )}
+
+      {step === STEP_SUBCLASS && classData && hasSubclassAtCreation && (
+        <StepSubclass
+          classData={classData}
+          selected={subclassChoice}
+          onSelect={setSubclassChoice}
+          onNext={() => goTo(STEP_CLASS_SETUP)}
+          onBack={() => goTo(STEP_CLASS)}
         />
       )}
 
@@ -1044,8 +1262,19 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           onSkillsChange={setClassSkills}
           selectedEquipment={classEquipment}
           onEquipmentChange={setClassEquipment}
+          onNext={() => goTo(STEP_ABILITY_SCORES)}
+          onBack={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS)}
+        />
+      )}
+
+      {step === STEP_ABILITY_SCORES && (
+        <StepAbilityScores
+          raceData={raceData}
+          subraceData={subraceData}
+          raceBonusOptions={raceBonusOptions}
+          onChange={setAbilityScores}
           onNext={() => goTo(STEP_BACKGROUND)}
-          onBack={() => goTo(STEP_CLASS)}
+          onBack={() => goTo(STEP_CLASS_SETUP)}
         />
       )}
 
