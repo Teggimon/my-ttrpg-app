@@ -24,6 +24,7 @@ function App() {
   const [selectedSession, setSelectedSession]     = useState(null)
   const [selectedEncounter, setSelectedEncounter] = useState(null)
   const [sessionParty, setSessionParty]           = useState([])
+  const [sessionPreparedEncounters, setSessionPreparedEncounters] = useState([])
   const [isGM, setIsGM]                           = useState(false)
 
   const octokit = token ? new Octokit({ auth: token }) : null
@@ -267,10 +268,11 @@ function App() {
       user={user}
       campaign={selectedCampaign}
       onBack={() => setScreen('dm-home')}
-      onOpenSession={(session, campaign, party) => {
+      onOpenSession={(session, campaign, party, preparedEncounters) => {
         setSelectedSession(session)
         setSelectedCampaign(campaign)
         setSessionParty(party ?? [])
+        setSessionPreparedEncounters(preparedEncounters ?? [])
         setScreen('dm-session')
       }}
     />
@@ -284,6 +286,7 @@ function App() {
       session={selectedSession}
       campaign={selectedCampaign}
       party={sessionParty}
+      initialPreparedEncounters={sessionPreparedEncounters}
       onBack={() => setScreen('dm-campaign')}
       onOpenEncounter={(encounter, session, campaign) => {
         setSelectedEncounter(encounter)

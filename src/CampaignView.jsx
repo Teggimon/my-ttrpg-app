@@ -1194,7 +1194,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
     setSessions(updated)
     await saveFile('sessions.json', { sessions: updated })
     setShowStartSession(false)
-    onOpenSession(newSession, campaign, party)
+    onOpenSession(newSession, campaign, party, encounterBuilds)
   }
 
   // ── Party tab actions ──
@@ -1322,7 +1322,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
               <span className="sidebar-live-label">Live Session</span>
             </div>
             <div className="sidebar-live-session">{liveSession.name}</div>
-            <button className="sidebar-resume-btn" onClick={() => onOpenSession(liveSession, campaign, party)}>
+            <button className="sidebar-resume-btn" onClick={() => onOpenSession(liveSession, campaign, party, encounterBuilds)}>
               ▶ Resume
             </button>
           </div>
@@ -1361,6 +1361,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
             { id: 'sessions', label: '📋 Sessions' },
             { id: 'party',    label: '👥 Party' },
             { id: 'npcs',     label: '👺 NPCs' },
+            { id: 'encounters', label: '⚔️ Encounters' },
             { id: 'notes',    label: '📝 Notes' },
           ].map(t => (
             <button
@@ -1396,7 +1397,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                         key={session.sessionId}
                         session={session}
                         index={sessions.length - 1 - i}
-                        onOpen={(s) => onOpenSession(s, campaign, party)}
+                        onOpen={(s) => onOpenSession(s, campaign, party, encounterBuilds)}
                       />
                     ))
                   }
@@ -1436,24 +1437,6 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
               {/* ── NPCS TAB ── */}
               {tab === 'npcs' && (
                 <div className="cv-section">
-                  <div className="npc-category-head npc-category-head--encounter">⚔️ Prepared Encounters</div>
-                  {encounterBuilds.length === 0 ? (
-                    <div className="cv-empty cv-empty--compact">
-                      <div className="cv-empty-title">No prepared encounters</div>
-                      <div className="cv-empty-sub">Build reusable encounter tables from your saved enemies.</div>
-                    </div>
-                  ) : encounterBuilds.map(enc => (
-                    <EncounterBuildRow
-                      key={enc.encounterId}
-                      encounter={enc}
-                      onToggleDefeated={toggleEncounterDefeated}
-                      onEdit={setShowBuildEncounter}
-                    />
-                  ))}
-                  <button className="add-player-btn" onClick={() => setShowBuildEncounter('new')}>
-                    + Build Encounter
-                  </button>
-
                   {/* Bosses */}
                   {bosses.length > 0 && (
                     <>
@@ -1487,6 +1470,30 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                   )}
 
                   <button className="add-player-btn" onClick={() => setShowAddNPC(true)}>+ Add NPC / Monster</button>
+                </div>
+              )}
+
+              {/* ── ENCOUNTERS TAB ── */}
+              {tab === 'encounters' && (
+                <div className="cv-section">
+                  <div className="npc-category-head npc-category-head--encounter">⚔️ Prepared Encounters</div>
+                  {encounterBuilds.length === 0 ? (
+                    <div className="cv-empty">
+                      <div className="cv-empty-icon">⚔️</div>
+                      <div className="cv-empty-title">No prepared encounters</div>
+                      <div className="cv-empty-sub">Build reusable encounter tables from your saved enemies.</div>
+                    </div>
+                  ) : encounterBuilds.map(enc => (
+                    <EncounterBuildRow
+                      key={enc.encounterId}
+                      encounter={enc}
+                      onToggleDefeated={toggleEncounterDefeated}
+                      onEdit={setShowBuildEncounter}
+                    />
+                  ))}
+                  <button className="add-player-btn" onClick={() => setShowBuildEncounter('new')}>
+                    + Build Encounter
+                  </button>
                 </div>
               )}
 

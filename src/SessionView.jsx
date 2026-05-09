@@ -261,10 +261,10 @@ function NewEncounterModal({ encounterNumber, preparedEncounters, onCreate, onCl
 // ════════════════════════════════════════════════════════════════
 //  Main SessionView
 // ════════════════════════════════════════════════════════════════
-export default function SessionView({ token, user, session, campaign, party, onBack, onOpenEncounter }) {
+export default function SessionView({ token, user, session, campaign, party, initialPreparedEncounters = [], onBack, onOpenEncounter }) {
   const [tab, setTab]             = useState('party')
   const [encounters, setEncounters] = useState(session.encounters ?? [])
-  const [preparedEncounters, setPreparedEncounters] = useState([])
+  const [preparedEncounters, setPreparedEncounters] = useState(initialPreparedEncounters)
   const [notes, setNotes]         = useState({
     sections: [
       { id: 'happened',  title: 'What Happened',     content: '' },
@@ -308,11 +308,11 @@ export default function SessionView({ token, user, session, campaign, party, onB
         })
         setPreparedEncounters(decode(data.content).encounters ?? [])
       } catch {
-        setPreparedEncounters([])
+        setPreparedEncounters(initialPreparedEncounters)
       }
     }
     loadPreparedEncounters()
-  }, [basePath, octokit, user.login])
+  }, [basePath, initialPreparedEncounters, octokit, user.login])
 
   function allActiveChars(party) {
     return (party ?? []).flatMap(p =>
