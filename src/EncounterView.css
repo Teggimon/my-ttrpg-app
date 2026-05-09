@@ -135,6 +135,11 @@
   width: 72px;
 }
 
+.hp-formula-input {
+  width: 88px;
+  font-size: 13px;
+}
+
 .hp-reroll-all-btn {
   padding: 11px 16px;
   border-radius: var(--radius-md);

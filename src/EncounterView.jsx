@@ -28,11 +28,17 @@ function rollHpFormula(formula) {
 function baseHpFor(combatant) {
   return combatant.hpValue ?? combatant.hpMax ?? combatant.hp ?? 10
 }
+function hpFormulaFor(combatant) {
+  return combatant.hpFormula ?? combatant.sourceNpc?.hitDie ?? combatant.hitDie ?? ''
+}
 function setupHpFor(combatant) {
   if (combatant.hpMode === 'roll') {
-    return rollHpFormula(combatant.hpFormula) ?? baseHpFor(combatant)
+    return rollHpFormula(hpFormulaFor(combatant)) ?? baseHpFor(combatant)
   }
   return baseHpFor(combatant)
+}
+function rollHpFor(combatant) {
+  return rollHpFormula(hpFormulaFor(combatant)) ?? setupHpFor(combatant)
 }
 function hpPct(cur, max) { return max ? Math.min(100, Math.round((cur / max) * 100)) : 0 }
 function hpColor(pct) {
@@ -74,6 +80,7 @@ function buildCombatants(party, encounter) {
         ...c,
         hp,
         hpMax: hp,
+        hpFormula: hpFormulaFor(c),
         initiative: null,
       }
     })
@@ -162,10 +169,16 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
     setDraft(prev => prev.map(c => c.id === id ? { ...c, hp, hpMax: hp, downed: false } : c))
   }
 
+  const setFormula = (id, val) => {
+    setDraft(prev => prev.map(c =>
+      c.id === id ? { ...c, hpFormula: val, hpMode: val.trim() ? 'roll' : c.hpMode } : c
+    ))
+  }
+
   const reroll = (id) => {
     setDraft(prev => prev.map(c => {
       if (c.id !== id) return c
-      const hp = setupHpFor(c)
+      const hp = rollHpFor(c)
       return { ...c, hp, hpMax: hp, downed: false }
     }))
   }
@@ -173,7 +186,7 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
   const rerollAll = () => {
     setDraft(prev => prev.map(c => {
       if (c.type === 'player' || c.hpMode !== 'roll') return c
-      const hp = setupHpFor(c)
+      const hp = rollHpFor(c)
       return { ...c, hp, hpMax: hp, downed: false }
     }))
   }
@@ -191,9 +204,15 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
               <div className="init-info">
                 <div className="init-name">{c.name}</div>
                 <div className="init-sub">
-                  {c.hpMode === 'roll' && c.hpFormula ? `Roll ${c.hpFormula}` : c.cr ? `CR ${c.cr}` : 'Fixed HP'}
+                  {hpFormulaFor(c) ? `Roll ${hpFormulaFor(c)}` : c.cr ? `CR ${c.cr}` : 'Fixed HP'}
                 </div>
               </div>
+              <input
+                className="init-input hp-formula-input"
+                value={hpFormulaFor(c)}
+                onChange={e => setFormula(c.id, e.target.value)}
+                placeholder="2d8"
+              />
               <input
                 className="init-input hp-setup-input"
                 type="number"
@@ -202,9 +221,10 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
                 onChange={e => setHp(c.id, e.target.value)}
               />
               <button
+                type="button"
                 className="init-reroll-btn"
                 onClick={() => reroll(c.id)}
-                title={c.hpMode === 'roll' ? 'Re-roll HP' : 'Reset HP'}
+                title={hpFormulaFor(c) ? `Roll ${hpFormulaFor(c)}` : 'Reset HP'}
               >
                 🎲
               </button>
@@ -213,9 +233,9 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
         </div>
 
         <div className="init-actions">
-          <button className="init-cancel-btn" onClick={onCancel}>Cancel</button>
-          <button className="hp-reroll-all-btn" onClick={rerollAll}>Roll All HP</button>
-          <button className="init-start-btn" onClick={() => onContinue(draft)}>Continue to Initiative →</button>
+          <button type="button" className="init-cancel-btn" onClick={onCancel}>Cancel</button>
+          <button type="button" className="hp-reroll-all-btn" onClick={rerollAll}>Roll All HP</button>
+          <button type="button" className="init-start-btn" onClick={() => onContinue(draft)}>Continue to Initiative →</button>
         </div>
       </div>
     </div>
