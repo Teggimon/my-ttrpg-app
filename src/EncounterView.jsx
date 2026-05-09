@@ -14,6 +14,26 @@ function decode(b64) {
   return JSON.parse(atob(b64.replace(/\s/g, '')))
 }
 function rollD20() { return Math.floor(Math.random() * 20) + 1 }
+function rollHpFormula(formula) {
+  const text = String(formula ?? '').trim().replace(/\s/g, '')
+  const match = text.match(/^(\d*)d(\d+)([+-]\d+)?$/i)
+  if (!match) return null
+  const count = Math.max(1, parseInt(match[1] || '1', 10))
+  const sides = Math.max(1, parseInt(match[2], 10))
+  const mod = parseInt(match[3] || '0', 10)
+  let total = mod
+  for (let i = 0; i < count; i++) total += Math.floor(Math.random() * sides) + 1
+  return Math.max(1, total)
+}
+function baseHpFor(combatant) {
+  return combatant.hpValue ?? combatant.hpMax ?? combatant.hp ?? 10
+}
+function setupHpFor(combatant) {
+  if (combatant.hpMode === 'roll') {
+    return rollHpFormula(combatant.hpFormula) ?? baseHpFor(combatant)
+  }
+  return baseHpFor(combatant)
+}
 function hpPct(cur, max) { return max ? Math.min(100, Math.round((cur / max) * 100)) : 0 }
 function hpColor(pct) {
   if (pct <= 0) return 'var(--text-muted)'
@@ -39,7 +59,7 @@ function buildCombatants(party, encounter) {
       emoji:    '⚔️',
       hp:       char.hpCurrent ?? char.hpMax ?? 10,
       hpMax:    char.hpMax ?? 10,
-      initiative: rollD20() + (char.initiativeMod ?? 0),
+      initiative: null,
       initiativeMod: char.initiativeMod ?? 0,
       ac:       char.ac ?? 10,
       conditions: [],
@@ -48,10 +68,15 @@ function buildCombatants(party, encounter) {
 
   const enemyCombatants = (encounter.combatants ?? [])
     .filter(c => c.type === 'enemy' || c.type === 'boss')
-    .map(c => ({
-      ...c,
-      initiative: rollD20() + (c.initiativeMod ?? 0),
-    }))
+    .map(c => {
+      const hp = setupHpFor(c)
+      return {
+        ...c,
+        hp,
+        hpMax: hp,
+        initiative: null,
+      }
+    })
 
   // If no enemies defined yet, add a placeholder set
   if (enemyCombatants.length === 0 && (encounter.enemies ?? []).length === 0) {
@@ -59,7 +84,7 @@ function buildCombatants(party, encounter) {
       ...playerCombatants,
       {
         id: genId(), type: 'enemy', name: 'Goblin', emoji: '👺',
-        hp: 7, hpMax: 7, initiative: rollD20() + 2, initiativeMod: 2,
+        hp: 7, hpMax: 7, initiative: null, initiativeMod: 2,
         ac: 15, attackBonus: 4, saveDC: 8, cr: '1/4',
         conditions: [], downed: false,
         actions: [
@@ -75,7 +100,10 @@ function buildCombatants(party, encounter) {
 
 // ── Initiative Setup Overlay ──────────────────────────────────
 function InitiativeOverlay({ combatants, onStart, onCancel }) {
-  const [order, setOrder] = useState(combatants.map(c => ({ ...c })))
+  const [order, setOrder] = useState(combatants.map(c => ({
+    ...c,
+    initiative: c.initiative ?? rollD20() + (c.initiativeMod ?? 0),
+  })))
 
   const setInit = (id, val) => {
     setOrder(prev => prev.map(c => c.id === id ? { ...c, initiative: parseInt(val) || 0 } : c))
@@ -118,6 +146,76 @@ function InitiativeOverlay({ combatants, onStart, onCancel }) {
         <div className="init-actions">
           <button className="init-cancel-btn" onClick={onCancel}>Cancel</button>
           <button className="init-start-btn" onClick={() => onStart(sorted)}>Start Encounter →</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── HP Setup Overlay ──────────────────────────────────────────
+function HpSetupOverlay({ combatants, onContinue, onCancel }) {
+  const [draft, setDraft] = useState(combatants.map(c => ({ ...c })))
+  const enemies = draft.filter(c => c.type !== 'player')
+
+  const setHp = (id, val) => {
+    const hp = Math.max(1, parseInt(val) || 1)
+    setDraft(prev => prev.map(c => c.id === id ? { ...c, hp, hpMax: hp, downed: false } : c))
+  }
+
+  const reroll = (id) => {
+    setDraft(prev => prev.map(c => {
+      if (c.id !== id) return c
+      const hp = setupHpFor(c)
+      return { ...c, hp, hpMax: hp, downed: false }
+    }))
+  }
+
+  const rerollAll = () => {
+    setDraft(prev => prev.map(c => {
+      if (c.type === 'player' || c.hpMode !== 'roll') return c
+      const hp = setupHpFor(c)
+      return { ...c, hp, hpMax: hp, downed: false }
+    }))
+  }
+
+  return (
+    <div className="init-overlay">
+      <div className="init-panel hp-setup-panel">
+        <div className="init-title">❤️ Enemy Health</div>
+        <div className="init-subtitle">Roll or adjust enemy HP before initiative</div>
+
+        <div className="init-list">
+          {enemies.map(c => (
+            <div key={c.id} className="init-row init-row--enemy hp-setup-row">
+              <div className="init-portrait">{c.emoji ?? '👺'}</div>
+              <div className="init-info">
+                <div className="init-name">{c.name}</div>
+                <div className="init-sub">
+                  {c.hpMode === 'roll' && c.hpFormula ? `Roll ${c.hpFormula}` : c.cr ? `CR ${c.cr}` : 'Fixed HP'}
+                </div>
+              </div>
+              <input
+                className="init-input hp-setup-input"
+                type="number"
+                min="1"
+                value={c.hpMax}
+                onChange={e => setHp(c.id, e.target.value)}
+              />
+              <button
+                className="init-reroll-btn"
+                onClick={() => reroll(c.id)}
+                title={c.hpMode === 'roll' ? 'Re-roll HP' : 'Reset HP'}
+              >
+                🎲
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <div className="init-actions">
+          <button className="init-cancel-btn" onClick={onCancel}>Cancel</button>
+          <button className="hp-reroll-all-btn" onClick={rerollAll}>Roll All HP</button>
+          <button className="init-start-btn" onClick={() => onContinue(draft)}>Continue to Initiative →</button>
         </div>
       </div>
     </div>
@@ -268,7 +366,7 @@ function EnemyRow({ combatant, isActive, onHpChange, onAddCondition, onRemoveCon
 //  Main EncounterView
 // ════════════════════════════════════════════════════════════════
 export default function EncounterView({ token, user, encounter, session, campaign, party, onBack, onEndEncounter }) {
-  const [phase, setPhase]         = useState('initiative')  // 'initiative' | 'combat'
+  const [phase, setPhase]         = useState('hp')  // 'hp' | 'initiative' | 'combat'
   const [combatants, setCombatants] = useState(() => buildCombatants(party, encounter))
   const [order, setOrder]         = useState([])
   const [currentIdx, setCurrentIdx] = useState(0)
@@ -280,6 +378,11 @@ export default function EncounterView({ token, user, encounter, session, campaig
   const basePath = `campaigns/${campaign.slug}`
 
   // Start encounter after initiative setup
+  const continueToInitiative = (updatedCombatants) => {
+    setCombatants(updatedCombatants)
+    setPhase('initiative')
+  }
+
   const startEncounter = (sorted) => {
     setOrder(sorted)
     setPhase('combat')
@@ -411,6 +514,15 @@ export default function EncounterView({ token, user, encounter, session, campaig
   return (
     <div className="app-page app-page--full">
     <div className="app-container app-container--wide app-container--dm app-container--full-height ev-layout">
+      {/* ── Enemy HP setup overlay ── */}
+      {phase === 'hp' && (
+        <HpSetupOverlay
+          combatants={combatants}
+          onContinue={continueToInitiative}
+          onCancel={onBack}
+        />
+      )}
+
       {/* ── Initiative overlay ── */}
       {phase === 'initiative' && (
         <InitiativeOverlay

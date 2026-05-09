@@ -44,17 +44,6 @@ function normalizeAction(action) {
     note: action.note ?? action.desc,
   }
 }
-function rollHpFormula(formula) {
-  const text = String(formula ?? '').trim().replace(/\s/g, '')
-  const match = text.match(/^(\d*)d(\d+)([+-]\d+)?$/i)
-  if (!match) return null
-  const count = Math.max(1, parseInt(match[1] || '1', 10))
-  const sides = Math.max(1, parseInt(match[2], 10))
-  const mod = parseInt(match[3] || '0', 10)
-  let total = mod
-  for (let i = 0; i < count; i++) total += Math.floor(Math.random() * sides) + 1
-  return Math.max(1, total)
-}
 function npcToCombatant(npc, index = 0, hpOverride = null) {
   const label = labelForIndex(index)
   const hasMultipleLabel = index != null
@@ -963,10 +952,17 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
   const save = () => {
     const combatants = selectedGroups.flatMap(g =>
       Array.from({ length: g.quantity }, (_, index) => {
+        const hpMode = g.hpMode ?? 'fixed'
+        const hpFormula = g.hpFormula ?? g.npc.hitDie ?? ''
         const fixedHp = parseInt(g.hpValue, 10)
-        const rolledHp = g.hpMode === 'roll' ? rollHpFormula(g.hpFormula) : null
-        const hp = rolledHp ?? (!Number.isNaN(fixedHp) ? fixedHp : null)
-        return npcToCombatant(g.npc, index, hp)
+        const hpValue = !Number.isNaN(fixedHp) ? fixedHp : (g.npc.hp ?? 10)
+        const previewHp = hpMode === 'roll' ? null : hpValue
+        return {
+          ...npcToCombatant(g.npc, index, previewHp),
+          hpMode,
+          hpValue,
+          hpFormula,
+        }
       })
     )
     onSave({

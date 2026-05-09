@@ -245,7 +245,7 @@ function NewEncounterModal({ encounterNumber, preparedEncounters, onCreate, onCl
 
         {selected && (
           <div className="sv-prepared-summary">
-            {(selected.combatants ?? []).length} combatant{(selected.combatants ?? []).length !== 1 ? 's' : ''} will be loaded into initiative.
+            {(selected.combatants ?? []).length} combatant{(selected.combatants ?? []).length !== 1 ? 's' : ''} will be loaded into health setup.
           </div>
         )}
 
@@ -405,7 +405,16 @@ export default function SessionView({ token, user, session, campaign, party, ini
   }
 
   const createEncounter = async (name, preparedEncounter = null) => {
-    const combatants = (preparedEncounter?.combatants ?? []).map(cloneCombatant)
+    const groups = preparedEncounter?.groups ?? []
+    const combatants = (preparedEncounter?.combatants ?? []).map(combatant => {
+      const hpGroup = groups.find(g => g.npcId === combatant.npcId)
+      return cloneCombatant(hpGroup ? {
+        ...combatant,
+        hpMode: hpGroup.hpMode,
+        hpValue: hpGroup.hpValue,
+        hpFormula: hpGroup.hpFormula,
+      } : combatant)
+    })
     const enc = {
       encounterId: genId(),
       name,

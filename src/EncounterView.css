@@ -122,6 +122,36 @@
 }
 .init-start-btn:hover { background: var(--dm-hover); }
 
+/* ── HP Setup Overlay ── */
+.hp-setup-panel {
+  max-width: 560px;
+}
+
+.hp-setup-row {
+  border-left-color: var(--hp-mid);
+}
+
+.hp-setup-input {
+  width: 72px;
+}
+
+.hp-reroll-all-btn {
+  padding: 11px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-inset);
+  border: 0.5px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.hp-reroll-all-btn:hover {
+  color: var(--hp-mid);
+  border-color: var(--warning-border);
+}
+
 /* ── Top bar ── */
 .ev-topbar {
   display: flex;
