@@ -93,7 +93,7 @@
 }
 
 .home-wordmark {
-  font-family: var(--font-name);
+  font-family: var(--font-character);
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
@@ -391,9 +391,9 @@
   background: var(--bg-surface);
 }
 
-/* Name — Cinzel display font as per spec */
+/* Name — app character/name face */
 .char-card-name {
-  font-family: var(--font-name);
+  font-family: var(--font-character);
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
