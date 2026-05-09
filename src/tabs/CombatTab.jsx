@@ -49,6 +49,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const [showEdit,       setShowEdit]       = useState(false)
   const [srdMap,         setSrdMap]         = useState({})
   const [spellMap,       setSpellMap]       = useState({})
+  const [castSlots,      setCastSlots]      = useState({})
 
   const level  = xpToLevel(char.identity?.xp ?? 0)
   const pb     = PROFICIENCY[level] ?? 2
@@ -140,19 +141,21 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const racialCombatTraits = (char.identity.racialTraits ?? [])
     .filter(t => COMBAT_TRAIT_INDICES.has(t.index))
 
-  function castSpell(spellLevel) {
+  function availableSlotLevels(spellLevel) {
     if (spellLevel === 0) return // cantrips use no slots
     const slots = char.spells?.slots ?? {}
-    // Find lowest available slot at or above spell level
-    for (let lvl = spellLevel; lvl <= 9; lvl++) {
-      const slot = slots[lvl]
-      if (slot && slot.used < slot.total) {
-        const updated = { ...slots, [lvl]: { ...slot, used: slot.used + 1 } }
-        updateChar({ spells: { ...char.spells, slots: updated } })
-        return
-      }
-    }
-    // No slots available — nothing to do
+    return Object.entries(slots)
+      .filter(([lvl, slot]) => Number(lvl) >= spellLevel && slot.total > 0 && slot.used < slot.total)
+      .map(([lvl]) => Number(lvl))
+      .sort((a, b) => a - b)
+  }
+
+  function castSpell(spellLevel, slotLevel) {
+    if (spellLevel === 0) return // cantrips use no slots
+    const slots = char.spells?.slots ?? {}
+    const slot = slots[slotLevel]
+    if (!slot || slot.used >= slot.total) return
+    updateChar({ spells: { ...char.spells, slots: { ...slots, [slotLevel]: { ...slot, used: slot.used + 1 } } } })
   }
 
   function toggleDeathSave(type, index) {
@@ -307,10 +310,14 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
           {preparedSpells.map(spell => {
             const srd  = spellMap[spell.index] ?? {}
             const isConc = srd.concentration === true
+            const availableSlots = spell.level > 0 ? availableSlotLevels(spell.level) : []
+            const selectedSlot = availableSlots.includes(castSlots[spell.id])
+              ? castSlots[spell.id]
+              : availableSlots[0]
             const dmgDice = srd.damage?.damage_at_character_level
               ? Object.values(srd.damage.damage_at_character_level)[0]
               : srd.damage?.damage_at_slot_level
-                ? Object.values(srd.damage.damage_at_slot_level)[0]
+                ? srd.damage.damage_at_slot_level[selectedSlot] ?? srd.damage.damage_at_slot_level[spell.level] ?? Object.values(srd.damage.damage_at_slot_level)[0]
                 : null
             const dmgType = srd.damage?.damage_type?.name ?? ''
             const isAtk   = !!srd.attack_type
@@ -326,9 +333,25 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                   {isAtk && spellAtk != null && <span className="badge">{fmtB(spellAtk)} to hit</span>}
                   {isConc && <span className="badge badge--dim">Conc</span>}
                   {spell.level > 0 && <span className="badge badge--dim">Lv {spell.level}</span>}
+                  {spell.level > 0 && (
+                    <select
+                      className="cast-slot-select"
+                      value={selectedSlot ?? ''}
+                      onChange={e => setCastSlots(prev => ({ ...prev, [spell.id]: Number(e.target.value) }))}
+                      disabled={!isOwner || locked || availableSlots.length === 0}
+                      title="Choose spell slot level"
+                    >
+                      {availableSlots.length === 0 ? (
+                        <option value="">No slots</option>
+                      ) : availableSlots.map(lvl => (
+                        <option key={lvl} value={lvl}>Lv {lvl}</option>
+                      ))}
+                    </select>
+                  )}
                   <button
                     className="atk-btn atk-btn--roll"
-                    onClick={() => isOwner && !locked && castSpell(spell.level)}
+                    onClick={() => isOwner && !locked && castSpell(spell.level, selectedSlot)}
+                    disabled={spell.level > 0 && !selectedSlot}
                     title={spell.level === 0 ? 'Cantrip — no slot used' : 'Cast — uses one spell slot'}
                   >Cast</button>
                 </div>
