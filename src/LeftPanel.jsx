@@ -97,8 +97,6 @@ export default function LeftPanel({
               ? <button className="icon-btn" onClick={onToggleLock} title={locked ? 'Unlock' : 'Lock'}>{locked ? '🔒' : '🔓'}</button>
               : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🔒</span>
             }
-            <button className="icon-btn" title="Share">↑</button>
-            <button className="icon-btn" title="More">⋯</button>
           </div>
         </div>
       </div>
