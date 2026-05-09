@@ -8,7 +8,6 @@
 }
 .attack-card--magic {
   border-color: var(--gold-border);
-  box-shadow: inset 3px 0 0 var(--gold);
 }
 .attack-card--magic:hover {
   border-color: var(--gold);

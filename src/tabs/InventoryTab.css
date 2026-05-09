@@ -107,7 +107,6 @@
 }
 .inv-row--magic {
   border-color: var(--gold-border);
-  box-shadow: inset 3px 0 0 var(--gold);
 }
 .inv-row--magic:hover {
   border-color: var(--gold);
