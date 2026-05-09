@@ -44,6 +44,9 @@ function normalizeAction(action) {
     note: action.note ?? action.desc,
   }
 }
+function firstText(...values) {
+  return values.find(value => String(value ?? '').trim()) ?? ''
+}
 function npcToCombatant(npc, index = 0, hpOverride = null) {
   const label = labelForIndex(index)
   const hasMultipleLabel = index != null
@@ -73,6 +76,7 @@ function npcToCombatant(npc, index = 0, hpOverride = null) {
       category: npc.category,
       type: npc.type,
       hitDie: npc.hitDie,
+      hit_dice: npc.hit_dice,
     },
   }
 }
@@ -535,7 +539,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
       type:       monster.type,
       cr:         formatCR(monster.challenge_rating),
       hp:         monster.hit_points ?? null,
-      hitDie:     monster.hit_dice ?? '',
+      hitDie:     firstText(monster.hit_dice, monster.hitDie),
       ac:         monster.armor_class?.[0]?.value ?? null,
       initiative: dexMod(monster.dexterity),
       category:   cat,
@@ -650,7 +654,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
                     <div className="npc-sr-icon">👺</div>
                     <div className="npc-sr-info">
                       <div className="npc-sr-name">{m.name}</div>
-                      <div className="npc-sr-meta">{m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}</div>
+                      <div className="npc-sr-meta">{m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP{firstText(m.hit_dice, m.hitDie) ? ` · ${firstText(m.hit_dice, m.hitDie)}` : ''} · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}</div>
                     </div>
                     <span className="npc-sr-badge npc-sr-badge--srd">SRD</span>
                     <div className="npc-sr-btns">
@@ -928,7 +932,7 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
         quantity: 1,
         hpMode: 'fixed',
         hpValue: npc.hp ?? 10,
-        hpFormula: npc.hitDie ?? '',
+        hpFormula: firstText(npc.hitDie, npc.hit_dice),
       }]
     })
   }
@@ -953,7 +957,7 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
     const combatants = selectedGroups.flatMap(g =>
       Array.from({ length: g.quantity }, (_, index) => {
         const hpMode = g.hpMode ?? 'fixed'
-        const hpFormula = g.hpFormula ?? g.npc.hitDie ?? ''
+        const hpFormula = firstText(g.hpFormula, g.npc.hitDie, g.npc.hit_dice)
         const fixedHp = parseInt(g.hpValue, 10)
         const hpValue = !Number.isNaN(fixedHp) ? fixedHp : (g.npc.hp ?? 10)
         const previewHp = hpMode === 'roll' ? null : hpValue
@@ -977,7 +981,7 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
         quantity: g.quantity,
         hpMode: g.hpMode ?? 'fixed',
         hpValue: g.hpValue ?? g.npc.hp ?? 10,
-        hpFormula: g.hpFormula ?? g.npc.hitDie ?? '',
+        hpFormula: firstText(g.hpFormula, g.npc.hitDie, g.npc.hit_dice),
       })),
       combatants,
       updatedAt: new Date().toISOString(),
@@ -1038,7 +1042,7 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
                     </select>
                     {(g.hpMode ?? 'fixed') === 'roll' ? (
                       <input
-                        value={g.hpFormula ?? g.npc.hitDie ?? ''}
+                        value={firstText(g.hpFormula, g.npc.hitDie, g.npc.hit_dice)}
                         onChange={e => updateGroup(g.npcId, { hpFormula: e.target.value })}
                         placeholder="2d6+2"
                       />

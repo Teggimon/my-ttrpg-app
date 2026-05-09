@@ -91,6 +91,10 @@
   padding: 2px;
 }
 .init-reroll-btn:hover { opacity: 1; }
+.init-reroll-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 
 .init-actions { display: flex; gap: var(--spacing-sm); }
 

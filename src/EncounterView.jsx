@@ -28,17 +28,24 @@ function rollHpFormula(formula) {
 function baseHpFor(combatant) {
   return combatant.hpValue ?? combatant.hpMax ?? combatant.hp ?? 10
 }
+function firstText(...values) {
+  return values.find(value => String(value ?? '').trim()) ?? ''
+}
 function hpFormulaFor(combatant) {
-  return combatant.hpFormula ?? combatant.sourceNpc?.hitDie ?? combatant.hitDie ?? ''
+  return firstText(
+    combatant.hpFormula,
+    combatant.sourceNpc?.hitDie,
+    combatant.sourceNpc?.hit_dice,
+    combatant.hitDie,
+    combatant.hit_dice
+  )
 }
 function setupHpFor(combatant) {
-  if (combatant.hpMode === 'roll') {
-    return rollHpFormula(hpFormulaFor(combatant)) ?? baseHpFor(combatant)
-  }
   return baseHpFor(combatant)
 }
 function rollHpFor(combatant) {
-  return rollHpFormula(hpFormulaFor(combatant)) ?? setupHpFor(combatant)
+  const formula = hpFormulaFor(combatant)
+  return formula ? rollHpFormula(formula) ?? setupHpFor(combatant) : setupHpFor(combatant)
 }
 function hpPct(cur, max) { return max ? Math.min(100, Math.round((cur / max) * 100)) : 0 }
 function hpColor(pct) {
@@ -185,7 +192,7 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
 
   const rerollAll = () => {
     setDraft(prev => prev.map(c => {
-      if (c.type === 'player' || c.hpMode !== 'roll') return c
+      if (c.type === 'player' || !hpFormulaFor(c)) return c
       const hp = rollHpFor(c)
       return { ...c, hp, hpMax: hp, downed: false }
     }))
@@ -211,7 +218,7 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
                 className="init-input hp-formula-input"
                 value={hpFormulaFor(c)}
                 onChange={e => setFormula(c.id, e.target.value)}
-                placeholder="2d8"
+                placeholder="HP dice"
               />
               <input
                 className="init-input hp-setup-input"
@@ -225,6 +232,7 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
                 className="init-reroll-btn"
                 onClick={() => reroll(c.id)}
                 title={hpFormulaFor(c) ? `Roll ${hpFormulaFor(c)}` : 'Reset HP'}
+                disabled={!hpFormulaFor(c)}
               >
                 🎲
               </button>
