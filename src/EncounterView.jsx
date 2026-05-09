@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Octokit } from '@octokit/rest'
+import { getMonsters } from './srdContent'
 import './EncounterView.css'
 
 const CAMPAIGNS_REPO = 'ttrpg-campaigns'
@@ -31,6 +32,9 @@ function baseHpFor(combatant) {
 function firstText(...values) {
   return values.find(value => String(value ?? '').trim()) ?? ''
 }
+function normalizeName(name) {
+  return String(name ?? '').replace(/\s+[A-Z]$/, '').trim().toLowerCase()
+}
 function hpFormulaFor(combatant) {
   return firstText(
     combatant.hpFormula,
@@ -39,6 +43,11 @@ function hpFormulaFor(combatant) {
     combatant.hitDie,
     combatant.hit_dice
   )
+}
+function tokenFor(combatant) {
+  if (combatant.type === 'player') return 'PC'
+  if (combatant.type === 'boss') return 'B'
+  return 'E'
 }
 function setupHpFor(combatant) {
   return baseHpFor(combatant)
@@ -138,7 +147,7 @@ function InitiativeOverlay({ combatants, onStart, onCancel }) {
         <div className="init-list">
           {order.map(c => (
             <div key={c.id} className={`init-row${c.type === 'player' ? ' init-row--player' : ' init-row--enemy'}`}>
-              <div className="init-portrait">{c.emoji}</div>
+              <div className={`init-token${c.type === 'player' ? ' init-token--player' : ' init-token--enemy'}`}>{tokenFor(c)}</div>
               <div className="init-info">
                 <div className="init-name">{c.name}</div>
                 <div className="init-sub">
@@ -169,7 +178,26 @@ function InitiativeOverlay({ combatants, onStart, onCancel }) {
 // ── HP Setup Overlay ──────────────────────────────────────────
 function HpSetupOverlay({ combatants, onContinue, onCancel }) {
   const [draft, setDraft] = useState(combatants.map(c => ({ ...c })))
-  const enemies = draft.filter(c => c.type !== 'player')
+  const enemies = useMemo(() => draft.filter(c => c.type !== 'player'), [draft])
+
+  useEffect(() => {
+    const needsFormula = enemies.some(c => !hpFormulaFor(c))
+    if (!needsFormula) return
+    let cancelled = false
+    getMonsters()
+      .then(monsters => {
+        if (cancelled) return
+        const byName = new Map(monsters.map(monster => [normalizeName(monster.name), monster]))
+        setDraft(prev => prev.map(c => {
+          if (c.type === 'player' || hpFormulaFor(c)) return c
+          const monster = byName.get(normalizeName(c.baseName ?? c.name))
+          const hpFormula = firstText(monster?.hit_dice, monster?.hitDie)
+          return hpFormula ? { ...c, hpFormula, hpMode: 'roll' } : c
+        }))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [enemies])
 
   const setHp = (id, val) => {
     const hp = Math.max(1, parseInt(val) || 1)
@@ -201,13 +229,13 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
   return (
     <div className="init-overlay">
       <div className="init-panel hp-setup-panel">
-        <div className="init-title">❤️ Enemy Health</div>
+        <div className="init-title">Enemy Health</div>
         <div className="init-subtitle">Roll or adjust enemy HP before initiative</div>
 
         <div className="init-list">
           {enemies.map(c => (
             <div key={c.id} className="init-row init-row--enemy hp-setup-row">
-              <div className="init-portrait">{c.emoji ?? '👺'}</div>
+              <div className="init-token init-token--enemy">{tokenFor(c)}</div>
               <div className="init-info">
                 <div className="init-name">{c.name}</div>
                 <div className="init-sub">
@@ -231,10 +259,10 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
                 type="button"
                 className="init-reroll-btn"
                 onClick={() => reroll(c.id)}
-                title={hpFormulaFor(c) ? `Roll ${hpFormulaFor(c)}` : 'Reset HP'}
+                title={hpFormulaFor(c) ? `Roll ${hpFormulaFor(c)}` : 'No HP dice found'}
                 disabled={!hpFormulaFor(c)}
               >
-                🎲
+                Roll
               </button>
             </div>
           ))}
