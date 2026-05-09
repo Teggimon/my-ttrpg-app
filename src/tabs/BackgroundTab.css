@@ -61,8 +61,8 @@
   color: var(--text-secondary); transition: all 150ms; font-family: var(--font-body);
 }
 .dact:hover { color: var(--text-primary); }
-.dact--danger { color: var(--danger); border-color: rgba(248,113,113,0.3); }
-.dact--danger:hover { background: rgba(248,113,113,0.1); }
+.dact--danger { color: var(--danger); border-color: var(--danger-border); }
+.dact--danger:hover { background: var(--danger-subtle); }
 
 .bg-field-label {
   display: flex; flex-direction: column; gap: 4px;

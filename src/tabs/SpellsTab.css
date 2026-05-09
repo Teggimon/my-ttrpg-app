@@ -92,7 +92,7 @@
   display: flex; align-items: center; gap: 8px;
   padding: 9px 12px; cursor: pointer; user-select: none;
 }
-.spell-row-head:hover { background: rgba(255,255,255,.02); }
+.spell-row-head:hover { background: var(--hover-subtle); }
 
 /* Concentration dot */
 .conc-dot-wrap { flex-shrink: 0; width: 12px; display: flex; align-items: center; justify-content: center; }
@@ -222,6 +222,6 @@
   text-align: left; gap: 10px; transition: background .1s;
 }
 .spell-picker-row:last-child { border-bottom: none; }
-.spell-picker-row:hover { background: rgba(255,255,255,.03); }
+.spell-picker-row:hover { background: var(--hover-strong); }
 .spell-picker-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
 .spell-picker-meta { font-size: 10px; font-family: var(--font-mono); color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }

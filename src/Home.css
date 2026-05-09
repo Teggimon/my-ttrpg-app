@@ -4,7 +4,7 @@
 .home-body {
   width: 100%;
   min-height: 100vh;
-  background: #080712;          /* slightly darker than --bg-base */
+  background: var(--bg-page);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -36,19 +36,19 @@
     min-height: unset;
     border-radius: 16px;
     border: 0.5px solid var(--border-strong);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7), 0 0 0 0.5px var(--border);
+    box-shadow: var(--shadow-lg), 0 0 0 0.5px var(--border);
   }
 }
 
 /* DM mode — border tint shifts to crimson */
 .home-panel--dm {
-  border-color: rgba(180, 40, 40, 0.4);
+  border-color: var(--dm-border);
 }
 
 @media (min-width: 720px) {
   .home-panel--dm {
-    border-color: rgba(180, 40, 40, 0.45);
-    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7), 0 0 0 0.5px rgba(180, 40, 40, 0.4);
+    border-color: var(--dm-border);
+    box-shadow: var(--shadow-lg), 0 0 0 0.5px var(--dm-border);
   }
 }
 
@@ -135,14 +135,14 @@
 
 .mode-btn--active {
   background: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 10px rgba(124, 111, 245, 0.4);
+  color: var(--text-inverse);
+  box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .mode-btn--dm-active {
-  background: #c0392b;
-  color: #fff;
-  box-shadow: 0 0 10px rgba(192, 57, 43, 0.5);
+  background: var(--dm);
+  color: var(--text-inverse);
+  box-shadow: 0 0 10px var(--dm-glow);
 }
 
 /* ── User area ── */

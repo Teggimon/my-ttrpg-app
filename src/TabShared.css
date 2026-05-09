@@ -11,7 +11,7 @@
   color: var(--accent-light);
   font-size: 11px;
   cursor: pointer;
-  font-family: var(--font);
+  font-family: var(--font-body);
   padding: 0;
 }
 .add-link:hover { opacity: 0.8; }

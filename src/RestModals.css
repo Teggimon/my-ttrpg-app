@@ -5,7 +5,7 @@
 .rest-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.68);
+  background: var(--overlay-bg);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -155,7 +155,7 @@
   line-height: 1;
 }
 
-.hd-btn:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.hd-btn:hover:not(:disabled) { background: var(--hover-strong); color: var(--text-primary); }
 .hd-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .hd-val {

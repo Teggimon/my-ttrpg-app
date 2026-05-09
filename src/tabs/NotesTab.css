@@ -22,7 +22,7 @@
   user-select: none;
   min-height: 44px;
 }
-.note-section-head:hover { background: rgba(255,255,255,0.02); }
+.note-section-head:hover { background: var(--hover-subtle); }
 
 .note-lock {
   font-size: 11px; flex-shrink: 0; opacity: .5;

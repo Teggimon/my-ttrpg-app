@@ -525,5 +525,5 @@
 }
 .effect-mode-btn--on {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-inverse);
 }

@@ -196,7 +196,7 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.ev-end-btn:hover { background: rgba(248,113,113,0.1); }
+.ev-end-btn:hover { background: var(--danger-subtle); }
 
 /* ── Turn bar ── */
 .ev-turn-bar {
@@ -310,7 +310,7 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.comb-head:hover { background: rgba(255,255,255,0.015); }
+.comb-head:hover { background: var(--hover-subtle); }
 
 .init-badge {
   font-family: var(--font-mono);
@@ -385,7 +385,7 @@
 
 .comb-conditions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
 .cond-label { font-family: var(--font-body); font-size: 10px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 2px; }
-.cond-pill { background: var(--condition-bg); color: var(--condition-text); font-family: var(--font-body); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: var(--radius-sm); border: 1px solid rgba(244,132,95,0.3); }
+.cond-pill { background: var(--condition-bg); color: var(--condition-text); font-family: var(--font-body); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: var(--radius-sm); border: 1px solid var(--condition-border); }
 .cond-pill--removable { cursor: pointer; }
 .cond-pill--removable:hover { background: rgba(239,100,60,0.4); }
 .cond-none { font-family: var(--font-body); font-size: 11px; color: var(--text-muted); }
@@ -417,7 +417,7 @@
 .ev-defeated-label { font-family: var(--font-body); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 6px 2px 2px; border-top: 0.5px solid var(--border); margin-top: 4px; }
 
 /* ── End encounter modal ── */
-.ev-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: flex-end; justify-content: center; z-index: 100; }
+.ev-modal-overlay { position: fixed; inset: 0; background: var(--overlay-bg); display: flex; align-items: flex-end; justify-content: center; z-index: 100; }
 .ev-modal-sheet {
   background: var(--bg-elevated);
   border: 0.5px solid var(--border-strong);
@@ -436,11 +436,11 @@
 
 .ev-outcome-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-sm); margin-bottom: var(--spacing-sm); }
 .ev-outcome-btn { padding: 12px var(--spacing-sm); border-radius: var(--radius-md); border: 1px solid; font-family: var(--font-body); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
-.ev-outcome-btn--victory { background: rgba(74,222,128,0.1);   border-color: rgba(74,222,128,0.4);   color: var(--success); }
+.ev-outcome-btn--victory { background: var(--success-subtle);   border-color: var(--success-border);   color: var(--success); }
 .ev-outcome-btn--victory:hover { background: rgba(74,222,128,0.2); }
-.ev-outcome-btn--fled    { background: rgba(245,158,11,0.1);   border-color: rgba(245,158,11,0.4);   color: var(--warning); }
+.ev-outcome-btn--fled    { background: var(--warning-subtle);   border-color: var(--warning-border);   color: var(--warning); }
 .ev-outcome-btn--fled:hover    { background: rgba(245,158,11,0.2); }
-.ev-outcome-btn--defeat  { background: rgba(248,113,113,0.1);  border-color: rgba(248,113,113,0.4);  color: var(--danger); }
+.ev-outcome-btn--defeat  { background: var(--danger-subtle);  border-color: var(--danger-border);  color: var(--danger); }
 .ev-outcome-btn--defeat:hover  { background: rgba(248,113,113,0.2); }
 
 .ev-cancel-btn { width: 100%; padding: 11px; border-radius: var(--radius-md); background: var(--bg-inset); border: 0.5px solid var(--border-strong); color: var(--text-secondary); font-family: var(--font-body); font-size: 13px; font-weight: 700; cursor: pointer; }

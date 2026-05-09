@@ -111,8 +111,8 @@
 }
 .sv-clock-btn:hover { color: var(--text-primary); }
 .sv-clock-btn--paused {
-  background: rgba(74,222,128,0.1);
-  border-color: rgba(74,222,128,0.3);
+  background: var(--success-subtle);
+  border-color: var(--success-border);
   color: var(--success);
 }
 
@@ -225,8 +225,8 @@
   transition: all 0.15s;
 }
 .crc-attend-btn--present {
-  background: rgba(74,222,128,0.12);
-  border-color: rgba(74,222,128,0.4);
+  background: var(--success-subtle);
+  border-color: var(--success-border);
   color: var(--success);
 }
 
@@ -313,7 +313,7 @@
   font-weight: 700;
   padding: 2px 7px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(244,132,95,0.3);
+  border: 1px solid var(--condition-border);
 }
 
 .crc-note {
@@ -476,7 +476,7 @@
 .sv-note-textarea::placeholder { color: var(--text-muted); }
 
 /* ── Modal ── */
-.sv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+.sv-modal-overlay { position: fixed; inset: 0; background: var(--overlay-bg); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
 .sv-modal-sheet {
   background: var(--bg-elevated);
   border: 0.5px solid var(--border-strong);

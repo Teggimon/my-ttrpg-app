@@ -1,6 +1,6 @@
 .bottom-nav {
   display: flex;
-  background: #0a091a;
+  background: var(--bg-inset);
   border-top: 0.5px solid var(--border);
   flex-shrink: 0;
   /* Safe area for iPhone home indicator */
@@ -18,7 +18,7 @@
   border: none;
   cursor: pointer;
   position: relative;
-  font-family: var(--font);
+  font-family: var(--font-body);
   gap: 3px;
   min-height: 52px; /* minimum 44px touch target */
 }

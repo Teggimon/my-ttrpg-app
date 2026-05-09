@@ -145,7 +145,7 @@
 }
 .save-row:first-child { border-right: 0.5px solid var(--border); }
 .save-row--clickable { cursor: pointer; }
-.save-row--clickable:hover { background: rgba(255,255,255,.025); }
+.save-row--clickable:hover { background: var(--hover-subtle); }
 
 .save-dot {
   width: 10px;
@@ -206,7 +206,7 @@
 }
 .skill-row:first-child { border-right: 0.5px solid var(--border); }
 .skill-row--clickable { cursor: pointer; }
-.skill-row--clickable:hover { background: rgba(255,255,255,.025); }
+.skill-row--clickable:hover { background: var(--hover-subtle); }
 
 /* Skill proficiency dot — 3 levels */
 .skill-dot {

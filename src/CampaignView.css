@@ -102,7 +102,7 @@
 .sidebar-resume-btn {
   width: 100%;
   background: var(--dm);
-  color: #fff;
+  color: var(--text-inverse);
   border: none;
   border-radius: var(--radius-sm);
   padding: 7px 10px;
@@ -242,7 +242,7 @@
   padding: var(--spacing-sm) 14px;
   cursor: pointer;
 }
-.session-row-head:hover { background: rgba(255,255,255,0.01); }
+.session-row-head:hover { background: var(--hover-subtle); }
 
 .session-num {
   font-family: var(--font-mono);
@@ -449,8 +449,8 @@
   transition: all 0.15s;
 }
 .active-badge--active {
-  background: rgba(74, 222, 128, 0.12);
-  border-color: rgba(74, 222, 128, 0.4);
+  background: var(--success-subtle);
+  border-color: var(--success-border);
   color: var(--success);
 }
 
@@ -585,7 +585,7 @@
   padding: 10px var(--spacing-sm);
   cursor: pointer;
 }
-.npc-row-head:hover { background: rgba(255,255,255,0.01); }
+.npc-row-head:hover { background: var(--hover-subtle); }
 
 .npc-portrait { font-size: 18px; flex-shrink: 0; }
 .npc-info { flex: 1; min-width: 0; }
@@ -681,7 +681,7 @@
 
 /* ── Modals — use global .modal-overlay / .modal-sheet from index.css ── */
 /* Keep cv- prefixed aliases for backwards compat */
-.cv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+.cv-modal-overlay { position: fixed; inset: 0; background: var(--overlay-bg); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
 .cv-modal-sheet {
   background: var(--bg-elevated);
   border: 0.5px solid var(--border-strong);
@@ -760,9 +760,9 @@
   transition: opacity 0.15s, background 0.15s;
 }
 .cv-btn:disabled { opacity: 0.4; cursor: default; }
-.cv-btn--accent { background: var(--accent); color: #fff; }
+.cv-btn--accent { background: var(--accent); color: var(--text-inverse); }
 .cv-btn--accent:not(:disabled):hover { background: var(--accent-hover); }
-.cv-btn--dm { background: var(--dm); color: #fff; }
+.cv-btn--dm { background: var(--dm); color: var(--text-inverse); }
 .cv-btn--dm:not(:disabled):hover { background: var(--dm-hover); }
 .cv-btn--ghost { background: var(--bg-inset); border: 0.5px solid var(--border-strong); color: var(--text-secondary); flex: none; padding: 11px 20px; }
 .cv-btn--ghost:hover { color: var(--text-primary); }
@@ -886,10 +886,10 @@
   white-space: nowrap;
 }
 .npc-add-btn--enemy { color: var(--dm); border-color: var(--dm-border); background: var(--dm-subtle); }
-.npc-add-btn--enemy:hover { background: var(--dm); color: #fff; }
+.npc-add-btn--enemy:hover { background: var(--dm); color: var(--text-inverse); }
 .npc-add-btn--ally  { color: var(--text-muted); border-color: var(--border); background: transparent; }
 .npc-add-btn--ally:hover  { border-color: var(--border-strong); color: var(--text-secondary); }
-.npc-add-btn--boss  { color: var(--warning); border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.08); }
+.npc-add-btn--boss  { color: var(--warning); border-color: var(--warning-border); background: var(--warning-subtle); }
 .npc-add-btn--boss:hover  { background: rgba(245,158,11,0.2); }
 
 .npc-search-hint {
@@ -946,8 +946,8 @@
 }
 .npc-mode-btn--active {
   background: var(--dm);
-  color: #fff;
-  box-shadow: 0 0 8px rgba(224,82,82,0.3);
+  color: var(--text-inverse);
+  box-shadow: 0 0 8px var(--dm-glow);
 }
 
 /* 3-column grid used in create form */

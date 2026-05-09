@@ -190,38 +190,38 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  wrap: { padding: '1.5rem 1.5rem 5rem', maxWidth: '520px', margin: '0 auto', color: '#e8e0f0', fontFamily: 'system-ui, sans-serif' },
-  h1: { fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', color: '#c9b8ff' },
-  sub: { fontSize: '0.85rem', color: '#888', marginBottom: '1.5rem' },
-  label: { display: 'block', fontSize: '0.8rem', color: '#aaa', marginBottom: '0.3rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  input: { width: '100%', padding: '0.55rem 0.75rem', background: '#12122a', border: '1px solid #333', color: '#e8e0f0', borderRadius: '6px', fontSize: '0.95rem', boxSizing: 'border-box' },
+  wrap: { padding: '1.5rem 1.5rem 5rem', maxWidth: '520px', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' },
+  h1: { fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--accent-hover)' },
+  sub: { fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' },
+  label: { display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  input: { width: '100%', padding: '0.55rem 0.75rem', background: 'var(--bg-inset)', border: '1px solid var(--border-strong)', color: 'var(--text-primary)', borderRadius: '6px', fontSize: '0.95rem', boxSizing: 'border-box' },
   card: (selected) => ({
     padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', marginBottom: '0.5rem',
-    background: selected ? '#1e1560' : '#1a1a35',
-    border: selected ? '1px solid #7c5fff' : '1px solid #2a2a4a',
+    background: selected ? 'var(--accent-subtle)' : 'var(--bg-elevated)',
+    border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
     transition: 'all 0.15s',
   }),
   cardName: { fontWeight: 600, fontSize: '0.95rem' },
-  cardSub: { fontSize: '0.78rem', color: '#888', marginTop: '0.2rem' },
+  cardSub: { fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' },
   row: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' },
   btn: (primary) => ({
     flex: primary ? 2 : 1, padding: '0.65rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
-    background: primary ? '#6c3fff' : '#1a1a35',
-    color: primary ? '#fff' : '#aaa',
-    border: primary ? 'none' : '1px solid #333',
+    background: primary ? 'var(--accent)' : 'var(--bg-elevated)',
+    color: primary ? 'var(--text-inverse)' : 'var(--text-secondary)',
+    border: primary ? 'none' : '1px solid var(--border-strong)',
   }),
   progress: { display: 'flex', gap: '0.35rem', marginBottom: '1.5rem' },
   dot: (active, done) => ({
     height: '4px', flex: 1, borderRadius: '2px',
-    background: done ? '#6c3fff' : active ? '#9d7aff' : '#2a2a4a',
+    background: done ? 'var(--accent)' : active ? 'var(--accent-hover)' : 'var(--border)',
     transition: 'background 0.2s',
   }),
-  checkRow: { display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '6px', cursor: 'pointer', marginBottom: '0.35rem', background: '#1a1a35', border: '1px solid #2a2a4a' },
-  tag: { display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '4px', background: '#1e1560', border: '1px solid #3a2a80', fontSize: '0.75rem', color: '#c9b8ff', marginRight: '0.35rem', marginTop: '0.35rem' },
-  featureBox: { background: '#0f0f25', border: '1px solid #2a2a4a', borderRadius: '8px', padding: '1rem', marginTop: '0.75rem' },
-  featureName: { fontWeight: 700, color: '#c9b8ff', marginBottom: '0.5rem' },
-  featureDesc: { fontSize: '0.82rem', color: '#999', lineHeight: 1.5 },
-  error: { color: '#ff6b6b', fontSize: '0.85rem', marginTop: '0.75rem' },
+  checkRow: { display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '6px', cursor: 'pointer', marginBottom: '0.35rem', background: 'var(--bg-elevated)', border: '1px solid var(--border)' },
+  tag: { display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '4px', background: 'var(--accent-subtle)', border: '1px solid var(--accent-secondary)', fontSize: '0.75rem', color: 'var(--accent-hover)', marginRight: '0.35rem', marginTop: '0.35rem' },
+  featureBox: { background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: '8px', padding: '1rem', marginTop: '0.75rem' },
+  featureName: { fontWeight: 700, color: 'var(--accent-hover)', marginBottom: '0.5rem' },
+  featureDesc: { fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 },
+  error: { color: 'var(--danger)', fontSize: '0.85rem', marginTop: '0.75rem' },
   scrollList: { marginTop: '0.5rem' },
 }
 
@@ -277,10 +277,10 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
 
   const tabBtn = (id) => ({
     flex: 1, padding: '0.5rem', borderRadius: '6px', cursor: 'pointer',
-    fontWeight: 600, fontSize: '0.82rem', fontFamily: 'system-ui',
-    background: method === id ? '#6c3fff' : '#1a1a35',
-    color:      method === id ? '#fff'    : '#888',
-    border:     method === id ? 'none'    : '1px solid #2a2a4a',
+    fontWeight: 600, fontSize: '0.82rem', fontFamily: 'var(--font-body)',
+    background: method === id ? 'var(--accent)' : 'var(--bg-elevated)',
+    color:      method === id ? 'var(--text-inverse)'    : 'var(--text-secondary)',
+    border:     method === id ? 'none'    : '1px solid var(--border)',
   })
 
   const pbCanInc = (a) => pb[a] < 15 && pbLeft >= (PB_COST[pb[a]+1] ?? 99) - (PB_COST[pb[a]] ?? 0)
@@ -308,7 +308,7 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
       {/* ── Standard Array ── */}
       {method === 'standard' && (
         <>
-          <div style={{ fontSize:'0.8rem', color:'#888', marginBottom:'0.75rem' }}>
+          <div style={{ fontSize:'0.8rem', color:'var(--text-secondary)', marginBottom:'0.75rem' }}>
             Assign each value to one ability. Values: {STANDARD_ARRAY.join(', ')}.
           </div>
           {ABILITIES.map(a => {
@@ -317,7 +317,7 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
             const final = val != null ? val + bonus : null
             return (
               <div key={a} style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'0.5rem' }}>
-                <span style={{ width:36, fontSize:'0.8rem', color:'#aaa', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
+                <span style={{ width:36, fontSize:'0.8rem', color:'var(--text-secondary)', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
                 <select
                   style={{ ...S.input, flex:1, padding:'0.45rem 0.6rem' }}
                   value={val ?? ''}
@@ -331,9 +331,9 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
                     <option key={v} value={v}>{v}</option>
                   ))}
                 </select>
-                <span style={{ width:52, textAlign:'right', fontFamily:'monospace', fontSize:'0.95rem', color: final ? '#c9b8ff' : '#444' }}>
+                <span style={{ width:52, textAlign:'right', fontFamily:'var(--font-mono)', fontSize:'0.95rem', color: final ? 'var(--accent-hover)' : 'var(--text-muted)' }}>
                   {final != null ? `= ${final}` : '—'}
-                  {bonus !== 0 && val != null && <span style={{ fontSize:'0.7rem', color:'#7c5fff' }}> (+{bonus})</span>}
+                  {bonus !== 0 && val != null && <span style={{ fontSize:'0.7rem', color:'var(--accent)' }}> (+{bonus})</span>}
                 </span>
               </div>
             )
@@ -344,9 +344,9 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
       {/* ── Point Buy ── */}
       {method === 'pointbuy' && (
         <>
-          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.82rem', color:'#888', marginBottom:'0.75rem' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.82rem', color:'var(--text-secondary)', marginBottom:'0.75rem' }}>
             <span>27-point budget. Scores 8–15 before racial bonuses.</span>
-            <span style={{ color: pbLeft === 0 ? '#6fde8f' : pbLeft < 0 ? '#ff6b6b' : '#c9b8ff', fontWeight:700 }}>
+            <span style={{ color: pbLeft === 0 ? 'var(--success)' : pbLeft < 0 ? 'var(--danger)' : 'var(--accent-hover)', fontWeight:700 }}>
               {pbLeft} pts left
             </span>
           </div>
@@ -355,15 +355,15 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
             const final = pb[a] + bonus
             return (
               <div key={a} style={{ display:'flex', alignItems:'center', gap:'0.6rem', marginBottom:'0.45rem' }}>
-                <span style={{ width:36, fontSize:'0.8rem', color:'#aaa', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
+                <span style={{ width:36, fontSize:'0.8rem', color:'var(--text-secondary)', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
                 <button onClick={() => pbAdj(a,-1)} disabled={!pbCanDec(a)}
-                  style={{ width:28, height:28, borderRadius:4, border:'1px solid #333', background:'#12122a', color:'#aaa', cursor:'pointer', fontSize:'1rem', fontFamily:'system-ui' }}>−</button>
-                <span style={{ width:24, textAlign:'center', fontFamily:'monospace', fontWeight:700, color:'#e8e0f0' }}>{pb[a]}</span>
+                  style={{ width:28, height:28, borderRadius:4, border:'1px solid var(--border-strong)', background:'var(--bg-inset)', color:'var(--text-secondary)', cursor:'pointer', fontSize:'1rem', fontFamily:'var(--font-body)' }}>−</button>
+                <span style={{ width:24, textAlign:'center', fontFamily:'var(--font-mono)', fontWeight:700, color:'var(--text-primary)' }}>{pb[a]}</span>
                 <button onClick={() => pbAdj(a,+1)} disabled={!pbCanInc(a)}
-                  style={{ width:28, height:28, borderRadius:4, border:'1px solid #333', background:'#12122a', color:'#aaa', cursor:'pointer', fontSize:'1rem', fontFamily:'system-ui' }}>+</button>
-                <span style={{ fontSize:'0.75rem', color:'#555', width:32 }}>({PB_COST[pb[a]]}pt)</span>
-                <span style={{ marginLeft:'auto', fontFamily:'monospace', fontSize:'0.95rem', color:'#c9b8ff' }}>
-                  {final}{bonus !== 0 && <span style={{ fontSize:'0.7rem', color:'#7c5fff' }}> (+{bonus})</span>}
+                  style={{ width:28, height:28, borderRadius:4, border:'1px solid var(--border-strong)', background:'var(--bg-inset)', color:'var(--text-secondary)', cursor:'pointer', fontSize:'1rem', fontFamily:'var(--font-body)' }}>+</button>
+                <span style={{ fontSize:'0.75rem', color:'var(--text-muted)', width:32 }}>({PB_COST[pb[a]]}pt)</span>
+                <span style={{ marginLeft:'auto', fontFamily:'var(--font-mono)', fontSize:'0.95rem', color:'var(--accent-hover)' }}>
+                  {final}{bonus !== 0 && <span style={{ fontSize:'0.7rem', color:'var(--accent)' }}> (+{bonus})</span>}
                 </span>
               </div>
             )
@@ -375,9 +375,9 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
       {method === 'manual' && (
         <>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'0.75rem' }}>
-            <span style={{ fontSize:'0.8rem', color:'#888' }}>Enter scores or roll 4d6 drop lowest.</span>
+            <span style={{ fontSize:'0.8rem', color:'var(--text-secondary)' }}>Enter scores or roll 4d6 drop lowest.</span>
             <button
-              style={{ padding:'0.35rem 0.75rem', borderRadius:6, border:'1px solid #7c5fff', background:'transparent', color:'#c9b8ff', cursor:'pointer', fontSize:'0.8rem', fontFamily:'system-ui', fontWeight:600 }}
+              style={{ padding:'0.35rem 0.75rem', borderRadius:6, border:'1px solid var(--accent)', background:'transparent', color:'var(--accent-hover)', cursor:'pointer', fontSize:'0.8rem', fontFamily:'var(--font-body)', fontWeight:600 }}
               onClick={() => setManual(Object.fromEntries(ABILITIES.map(a => [a, roll4d6dl()])))}
             >Roll All</button>
           </div>
@@ -386,20 +386,20 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
             const val   = manual[a] ?? 10
             return (
               <div key={a} style={{ display:'flex', alignItems:'center', gap:'0.75rem', marginBottom:'0.45rem' }}>
-                <span style={{ width:36, fontSize:'0.8rem', color:'#aaa', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
-                <span style={{ width:80, fontSize:'0.75rem', color:'#555' }}>{ABILITY_NAME[a]}</span>
+                <span style={{ width:36, fontSize:'0.8rem', color:'var(--text-secondary)', fontWeight:700 }}>{ABILITY_LABEL[a]}</span>
+                <span style={{ width:80, fontSize:'0.75rem', color:'var(--text-muted)' }}>{ABILITY_NAME[a]}</span>
                 <input
                   type="number" min="3" max="20"
-                  style={{ ...S.input, width:70, padding:'0.4rem 0.5rem', textAlign:'center', fontFamily:'monospace' }}
+                  style={{ ...S.input, width:70, padding:'0.4rem 0.5rem', textAlign:'center', fontFamily:'var(--font-mono)' }}
                   value={val}
                   onChange={e => setManual(p => ({ ...p, [a]: Math.max(1, Math.min(20, Number(e.target.value))) }))}
                 />
                 <button
-                  style={{ padding:'0.3rem 0.6rem', borderRadius:4, border:'1px solid #333', background:'#12122a', color:'#888', cursor:'pointer', fontSize:'0.75rem', fontFamily:'system-ui' }}
+                  style={{ padding:'0.3rem 0.6rem', borderRadius:4, border:'1px solid var(--border-strong)', background:'var(--bg-inset)', color:'var(--text-secondary)', cursor:'pointer', fontSize:'0.75rem', fontFamily:'var(--font-body)' }}
                   onClick={() => setManual(p => ({ ...p, [a]: roll4d6dl() }))}
                 >Roll</button>
-                <span style={{ marginLeft:'auto', fontFamily:'monospace', fontSize:'0.95rem', color:'#c9b8ff' }}>
-                  {val + bonus}{bonus !== 0 && <span style={{ fontSize:'0.7rem', color:'#7c5fff' }}> (+{bonus})</span>}
+                <span style={{ marginLeft:'auto', fontFamily:'var(--font-mono)', fontSize:'0.95rem', color:'var(--accent-hover)' }}>
+                  {val + bonus}{bonus !== 0 && <span style={{ fontSize:'0.7rem', color:'var(--accent)' }}> (+{bonus})</span>}
                 </span>
               </div>
             )
@@ -532,8 +532,8 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
             const key = opt.ability_score.index
             const checked = !!bonusOptions.find(b => b.ability_score.index === key)
             return (
-              <div key={i} style={{ ...S.checkRow, border: checked ? '1px solid #7c5fff' : '1px solid #2a2a4a' }} onClick={() => toggleBonus(opt)}>
-                <span style={{ color: checked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+              <div key={i} style={{ ...S.checkRow, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }} onClick={() => toggleBonus(opt)}>
+                <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
                 <span>+{opt.bonus} {opt.ability_score.name}</span>
               </div>
             )
@@ -558,27 +558,27 @@ function SpellPicker({ label, spells, selected, max, onToggle }) {
     <div style={{ marginBottom: '1rem' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
         <label style={S.label}>{label}</label>
-        <span style={{ fontSize:'0.75rem', color: selected.length === max ? '#6fde8f' : '#888' }}>
+        <span style={{ fontSize:'0.75rem', color: selected.length === max ? 'var(--success)' : 'var(--text-secondary)' }}>
           {selected.length} / {max}
         </span>
       </div>
       <input style={{ ...S.input, marginBottom:'0.4rem' }} placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
-      <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid #2a2a4a', borderRadius:6 }}>
+      <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid var(--border)', borderRadius:6 }}>
         {filtered.map(sp => {
           const sel = selected.some(s => s.index === sp.index)
           const disabled = !sel && selected.length >= max
           return (
             <div key={sp.index}
               style={{ display:'flex', alignItems:'center', gap:'0.6rem', padding:'0.45rem 0.75rem',
-                background: sel ? '#1e1560' : 'transparent',
-                borderBottom:'1px solid #1a1a35', cursor: disabled ? 'default' : 'pointer',
+                background: sel ? 'var(--accent-subtle)' : 'transparent',
+                borderBottom:'1px solid var(--bg-elevated)', cursor: disabled ? 'default' : 'pointer',
                 opacity: disabled ? 0.4 : 1 }}
               onClick={() => !disabled && onToggle(sp)}
             >
-              <span style={{ color: sel ? '#c9b8ff' : '#555', fontSize:'1rem', lineHeight:1 }}>{sel ? '◉' : '○'}</span>
-              <span style={{ fontSize:'0.87rem', fontWeight: sel ? 600 : 400, color: sel ? '#e8e0f0' : '#aaa' }}>{sp.name}</span>
-              {sp.level === 0 && <span style={{ fontSize:'0.7rem', color:'#7c5fff', marginLeft:'auto' }}>cantrip</span>}
-              {sp.level > 0  && <span style={{ fontSize:'0.7rem', color:'#555', marginLeft:'auto' }}>Lv {sp.level}</span>}
+              <span style={{ color: sel ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize:'1rem', lineHeight:1 }}>{sel ? '◉' : '○'}</span>
+              <span style={{ fontSize:'0.87rem', fontWeight: sel ? 600 : 400, color: sel ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{sp.name}</span>
+              {sp.level === 0 && <span style={{ fontSize:'0.7rem', color:'var(--accent)', marginLeft:'auto' }}>cantrip</span>}
+              {sp.level > 0  && <span style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginLeft:'auto' }}>Lv {sp.level}</span>}
             </div>
           )
         })}
@@ -622,7 +622,7 @@ function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, o
       <div style={S.h1}>Starting Spells — {classData?.name}</div>
       <div style={S.sub}>Choose your starting cantrips and spells.</div>
 
-      {allSpells.length === 0 && <div style={{ color:'#888', fontSize:'0.85rem' }}>Loading spells…</div>}
+      {allSpells.length === 0 && <div style={{ color:'var(--text-secondary)', fontSize:'0.85rem' }}>Loading spells…</div>}
 
       {cantripMax > 0 && (
         <SpellPicker
@@ -871,10 +871,10 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
       return (
         <div
           key={skillIndex}
-          style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid #7c5fff' : '1px solid #2a2a4a' }}
+          style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
           onClick={() => !disabled && toggleSkill(gi, skillIndex)}
         >
-          <span style={{ color: checked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+          <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
           <span>{o.item.name.replace('Skill: ', '')}</span>
         </div>
       )
@@ -920,7 +920,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                             return (
                               <div
                                 key={item.index}
-                                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: itemChecked ? '1px solid #7c5fff' : '1px solid #2a2a4a', marginBottom: '0.35rem' }}
+                                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: itemChecked ? '1px solid var(--accent)' : '1px solid var(--border)', marginBottom: '0.35rem' }}
                                 onClick={() => {
                                   if (disabled) return
                                   const withoutThis = selectedEquipment.filter(e => !(e.groupIndex === group.groupIndex && e.choiceId === choice.id && e.index === item.index))
@@ -931,7 +931,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                                   }
                                 }}
                               >
-                                <span style={{ color: itemChecked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{itemChecked ? '◉' : '○'}</span>
+                                <span style={{ color: itemChecked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{itemChecked ? '◉' : '○'}</span>
                                 <span>{item.name}</span>
                               </div>
                             )
@@ -979,7 +979,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
         </button>
       </div>
       {(!allSkillsSelected || !allEquipSelected) && (
-        <div style={{ fontSize: '0.78rem', color: '#888', marginTop: '0.5rem' }}>
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
           {!allSkillsSelected && <div>⚠ Skills not complete ({allSkillGroups.map(g => `${selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length}/${g.choose}`).join(', ')})</div>}
           {!allEquipSelected && <div>⚠ Equipment not complete — groups: {equipGroups.length}, selected groupIndexes: [{selectedEquipment.map(e => e.groupIndex).join(', ')}]</div>}
         </div>
@@ -1104,10 +1104,10 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
             return (
               <div
                 key={i}
-                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid #7c5fff' : '1px solid #2a2a4a' }}
+                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
                 onClick={() => !disabled && toggleLang(name)}
               >
-                <span style={{ color: checked ? '#c9b8ff' : '#666', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
                 <span>{name}</span>
               </div>
             )
@@ -1188,7 +1188,7 @@ function StepAlignment({ raceData, selected, onSelect, onNext, onBack, creating 
       <div style={S.h1}>Choose Alignment</div>
       <div style={S.sub}>
         {raceData?.alignment
-          ? <><em style={{ color: '#c9b8ff' }}>{raceData.name} tendency:</em> {raceData.alignment}</>
+          ? <><em style={{ color: 'var(--accent-hover)' }}>{raceData.name} tendency:</em> {raceData.alignment}</>
           : 'Your moral and ethical outlook.'}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.75rem' }}>
