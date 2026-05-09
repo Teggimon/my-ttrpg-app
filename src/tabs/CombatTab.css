@@ -87,13 +87,14 @@
 
 /* ── Spell slots ──────────────────────────────────────────── */
 .slot-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
   padding: 8px 10px;
 }
 
-.slot-row { display: flex; align-items: center; gap: 6px; }
+.slot-row { display: inline-flex; align-items: center; gap: 6px; }
 
 .slot-lbl {
   font-family: var(--font-mono);
