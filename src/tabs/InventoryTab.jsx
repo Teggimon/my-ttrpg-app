@@ -92,6 +92,21 @@ function itemCategory(item, srdMap) {
   return 'gear'
 }
 
+function isMagicItem(item, srdMap) {
+  const srd = srdMap[item.index] ?? {}
+  return !!(
+    item.rarity || srd.rarity ||
+    item.type === 'Magic Item' ||
+    item.requiresAttunement || srd.requires_attunement ||
+    (item.enhancement ?? 0) > 0 ||
+    item.ac_bonus != null ||
+    MAGIC_AC_BONUS[item.index] != null ||
+    item.index === BRACERS_INDEX ||
+    item.chargesMax ||
+    (item.effects ?? []).length > 0
+  )
+}
+
 // ── Row stat chips ────────────────────────────────────────────────────────────
 
 function rowChips(item, srdMap, abilityScores) {
@@ -146,9 +161,10 @@ function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onTog
   const chips     = rowChips(item, srdMap, abilityScores)
   const reqAttune = needsAttunement(item, srdMap)
   const canEquip  = isItemEquippable(item, srdMap)
+  const isMagic   = isMagicItem(item, srdMap)
 
   return (
-    <div className={`inv-row card${expanded ? ' inv-row--expanded' : ''}`}>
+    <div className={`inv-row card${isMagic ? ' inv-row--magic' : ''}${expanded ? ' inv-row--expanded' : ''}`}>
       <div className="inv-row-main">
         {/* Blue equip circle */}
         <button

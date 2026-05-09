@@ -105,7 +105,15 @@
   padding: 0;
   overflow: hidden;
 }
+.inv-row--magic {
+  border-color: var(--gold-border);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+.inv-row--magic:hover {
+  border-color: var(--gold);
+}
 .inv-row--expanded { border-color: var(--border-strong); }
+.inv-row--magic.inv-row--expanded { border-color: var(--gold); }
 
 .inv-row-main {
   display: flex;

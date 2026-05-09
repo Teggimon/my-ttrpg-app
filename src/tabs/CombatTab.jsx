@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getEquipment, getSpells } from '../srdContent'
+import { getEquipment, getMagicItems, getSpells } from '../srdContent'
 import { xpToLevel } from '../LevelUpModal'
 import '../TabShared.css'
 import './CombatTab.css'
@@ -31,6 +31,19 @@ function breathDice(level) {
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 
+function isMagicItem(item, srdMap) {
+  const srd = srdMap[item.index] ?? {}
+  return !!(
+    item.rarity || srd.rarity ||
+    item.type === 'Magic Item' ||
+    item.requiresAttunement || srd.requires_attunement ||
+    (item.enhancement ?? 0) > 0 ||
+    item.ac_bonus != null ||
+    item.chargesMax ||
+    (item.effects ?? []).length > 0
+  )
+}
+
 export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const [showCondPicker, setShowCondPicker] = useState(false)
   const [showEdit,       setShowEdit]       = useState(false)
@@ -51,7 +64,8 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const spellAtk    = castMod != null ? pb + castMod : null
 
   useEffect(() => {
-    getEquipment().then(all => setSrdMap(Object.fromEntries(all.map(e => [e.index, e])))).catch(() => {})
+    Promise.all([getEquipment().catch(() => []), getMagicItems().catch(() => [])])
+      .then(([equipment, magicItems]) => setSrdMap(Object.fromEntries([...equipment, ...magicItems].map(e => [e.index, e]))))
     getSpells().then(all => setSpellMap(Object.fromEntries(all.map(s => [s.index, s])))).catch(() => {})
   }, [])
 
@@ -182,7 +196,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
         if (!resolved) return null
         const { toHit, dmgStr, breakdown } = resolved
         return (
-          <div key={item.itemId ?? item.index ?? item.name} className="attack-card">
+          <div key={item.itemId ?? item.index ?? item.name} className={`attack-card${isMagicItem(item, srdMap) ? ' attack-card--magic' : ''}`}>
             <div className="atk-line1">
               <span className="atk-name">{item.name}</span>
             </div>
@@ -205,7 +219,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
         const useDice = item.useDice
         const useType = item.useDiceType ?? ''
         return (
-          <div key={item.itemId ?? item.index} className="attack-card">
+          <div key={item.itemId ?? item.index} className={`attack-card${isMagicItem(item, srdMap) ? ' attack-card--magic' : ''}`}>
             <div className="atk-line1">
               <span className="atk-name">{item.name}</span>
             </div>
