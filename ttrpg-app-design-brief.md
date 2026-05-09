@@ -1,13 +1,58 @@
 # TTRPG Character Sheet App — Design Brief & UI Flows
 
-**Version 4.0 — Complete Screen Design**
-**Document Date: April 2026**
+**Version 4.1 — Current Build Progress**
+**Document Date: May 2026**
 
 ---
 
 ## 1. Overview
 
 A Progressive Web App (PWA) for creating, managing, and sharing TTRPG characters (primarily D&D 5e) with real-time synchronisation via GitHub as the backend. Game Masters and players can view live character updates across any device — phone, tablet, or desktop — with a native app feel, no App Store required. No proprietary backend — users own their data entirely.
+
+---
+
+## 1A. Current Build Progress — May 2026
+
+This section records the current implementation state so the build and the design brief stay aligned.
+
+### Implemented / Working
+
+- React + Vite app shell with GitHub OAuth flow and local token state.
+- Player and DM home modes with a centred Player / DM segmented toggle.
+- Character home grid with character cards, HP bars, level badges, new character card, and context menus.
+- DM home campaign grid with campaign cards, live-session indication, new campaign flow, and campaign context menus.
+- Character sheet layout with switcher, left panel, lock state, HP controls, sync indicator, and tab routing.
+- Character tabs: Combat, Stats, Spells, Gear / Inventory, and Notes.
+- Gear system with SRD equipment and magic item search, custom item creation, charges, effects, attunement, equipped state, quantity controls, and optional encumbrance.
+- Item effects propagate to stat displays and use a gold indicator where affected stats are shown.
+- Magic items are visually outlined in gold in Gear view and in Combat attack / charged-item cards.
+- Combat tab auto-populates equipped weapons, charged magic items, racial combat abilities, prepared spells, spell slots, conditions, and death saves.
+- Combat spell casting now allows choosing the exact spell slot level before casting. Upcast-capable SRD spells show damage based on the selected slot level when data exists.
+- Spell slots in Combat are shown as one flowing horizontal row, wrapping only when space requires it.
+- Rest modals and level-up modal are present.
+- DM campaign view includes tabs for Sessions, Party, NPCs, Encounters, and Notes.
+- Campaign encounter builder exists as a separate Encounters tab. The DM can select campaign NPCs / enemies, duplicate them, group them into named prepared encounters, and mark encounters defeated.
+- Session view loads prepared campaign encounters automatically. The DM can start an encounter from the session view.
+- Encounter / combat view supports initiative setup, active turn state, player and enemy combatants, enemy HP controls, conditions, and encounter outcome marking.
+- Prepared encounter defeated state syncs back from session / encounter flow.
+- Styling has been consolidated so app colours and fonts route through `src/index.css` design tokens. Component CSS should not introduce raw colour values.
+- Production build currently passes. ESLint has no errors; remaining warnings are hook dependency warnings in existing screen-level effects.
+
+### Partially Implemented / Needs Follow-Up
+
+- GitHub remains the intended database, and character/campaign save paths exist, but the app still needs deeper real-world conflict handling and offline queue hardening.
+- Campaign/session/encounter files are now being used, but DM-private notes still need the required access-controlled storage pass before private information can be considered safe.
+- Content Library as a dedicated screen is still mostly future-facing; SRD item and spell search are implemented inside Gear and Spells.
+- PWA install/offline behavior needs a dedicated verification pass across iOS, Android, and desktop.
+- The current visual system is closer to the supplied mockups, but several pages still need polish passes for spacing, type scale, and interaction density.
+- The production bundle is currently over Vite's default 500 kB warning threshold; code splitting is a later optimization.
+
+### Recently Changed Decisions
+
+- Combat casting is no longer automatic-lowest-slot. Leveled spells require the user to choose the slot level used for the cast.
+- Campaign encounter building is no longer inside NPC management. It is a separate campaign tab.
+- Magic item affordance is now a full gold outline rather than a thick left stripe.
+- `--font-name` is the Cinzel display token. `--font-character` is used for the app wordmark, character card names, campaign card names, and similar Outfit-style name text.
 
 ---
 
@@ -353,8 +398,7 @@ Dagger
 
 SPELLS
 ─────────────────────────────
-I ●●○○  II ●●○  III ●○○  IV ○
-V ○  VI ○  VII ○  VIII ○  IX ○
+I ●●○○  II ●●○  III ●○○  IV ○  V ○  VI ○  VII ○  VIII ○  IX ○
 
 Hunter's Mark        I    🔵
   Range 90ft · Duration 1hr conc
@@ -364,7 +408,7 @@ Cure Wounds          I
   Range Touch · Healing 1d8+4
             [ Cast ]
 
-Fireball             III
+Fireball             III      [ Slot Lv III ▾ ]
   Range 150ft · Damage 8d6 Fire
             [ Cast ]
 ```
@@ -373,21 +417,9 @@ Fireball             III
 
 **Attacks** — auto-populated from equipped weapons. Equipping a weapon in Inventory pins it here automatically. Calculated bonuses shown with modifier breakdown.
 
-**Spell slots** — rows I–IV and V–IX. Only rows with available slots shown. Filled pip = available, empty = expended.
+**Spell slots** — shown as one flowing horizontal row. Only levels with configured slots are shown. Filled pip = available, empty = expended.
 
-**Prepared spells** — auto-populated from Spells tab. Tapping [ Cast ] opens upcast picker when multiple slot levels are available:
-
-```
-Cast Cure Wounds
-─────────────────────────────
-I  ●●○○  → 1d8+4 healing
-II ●●○   → 2d8+4 healing
-III ●○○  → 3d8+4 healing
-
-[ Cancel ]
-```
-
-Cantrips and spells with only one available slot level cast immediately — no picker. Casting expends the slot, updates the tracker, and flags concentration automatically.
+**Prepared spells** — auto-populated from Spells tab. Leveled spells show a compact slot-level selector beside [ Cast ]. The selector lists only available slot levels at or above the spell's base level, allowing the user to cast at base level or upcast. Cantrips cast without using slots. Casting expends the selected slot and updates the tracker.
 
 **🔵** marks the active concentration spell. Only one at a time. Casting a new concentration spell replaces the existing one.
 
@@ -680,6 +712,49 @@ All data pulls live from each player's character file. Updates automatically via
 Tapping a card opens the full read-only character sheet for that character.
 
 [ + Add Character ] — paste a character share link to add to party view.
+
+---
+
+### Screen 3A — Campaign View and Session Flow (Current Build)
+
+The current DM flow has expanded beyond the original single party dashboard into a campaign workspace.
+
+```
+Campaign
+─────────────────────────────
+[ Sessions ] [ Party ] [ NPCs ] [ Encounters ] [ Notes ]
+```
+
+**Sessions tab**
+- Shows existing sessions and live session state.
+- DM can start or resume a session.
+- Session view opens the active table flow and loads campaign data.
+
+**Party tab**
+- Tracks player characters linked to the campaign.
+- Party members feed into session and encounter combatants.
+
+**NPCs tab**
+- Stores campaign NPCs and enemies.
+- NPC / enemy entries can be used as the source pool for prepared encounters.
+
+**Encounters tab**
+- Separate encounter-building surface.
+- DM can create named prepared encounters from campaign NPCs / enemies.
+- DM can duplicate enemies into a group, adjust composition, and save the encounter.
+- Encounters can be marked defeated or active.
+
+**Session view**
+- Automatically loads prepared campaign encounters.
+- DM can select an encounter and start it from the session.
+- Session tracks encounter state and defeated status.
+
+**Encounter view**
+- Full-screen combat view for a selected encounter.
+- Supports initiative setup, active turn state, player/enemy columns, enemy HP controls, conditions, and encounter outcome.
+- Ending an encounter can update the prepared encounter defeated state.
+
+**Open follow-up:** DM-private notes must be stored in a separate access-controlled file before they are treated as private.
 
 ---
 
@@ -1000,7 +1075,7 @@ Impact is minimal — sync is pull-based so background sync limitations don't af
 |---|---|
 | Framework | React + Vite |
 | PWA tooling | Vite PWA Plugin |
-| Styling | Tailwind CSS (mobile first) |
+| Styling | CSS custom properties in `src/index.css` plus component CSS modules/files |
 | Auth | GitHub OAuth |
 | Data layer | GitHub REST API via Octokit |
 | Real-time sync | Polling every 15–30 seconds |
@@ -1022,21 +1097,23 @@ Impact is minimal — sync is pull-based so background sync limitations don't af
 7. Copy a character — full ownership transfer
 8. Home screen with character cards and Shared With Me
 9. GM mode toggle
-10. Party Dashboard — live summary cards + V1 initiative tracker with tie breaking
-11. Content Library — SRD browse, personal custom content, unified search
-12. Custom repository connection
-13. PWA manifest + service worker — installable on all devices
-14. Basic offline support — cached character viewing without connection
+10. DM campaign home with Sessions, Party, NPCs, Encounters, and Notes tabs
+11. Prepared encounter builder from saved campaign NPCs / enemies
+12. Session view that loads prepared encounters and starts combat
+13. Encounter view with initiative, active turns, HP controls, conditions, and outcome marking
+14. Party Dashboard — live summary cards + V1 initiative tracker with tie breaking
+15. Content Library — SRD browse, personal custom content, unified search
+16. Custom repository connection
+17. PWA manifest + service worker — installable on all devices
+18. Basic offline support — cached character viewing without connection
 
 ---
 
 ## 12. V2 Features (Deferred)
 
 **Character Sheet**
-- AC auto-calculated from equipped armour and item effects
 - Class features in Combat tab (Second Wind, Action Surge, Rage, Ki Points, Lay on Hands, Cunning Action etc.)
 - Uses tracker per class feature — X per short/long rest, shown as pips
-- Rest management — short rest and long rest to recover features and spell slots
 - Character portrait image upload
 - Dice roller — pull forward to V1 only if trivial to implement
 - Other TTRPG systems beyond D&D 5e
@@ -1044,9 +1121,9 @@ Impact is minimal — sync is pull-based so background sync limitations don't af
 **GM Dashboard**
 - Downed player handling in initiative tracker — visual indicator, auto-skip option
 - Death saves integrated into initiative tracker
-- Enemy stat block builder and saved enemy repository
-- Draw from saved stat blocks in encounter builder
-- HP tracking per enemy in initiative tracker
+- Rich enemy stat block builder and saved enemy repository
+- Draw from full saved stat blocks in encounter builder
+- Advanced enemy automation beyond manual HP tracking
 
 **Party Repository Content**
 - Custom items, spells, and monster/NPC stat blocks saved to party repo
@@ -1093,4 +1170,4 @@ Impact is minimal — sync is pull-based so background sync limitations don't af
 
 ---
 
-*End of Design Brief v4.0*
+*End of Design Brief v4.1*

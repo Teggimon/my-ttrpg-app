@@ -324,11 +324,11 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
 
             return (
               <div key={spell.id} className="spell-combat-card">
-                <div className="spell-combat-left">
+                <div className="spell-combat-line1">
                   <span className={`conc-dot${isConc ? ' conc-dot--on' : ''}`} />
                   <span className="spell-combat-name">{spell.name}</span>
                 </div>
-                <div className="spell-combat-badges">
+                <div className="spell-combat-line2">
                   {dmgDice && <span className="badge">{dmgDice}{dmgType ? ` ${dmgType}` : ''}</span>}
                   {isAtk && spellAtk != null && <span className="badge">{fmtB(spellAtk)} to hit</span>}
                   {isConc && <span className="badge badge--dim">Conc</span>}
@@ -348,12 +348,14 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                       ))}
                     </select>
                   )}
-                  <button
-                    className="atk-btn atk-btn--roll"
-                    onClick={() => isOwner && !locked && castSpell(spell.level, selectedSlot)}
-                    disabled={spell.level > 0 && !selectedSlot}
-                    title={spell.level === 0 ? 'Cantrip — no slot used' : 'Cast — uses one spell slot'}
-                  >Cast</button>
+                  <div className="atk-btns">
+                    <button
+                      className="atk-btn atk-btn--roll"
+                      onClick={() => isOwner && !locked && castSpell(spell.level, selectedSlot)}
+                      disabled={spell.level > 0 && !selectedSlot}
+                      title={spell.level === 0 ? 'Cantrip — no slot used' : 'Cast — uses one spell slot'}
+                    >Cast</button>
+                  </div>
                 </div>
               </div>
             )
