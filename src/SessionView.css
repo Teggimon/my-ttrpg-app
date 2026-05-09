@@ -476,14 +476,16 @@
 .sv-note-textarea::placeholder { color: var(--text-muted); }
 
 /* ── Modal ── */
-.sv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: flex-end; justify-content: center; z-index: 200; }
+.sv-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
 .sv-modal-sheet {
   background: var(--bg-elevated);
   border: 0.5px solid var(--border-strong);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border-radius: var(--radius-lg);
   width: 100%; max-width: 480px;
   padding: 0 var(--spacing-md) var(--spacing-xl);
   animation: sv-up 0.2s ease;
+  max-height: 88vh;
+  overflow-y: auto;
 }
 @keyframes sv-up {
   from { transform: translateY(16px); opacity: 0; }
@@ -503,6 +505,17 @@
 }
 .sv-modal-input:focus { border-color: var(--dm); }
 .sv-modal-input::placeholder { color: var(--text-muted); }
+.sv-prepared-summary {
+  background: var(--dm-subtle);
+  border: 0.5px solid var(--dm-border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  margin-bottom: var(--spacing-md);
+}
 .sv-modal-actions { display: flex; gap: var(--spacing-sm); }
 .sv-btn { flex: 1; padding: 11px; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 13px; font-weight: 700; cursor: pointer; border: none; min-height: 44px; }
 .sv-btn--ghost { background: var(--bg-inset); border: 0.5px solid var(--border-strong); color: var(--text-secondary); flex: none; padding: 11px 20px; }

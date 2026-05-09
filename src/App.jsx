@@ -297,13 +297,16 @@ function App() {
   // ── Encounter View ──
   if (screen === 'dm-encounter' && selectedEncounter) return (
     <EncounterView
+      token={token}
+      user={user}
       encounter={selectedEncounter}
       session={selectedSession}
       campaign={selectedCampaign}
       party={sessionParty}
       onBack={() => setScreen('dm-session')}
-      onEndEncounter={(result) => {
+      onEndEncounter={(result, updatedSession) => {
         setSelectedEncounter(result)
+        if (updatedSession) setSelectedSession(updatedSession)
         setScreen('dm-session')
       }}
     />

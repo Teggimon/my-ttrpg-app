@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Octokit } from '@octokit/rest'
 import './SessionView.css'
 
@@ -12,6 +12,16 @@ function encode(obj) {
 }
 function decode(b64) {
   return JSON.parse(atob(b64.replace(/\s/g, '')))
+}
+function cloneCombatant(combatant) {
+  return {
+    ...combatant,
+    id: genId(),
+    hp: combatant.hpMax ?? combatant.hp ?? 10,
+    hpMax: combatant.hpMax ?? combatant.hp ?? 10,
+    conditions: [],
+    downed: false,
+  }
 }
 function hpPct(cur, max) { return max ? Math.min(100, Math.round((cur / max) * 100)) : 0 }
 function hpColor(pct) {
@@ -146,6 +156,8 @@ function EncounterRow({ encounter, onOpen, isActive }) {
       <div className={`sv-enc-status${isActive ? ' sv-enc-status--live' : encounter.outcome ? ' sv-enc-status--done' : ''}`}>
         {isActive
           ? '● Live'
+          : encounter.defeated
+            ? '✓ Defeated'
           : encounter.outcome === 'victory'
             ? '⚔ Victory'
             : encounter.outcome === 'fled'
@@ -184,24 +196,62 @@ function SVNoteSection({ section, onChange }) {
 }
 
 // ── New Encounter Modal ───────────────────────────────────────
-function NewEncounterModal({ encounterNumber, onCreate, onClose }) {
+function NewEncounterModal({ encounterNumber, preparedEncounters, onCreate, onClose }) {
   const [name, setName] = useState(`Encounter ${encounterNumber}`)
+  const [selectedId, setSelectedId] = useState('')
+  const selected = preparedEncounters.find(enc => enc.encounterId === selectedId)
+
+  const submit = () => {
+    if (selected) onCreate(selected.name, selected)
+    else onCreate(name, null)
+  }
+
   return (
     <div className="sv-modal-overlay" onClick={onClose}>
       <div className="sv-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="sv-modal-handle" />
-        <div className="sv-modal-title">New Encounter</div>
-        <label className="sv-modal-label">Encounter name</label>
-        <input
-          className="sv-modal-input"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && onCreate(name)}
-          autoFocus
-        />
+        <div className="sv-modal-title">Start Encounter</div>
+
+        {preparedEncounters.length > 0 && (
+          <>
+            <label className="sv-modal-label">Prepared encounter</label>
+            <select
+              className="sv-modal-input"
+              value={selectedId}
+              onChange={e => setSelectedId(e.target.value)}
+            >
+              <option value="">Custom encounter</option>
+              {preparedEncounters.map(enc => (
+                <option key={enc.encounterId} value={enc.encounterId}>
+                  {enc.name} ({enc.enemyCount ?? enc.combatants?.length ?? 0} enemies{enc.defeated ? ', defeated' : ''})
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {!selected && (
+          <>
+            <label className="sv-modal-label">Encounter name</label>
+            <input
+              className="sv-modal-input"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && submit()}
+              autoFocus
+            />
+          </>
+        )}
+
+        {selected && (
+          <div className="sv-prepared-summary">
+            {(selected.combatants ?? []).length} combatant{(selected.combatants ?? []).length !== 1 ? 's' : ''} will be loaded into initiative.
+          </div>
+        )}
+
         <div className="sv-modal-actions">
           <button className="sv-btn sv-btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="sv-btn sv-btn--dm" onClick={() => onCreate(name)}>Create →</button>
+          <button className="sv-btn sv-btn--dm" onClick={submit}>Start →</button>
         </div>
       </div>
     </div>
@@ -214,6 +264,7 @@ function NewEncounterModal({ encounterNumber, onCreate, onClose }) {
 export default function SessionView({ token, user, session, campaign, party, onBack, onOpenEncounter }) {
   const [tab, setTab]             = useState('party')
   const [encounters, setEncounters] = useState(session.encounters ?? [])
+  const [preparedEncounters, setPreparedEncounters] = useState([])
   const [notes, setNotes]         = useState({
     sections: [
       { id: 'happened',  title: 'What Happened',     content: '' },
@@ -243,9 +294,25 @@ export default function SessionView({ token, user, session, campaign, party, onB
     return () => clearInterval(clockRef.current)
   }, [clockRunning])
 
-  const octokit  = new Octokit({ auth: token })
+  const octokit  = useMemo(() => new Octokit({ auth: token }), [token])
   const slug     = campaign.slug
   const basePath = `campaigns/${slug}`
+
+  useEffect(() => {
+    const loadPreparedEncounters = async () => {
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: user.login,
+          repo: CAMPAIGNS_REPO,
+          path: `${basePath}/encounters.json`,
+        })
+        setPreparedEncounters(decode(data.content).encounters ?? [])
+      } catch {
+        setPreparedEncounters([])
+      }
+    }
+    loadPreparedEncounters()
+  }, [basePath, octokit, user.login])
 
   function allActiveChars(party) {
     return (party ?? []).flatMap(p =>
@@ -261,15 +328,6 @@ export default function SessionView({ token, user, session, campaign, party, onB
   const saveEncounters = async (updated) => {
     setSaving(true)
     try {
-      let sha
-      try {
-        const { data } = await octokit.repos.getContent({
-          owner: user.login, repo: CAMPAIGNS_REPO,
-          path: `${basePath}/encounters.json`,
-        })
-        sha = data.sha
-      } catch { /* new */ }
-
       // Read all sessions, update this one's encounters
       let sessions = []
       let sessionsSha
@@ -302,15 +360,18 @@ export default function SessionView({ token, user, session, campaign, party, onB
     setSaving(false)
   }
 
-  const createEncounter = async (name) => {
+  const createEncounter = async (name, preparedEncounter = null) => {
+    const combatants = (preparedEncounter?.combatants ?? []).map(cloneCombatant)
     const enc = {
       encounterId: genId(),
       name,
       number:      encounters.length + 1,
-      status:      'pending',
-      rounds:      0,
-      enemyCount:  0,
-      combatants:  [],
+      status:      'live',
+      rounds:      1,
+      enemyCount:  combatants.length,
+      combatants,
+      preparedEncounterId: preparedEncounter?.encounterId ?? null,
+      defeated:    false,
       outcome:     null,
     }
     const updated = [...encounters, enc]
@@ -485,6 +546,7 @@ export default function SessionView({ token, user, session, campaign, party, onB
       {showNewEncounter && (
         <NewEncounterModal
           encounterNumber={encounters.length + 1}
+          preparedEncounters={preparedEncounters}
           onCreate={createEncounter}
           onClose={() => setShowNewEncounter(false)}
         />

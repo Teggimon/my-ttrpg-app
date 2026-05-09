@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { Octokit } from '@octokit/rest'
 import './EncounterView.css'
+
+const CAMPAIGNS_REPO = 'ttrpg-campaigns'
 
 function genId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+}
+function encode(obj) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj, null, 2))))
+}
+function decode(b64) {
+  return JSON.parse(atob(b64.replace(/\s/g, '')))
 }
 function rollD20() { return Math.floor(Math.random() * 20) + 1 }
 function hpPct(cur, max) { return max ? Math.min(100, Math.round((cur / max) * 100)) : 0 }
@@ -258,13 +267,17 @@ function EnemyRow({ combatant, isActive, onHpChange, onAddCondition, onRemoveCon
 // ════════════════════════════════════════════════════════════════
 //  Main EncounterView
 // ════════════════════════════════════════════════════════════════
-export default function EncounterView({ encounter, session, campaign, party, onBack, onEndEncounter }) {
+export default function EncounterView({ token, user, encounter, session, campaign, party, onBack, onEndEncounter }) {
   const [phase, setPhase]         = useState('initiative')  // 'initiative' | 'combat'
   const [combatants, setCombatants] = useState(() => buildCombatants(party, encounter))
   const [order, setOrder]         = useState([])
   const [currentIdx, setCurrentIdx] = useState(0)
   const [round, setRound]         = useState(encounter.rounds ?? 1)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
+  const [saving, setSaving]       = useState(false)
+
+  const octokit = new Octokit({ auth: token })
+  const basePath = `campaigns/${campaign.slug}`
 
   // Start encounter after initiative setup
   const startEncounter = (sorted) => {
@@ -314,6 +327,74 @@ export default function EncounterView({ encounter, session, campaign, party, onB
     setOrder(prev => prev.map(c =>
       c.id === id ? { ...c, conditions: c.conditions.filter(x => x !== condition) } : c
     ))
+  }
+
+  const saveEncounterResult = async (result) => {
+    setSaving(true)
+    let updatedSession = session
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner: user.login,
+        repo: CAMPAIGNS_REPO,
+        path: `${basePath}/sessions.json`,
+      })
+      const sessions = decode(data.content).sessions ?? []
+      const updatedSessions = sessions.map(s => {
+        if (s.sessionId !== session.sessionId) return s
+        updatedSession = {
+          ...s,
+          encounters: (s.encounters ?? []).map(enc =>
+            enc.encounterId === result.encounterId ? result : enc
+          ),
+        }
+        return updatedSession
+      })
+
+      await octokit.repos.createOrUpdateFileContents({
+        owner: user.login,
+        repo: CAMPAIGNS_REPO,
+        path: `${basePath}/sessions.json`,
+        message: 'Update encounter result',
+        content: encode({ sessions: updatedSessions }),
+        sha: data.sha,
+      })
+
+      if (result.preparedEncounterId) {
+        try {
+          const { data: encData } = await octokit.repos.getContent({
+            owner: user.login,
+            repo: CAMPAIGNS_REPO,
+            path: `${basePath}/encounters.json`,
+          })
+          const prepared = decode(encData.content).encounters ?? []
+          const updatedPrepared = prepared.map(enc =>
+            enc.encounterId === result.preparedEncounterId
+              ? {
+                  ...enc,
+                  defeated: result.outcome === 'victory',
+                  lastOutcome: result.outcome,
+                  lastRunAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                }
+              : enc
+          )
+          await octokit.repos.createOrUpdateFileContents({
+            owner: user.login,
+            repo: CAMPAIGNS_REPO,
+            path: `${basePath}/encounters.json`,
+            message: 'Update prepared encounter status',
+            content: encode({ encounters: updatedPrepared }),
+            sha: encData.sha,
+          })
+        } catch (e) {
+          console.error('Prepared encounter status save failed:', e)
+        }
+      }
+    } catch (e) {
+      console.error('Encounter result save failed:', e)
+    }
+    setSaving(false)
+    onEndEncounter(result, updatedSession)
   }
 
   const players = phase === 'combat' ? order.filter(c => c.type === 'player') : combatants.filter(c => c.type === 'player')
@@ -369,6 +450,7 @@ export default function EncounterView({ encounter, session, campaign, party, onB
             </div>
 
             <div className="ev-topbar-right">
+              {saving && <span className="ev-saving">Saving…</span>}
               <button className="ev-end-btn" onClick={() => setShowEndConfirm(true)}>End Encounter</button>
             </div>
           </div>
@@ -406,7 +488,7 @@ export default function EncounterView({ encounter, session, campaign, party, onB
                 <span className="ev-col-count">{players.length}</span>
               </div>
               <div className="ev-col-scroll">
-                {players.map((c, i) => (
+                {players.map(c => (
                   <PlayerRow
                     key={c.id}
                     combatant={c}
@@ -468,7 +550,14 @@ export default function EncounterView({ encounter, session, campaign, party, onB
                       className={`ev-outcome-btn ev-outcome-btn--${outcome}`}
                       onClick={() => {
                         setShowEndConfirm(false)
-                        onEndEncounter({ ...encounter, rounds: round, outcome, status: 'done' })
+                        saveEncounterResult({
+                          ...encounter,
+                          combatants: order,
+                          rounds: round,
+                          outcome,
+                          defeated: outcome === 'victory',
+                          status: 'done',
+                        })
                       }}
                     >
                       {outcome === 'victory' ? '⚔ Victory' : outcome === 'fled' ? '↩ Fled' : '💀 Defeat'}

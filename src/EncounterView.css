@@ -177,7 +177,12 @@
 .ev-stat-label { font-family: var(--font-body); font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .ev-stat-sep { width: 0.5px; height: 28px; background: var(--border); flex-shrink: 0; }
 
-.ev-topbar-right { flex-shrink: 0; }
+.ev-topbar-right { display: flex; align-items: center; gap: var(--spacing-sm); flex-shrink: 0; }
+.ev-saving {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
 
 .ev-end-btn {
   padding: 7px 14px;

@@ -20,6 +20,60 @@ function genId() {
 function campaignPath(slug) {
   return `campaigns/${slug}`
 }
+function labelForIndex(index) {
+  let n = index
+  let label = ''
+  do {
+    label = String.fromCharCode(65 + (n % 26)) + label
+    n = Math.floor(n / 26) - 1
+  } while (n >= 0)
+  return label
+}
+function npcCategoryLabel(category) {
+  if (category === 'boss') return 'Boss'
+  if (category === 'ally') return 'Ally'
+  return 'Enemy'
+}
+function normalizeAction(action) {
+  return {
+    name: action.name,
+    toHit: action.toHit,
+    damage: action.damage
+      ? `${action.damage}${action.damageType ? ` ${action.damageType}` : ''}`
+      : undefined,
+    note: action.note ?? action.desc,
+  }
+}
+function npcToCombatant(npc, index = 0) {
+  const label = labelForIndex(index)
+  const hasMultipleLabel = index != null
+  const baseName = hasMultipleLabel ? `${npc.name} ${label}` : npc.name
+  return {
+    id: genId(),
+    npcId: npc.npcId,
+    instanceLabel: hasMultipleLabel ? label : null,
+    type: npc.category === 'boss' ? 'boss' : 'enemy',
+    name: baseName,
+    baseName: npc.name,
+    emoji: npc.category === 'boss' ? '👑' : '👺',
+    hp: npc.hp ?? 10,
+    hpMax: npc.hp ?? 10,
+    initiativeMod: npc.initiative ?? 0,
+    ac: npc.ac ?? 10,
+    attackBonus: npc.attackBonus ?? null,
+    saveDC: npc.saveDC ?? null,
+    cr: npc.cr ?? null,
+    conditions: [],
+    downed: false,
+    actions: (npc.actions ?? []).map(normalizeAction),
+    traits: npc.traits ?? [],
+    sourceNpc: {
+      name: npc.name,
+      category: npc.category,
+      type: npc.type,
+    },
+  }
+}
 
 // ── Elapsed time formatting ───────────────────────────────────
 function formatElapsed(seconds) {
@@ -173,7 +227,7 @@ function PlayerBlock({ player, onToggleCharActive, onManage }) {
 }
 
 // ── Manage Characters Modal ───────────────────────────────────
-function ManageCharsModal({ token, player, campaign, onSave, onClose }) {
+function ManageCharsModal({ token, player, onSave, onClose }) {
   const [username, setUsername]   = useState(player?.github ?? '')
   const [fetching, setFetching]   = useState(false)
   const [fetchedChars, setFetchedChars] = useState([])
@@ -332,6 +386,60 @@ function NPCRow({ npc, onDelete }) {
             <div key={i} className="npc-action-row">
               <span className="npc-action-name">{a.name}</span>
               <span className="npc-action-desc">{a.desc}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Prepared Encounter Row ────────────────────────────────────
+function EncounterBuildRow({ encounter, onToggleDefeated, onEdit }) {
+  const [expanded, setExpanded] = useState(false)
+  const combatants = encounter.combatants ?? []
+  const grouped = combatants.reduce((acc, c) => {
+    const key = c.npcId ?? c.baseName ?? c.name
+    const existing = acc.find(g => g.key === key)
+    if (existing) existing.count += 1
+    else acc.push({ key, name: c.baseName ?? c.name, count: 1, cr: c.cr })
+    return acc
+  }, [])
+
+  return (
+    <div className={`enc-build-row${encounter.defeated ? ' enc-build-row--defeated' : ''}`}>
+      <div className="enc-build-head" onClick={() => setExpanded(e => !e)}>
+        <div className="enc-build-icon">⚔️</div>
+        <div className="enc-build-info">
+          <div className="enc-build-name">{encounter.name}</div>
+          <div className="enc-build-meta">
+            {combatants.length} combatant{combatants.length !== 1 ? 's' : ''}
+            {encounter.defeated ? ' · defeated' : ' · not defeated'}
+          </div>
+        </div>
+        <button
+          className={`enc-defeated-btn${encounter.defeated ? ' enc-defeated-btn--active' : ''}`}
+          onClick={e => { e.stopPropagation(); onToggleDefeated(encounter.encounterId) }}
+        >
+          {encounter.defeated ? 'Defeated' : 'Undefeated'}
+        </button>
+        <button
+          className="enc-edit-btn"
+          onClick={e => { e.stopPropagation(); onEdit(encounter) }}
+        >
+          Edit
+        </button>
+        <div className={`session-chevron${expanded ? ' session-chevron--open' : ''}`}>▾</div>
+      </div>
+
+      {expanded && (
+        <div className="enc-build-detail">
+          {grouped.length === 0 ? (
+            <div className="enc-build-empty">No enemies added yet.</div>
+          ) : grouped.map(g => (
+            <div key={g.key} className="enc-build-line">
+              <span className="enc-build-line-name">{g.name}</span>
+              <span className="enc-build-line-meta">×{g.count}{g.cr ? ` · CR ${g.cr}` : ''}</span>
             </div>
           ))}
         </div>
@@ -796,6 +904,138 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
   )
 }
 
+// ── Build Encounter Modal ─────────────────────────────────────
+function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
+  const usableNpcs = npcs.filter(n => n.category !== 'ally')
+  const [name, setName] = useState(encounter?.name ?? `Encounter ${new Date().toLocaleDateString()}`)
+  const [groups, setGroups] = useState(() => {
+    if (!encounter?.groups?.length) return []
+    return encounter.groups.map(g => ({ ...g }))
+  })
+  const [defeated, setDefeated] = useState(encounter?.defeated ?? false)
+
+  const addNpc = (npc) => {
+    setGroups(prev => {
+      const existing = prev.find(g => g.npcId === npc.npcId)
+      if (existing) {
+        return prev.map(g => g.npcId === npc.npcId ? { ...g, quantity: g.quantity + 1 } : g)
+      }
+      return [...prev, { npcId: npc.npcId, quantity: 1 }]
+    })
+  }
+
+  const setQty = (npcId, quantity) => {
+    const nextQty = Math.max(0, parseInt(quantity) || 0)
+    setGroups(prev => prev
+      .map(g => g.npcId === npcId ? { ...g, quantity: nextQty } : g)
+      .filter(g => g.quantity > 0)
+    )
+  }
+
+  const selectedGroups = groups
+    .map(g => ({ ...g, npc: usableNpcs.find(n => n.npcId === g.npcId) }))
+    .filter(g => g.npc)
+
+  const save = () => {
+    const combatants = selectedGroups.flatMap(g =>
+      Array.from({ length: g.quantity }, (_, index) => npcToCombatant(g.npc, index))
+    )
+    onSave({
+      ...(encounter ?? {}),
+      encounterId: encounter?.encounterId ?? genId(),
+      name: name.trim(),
+      defeated,
+      status: encounter?.status ?? 'prepared',
+      enemyCount: combatants.length,
+      groups: selectedGroups.map(g => ({ npcId: g.npcId, quantity: g.quantity })),
+      combatants,
+      updatedAt: new Date().toISOString(),
+    })
+  }
+
+  return createPortal(
+    <div className="cv-modal-overlay" onClick={onClose}>
+      <div className="cv-modal-sheet encounter-modal-sheet" onClick={e => e.stopPropagation()}>
+        <div className="cv-modal-handle" />
+        <div className="npc-modal-title">{encounter ? 'Edit Encounter' : 'Build Encounter'}</div>
+        <div className="npc-modal-sub">Name the encounter, then add enemies from this campaign's NPC library.</div>
+
+        <label className="cv-label">Encounter name</label>
+        <input
+          className="cv-input"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          autoFocus
+        />
+
+        <div className="enc-builder-grid">
+          <div className="enc-builder-panel">
+            <div className="enc-builder-label">NPC / Enemy Library</div>
+            {usableNpcs.length === 0 ? (
+              <div className="enc-builder-empty">Add NPCs or monsters first, then build encounters from them.</div>
+            ) : usableNpcs.map(npc => (
+              <div key={npc.npcId} className="enc-library-row">
+                <div className="enc-library-info">
+                  <div className="enc-library-name">{npc.name}</div>
+                  <div className="enc-library-meta">
+                    {npcCategoryLabel(npc.category)}{npc.cr ? ` · CR ${npc.cr}` : ''}{npc.hp ? ` · ${npc.hp} HP` : ''}{npc.ac ? ` · AC ${npc.ac}` : ''}
+                  </div>
+                </div>
+                <button className="npc-add-btn npc-add-btn--enemy" onClick={() => addNpc(npc)}>Add</button>
+              </div>
+            ))}
+          </div>
+
+          <div className="enc-builder-panel">
+            <div className="enc-builder-label">Encounter Table</div>
+            {selectedGroups.length === 0 ? (
+              <div className="enc-builder-empty">No enemies selected yet.</div>
+            ) : selectedGroups.map(g => (
+              <div key={g.npcId} className="enc-table-row">
+                <div className="enc-table-info">
+                  <div className="enc-table-name">{g.npc.name}</div>
+                  <div className="enc-table-meta">{npcCategoryLabel(g.npc.category)}{g.npc.cr ? ` · CR ${g.npc.cr}` : ''}</div>
+                </div>
+                <div className="enc-qty-stepper">
+                  <button onClick={() => setQty(g.npcId, g.quantity - 1)}>−</button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={g.quantity}
+                    onChange={e => setQty(g.npcId, e.target.value)}
+                  />
+                  <button onClick={() => setQty(g.npcId, g.quantity + 1)}>+</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <label className="enc-defeated-toggle">
+          <input
+            type="checkbox"
+            checked={defeated}
+            onChange={e => setDefeated(e.target.checked)}
+          />
+          Mark this encounter defeated
+        </label>
+
+        <div className="cv-modal-actions">
+          <button className="cv-btn cv-btn--ghost" onClick={onClose}>Cancel</button>
+          <button
+            className="cv-btn cv-btn--dm"
+            onClick={save}
+            disabled={!name.trim() || selectedGroups.length === 0}
+          >
+            Save Encounter
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Note Section ──────────────────────────────────────────────
 function NoteSection({ section, onChange, onDelete, locked }) {
   const [collapsed, setCollapsed] = useState(false)
@@ -859,8 +1099,8 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
   const [sessions, setSessions]   = useState([])
   const [party, setParty]         = useState([])
   const [npcs, setNpcs]           = useState([])
+  const [encounterBuilds, setEncounterBuilds] = useState([])
   const [notes, setNotes]         = useState(null)
-  const [meta, setMeta]           = useState(campaign)
   const [loading, setLoading]     = useState(true)
   const [saving, setSaving]       = useState(false)
 
@@ -868,6 +1108,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
   const [showStartSession, setShowStartSession] = useState(false)
   const [showManagePlayer, setShowManagePlayer] = useState(null)  // player obj or 'new'
   const [showAddNPC, setShowAddNPC]             = useState(false)
+  const [showBuildEncounter, setShowBuildEncounter] = useState(null)
 
   const octokit  = new Octokit({ auth: token })
   const slug     = campaign.slug
@@ -890,15 +1131,17 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
 
   const loadAll = async () => {
     setLoading(true)
-    const [s, p, n, no] = await Promise.all([
+    const [s, p, n, e, no] = await Promise.all([
       loadFile('sessions.json'),
       loadFile('party.json'),
       loadFile('npcs.json'),
+      loadFile('encounters.json'),
       loadFile('notes.json'),
     ])
     setSessions(s.data?.sessions ?? [])
     setParty(p.data?.players ?? [])
     setNpcs(n.data?.npcs ?? [])
+    setEncounterBuilds(e.data?.encounters ?? [])
     setNotes(no.data ?? {
       sections: [
         { id: 'world',  title: 'World & Lore',       content: '', locked: true },
@@ -995,6 +1238,26 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
     await saveFile('npcs.json', { npcs: updated })
   }
 
+  // ── Encounter build actions ──
+  const saveEncounterBuild = async (encounter) => {
+    const updated = encounterBuilds.some(e => e.encounterId === encounter.encounterId)
+      ? encounterBuilds.map(e => e.encounterId === encounter.encounterId ? encounter : e)
+      : [...encounterBuilds, encounter]
+    setEncounterBuilds(updated)
+    await saveFile('encounters.json', { encounters: updated })
+    setShowBuildEncounter(null)
+  }
+
+  const toggleEncounterDefeated = async (encounterId) => {
+    const updated = encounterBuilds.map(enc =>
+      enc.encounterId === encounterId
+        ? { ...enc, defeated: !enc.defeated, updatedAt: new Date().toISOString() }
+        : enc
+    )
+    setEncounterBuilds(updated)
+    await saveFile('encounters.json', { encounters: updated })
+  }
+
   // ── Notes tab actions ──
   const updateNote = useCallback(async (id, content) => {
     setNotes(prev => {
@@ -1030,7 +1293,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
   const avgLevel = allLevels.length
     ? Math.round(allLevels.reduce((a, b) => a + b, 0) / allLevels.length)
     : null
-  const totalEncounters = sessions.reduce((sum, s) => sum + (s.encounters?.length ?? 0), 0)
+  const totalEncounters = sessions.reduce((sum, s) => sum + (s.encounters?.length ?? 0), 0) + encounterBuilds.length
   const liveSession = sessions.find(s => s.status === 'live')
 
   // ── Grouped NPCs ──
@@ -1173,6 +1436,24 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
               {/* ── NPCS TAB ── */}
               {tab === 'npcs' && (
                 <div className="cv-section">
+                  <div className="npc-category-head npc-category-head--encounter">⚔️ Prepared Encounters</div>
+                  {encounterBuilds.length === 0 ? (
+                    <div className="cv-empty cv-empty--compact">
+                      <div className="cv-empty-title">No prepared encounters</div>
+                      <div className="cv-empty-sub">Build reusable encounter tables from your saved enemies.</div>
+                    </div>
+                  ) : encounterBuilds.map(enc => (
+                    <EncounterBuildRow
+                      key={enc.encounterId}
+                      encounter={enc}
+                      onToggleDefeated={toggleEncounterDefeated}
+                      onEdit={setShowBuildEncounter}
+                    />
+                  ))}
+                  <button className="add-player-btn" onClick={() => setShowBuildEncounter('new')}>
+                    + Build Encounter
+                  </button>
+
                   {/* Bosses */}
                   {bosses.length > 0 && (
                     <>
@@ -1242,7 +1523,6 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
         <ManageCharsModal
           token={token}
           player={showManagePlayer === 'new' ? null : showManagePlayer}
-          campaign={campaign}
           onSave={handleManageSave}
           onClose={() => setShowManagePlayer(null)}
         />
@@ -1253,6 +1533,15 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
           campaignNpcs={npcs}
           onAdd={addNPC}
           onClose={() => setShowAddNPC(false)}
+        />
+      )}
+
+      {showBuildEncounter && (
+        <BuildEncounterModal
+          npcs={npcs}
+          encounter={showBuildEncounter === 'new' ? null : showBuildEncounter}
+          onSave={saveEncounterBuild}
+          onClose={() => setShowBuildEncounter(null)}
         />
       )}
     </div>
