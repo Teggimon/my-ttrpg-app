@@ -365,7 +365,6 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
 
         {/* Header */}
         <header className="dm-home-header">
-          <button className="dm-back-btn" onClick={onBack}>← Player</button>
           <div className="dm-home-brand">
             <div className="dm-home-logo">📖</div>
             <div>
@@ -373,6 +372,16 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
               <div className="dm-home-tagline">Dungeon Master</div>
             </div>
           </div>
+
+          <div className="dm-mode-toggle" aria-label="View mode">
+            <button className="dm-mode-btn" onClick={onBack}>
+              ⚔️ Player
+            </button>
+            <button className="dm-mode-btn dm-mode-btn--active" aria-current="page">
+              📖 DM
+            </button>
+          </div>
+
           <div className="dm-home-user">
             <span className="dm-home-username">{user.login}</span>
             {user.avatar_url
