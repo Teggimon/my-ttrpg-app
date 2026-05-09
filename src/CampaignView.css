@@ -1204,6 +1204,36 @@
   text-overflow: ellipsis;
 }
 
+.enc-hp-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.enc-hp-controls select,
+.enc-hp-controls input {
+  min-height: 30px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 11px;
+  outline: none;
+  padding: 0 8px;
+}
+
+.enc-hp-controls select {
+  width: 92px;
+  flex-shrink: 0;
+}
+
+.enc-hp-controls input {
+  width: 86px;
+  font-family: var(--font-mono);
+}
+
 .enc-qty-stepper {
   display: grid;
   grid-template-columns: 28px 44px 28px;

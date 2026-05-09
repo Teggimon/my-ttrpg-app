@@ -44,10 +44,22 @@ function normalizeAction(action) {
     note: action.note ?? action.desc,
   }
 }
-function npcToCombatant(npc, index = 0) {
+function rollHpFormula(formula) {
+  const text = String(formula ?? '').trim().replace(/\s/g, '')
+  const match = text.match(/^(\d*)d(\d+)([+-]\d+)?$/i)
+  if (!match) return null
+  const count = Math.max(1, parseInt(match[1] || '1', 10))
+  const sides = Math.max(1, parseInt(match[2], 10))
+  const mod = parseInt(match[3] || '0', 10)
+  let total = mod
+  for (let i = 0; i < count; i++) total += Math.floor(Math.random() * sides) + 1
+  return Math.max(1, total)
+}
+function npcToCombatant(npc, index = 0, hpOverride = null) {
   const label = labelForIndex(index)
   const hasMultipleLabel = index != null
   const baseName = hasMultipleLabel ? `${npc.name} ${label}` : npc.name
+  const hp = hpOverride ?? npc.hp ?? 10
   return {
     id: genId(),
     npcId: npc.npcId,
@@ -56,8 +68,8 @@ function npcToCombatant(npc, index = 0) {
     name: baseName,
     baseName: npc.name,
     emoji: npc.category === 'boss' ? '👑' : '👺',
-    hp: npc.hp ?? 10,
-    hpMax: npc.hp ?? 10,
+    hp,
+    hpMax: hp,
     initiativeMod: npc.initiative ?? 0,
     ac: npc.ac ?? 10,
     attackBonus: npc.attackBonus ?? null,
@@ -71,6 +83,7 @@ function npcToCombatant(npc, index = 0) {
       name: npc.name,
       category: npc.category,
       type: npc.type,
+      hitDie: npc.hitDie,
     },
   }
 }
@@ -533,6 +546,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
       type:       monster.type,
       cr:         formatCR(monster.challenge_rating),
       hp:         monster.hit_points ?? null,
+      hitDie:     monster.hit_dice ?? '',
       ac:         monster.armor_class?.[0]?.value ?? null,
       initiative: dexMod(monster.dexterity),
       category:   cat,
@@ -920,7 +934,13 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
       if (existing) {
         return prev.map(g => g.npcId === npc.npcId ? { ...g, quantity: g.quantity + 1 } : g)
       }
-      return [...prev, { npcId: npc.npcId, quantity: 1 }]
+      return [...prev, {
+        npcId: npc.npcId,
+        quantity: 1,
+        hpMode: 'fixed',
+        hpValue: npc.hp ?? 10,
+        hpFormula: npc.hitDie ?? '',
+      }]
     })
   }
 
@@ -932,13 +952,22 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
     )
   }
 
+  const updateGroup = (npcId, patch) => {
+    setGroups(prev => prev.map(g => g.npcId === npcId ? { ...g, ...patch } : g))
+  }
+
   const selectedGroups = groups
     .map(g => ({ ...g, npc: usableNpcs.find(n => n.npcId === g.npcId) }))
     .filter(g => g.npc)
 
   const save = () => {
     const combatants = selectedGroups.flatMap(g =>
-      Array.from({ length: g.quantity }, (_, index) => npcToCombatant(g.npc, index))
+      Array.from({ length: g.quantity }, (_, index) => {
+        const fixedHp = parseInt(g.hpValue, 10)
+        const rolledHp = g.hpMode === 'roll' ? rollHpFormula(g.hpFormula) : null
+        const hp = rolledHp ?? (!Number.isNaN(fixedHp) ? fixedHp : null)
+        return npcToCombatant(g.npc, index, hp)
+      })
     )
     onSave({
       ...(encounter ?? {}),
@@ -947,7 +976,13 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
       defeated,
       status: encounter?.status ?? 'prepared',
       enemyCount: combatants.length,
-      groups: selectedGroups.map(g => ({ npcId: g.npcId, quantity: g.quantity })),
+      groups: selectedGroups.map(g => ({
+        npcId: g.npcId,
+        quantity: g.quantity,
+        hpMode: g.hpMode ?? 'fixed',
+        hpValue: g.hpValue ?? g.npc.hp ?? 10,
+        hpFormula: g.hpFormula ?? g.npc.hitDie ?? '',
+      })),
       combatants,
       updatedAt: new Date().toISOString(),
     })
@@ -994,7 +1029,33 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
               <div key={g.npcId} className="enc-table-row">
                 <div className="enc-table-info">
                   <div className="enc-table-name">{g.npc.name}</div>
-                  <div className="enc-table-meta">{npcCategoryLabel(g.npc.category)}{g.npc.cr ? ` · CR ${g.npc.cr}` : ''}</div>
+                  <div className="enc-table-meta">
+                    {npcCategoryLabel(g.npc.category)}{g.npc.cr ? ` · CR ${g.npc.cr}` : ''}{g.npc.hitDie ? ` · ${g.npc.hitDie}` : ''}
+                  </div>
+                  <div className="enc-hp-controls">
+                    <select
+                      value={g.hpMode ?? 'fixed'}
+                      onChange={e => updateGroup(g.npcId, { hpMode: e.target.value })}
+                    >
+                      <option value="fixed">Fixed HP</option>
+                      <option value="roll">Roll HP</option>
+                    </select>
+                    {(g.hpMode ?? 'fixed') === 'roll' ? (
+                      <input
+                        value={g.hpFormula ?? g.npc.hitDie ?? ''}
+                        onChange={e => updateGroup(g.npcId, { hpFormula: e.target.value })}
+                        placeholder="2d6+2"
+                      />
+                    ) : (
+                      <input
+                        type="number"
+                        min="1"
+                        value={g.hpValue ?? g.npc.hp ?? 10}
+                        onChange={e => updateGroup(g.npcId, { hpValue: e.target.value })}
+                        placeholder="HP"
+                      />
+                    )}
+                  </div>
                 </div>
                 <div className="enc-qty-stepper">
                   <button onClick={() => setQty(g.npcId, g.quantity - 1)}>−</button>
