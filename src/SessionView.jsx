@@ -284,6 +284,8 @@ export default function SessionView({ token, user, session, campaign, party, ini
   const [clockSeconds, setClockSeconds] = useState(session.duration ?? 0)
   const [clockRunning, setClockRunning] = useState(true)
   const clockRef = useRef(null)
+  const clockSecondsRef = useRef(clockSeconds)
+  const encountersRef = useRef(encounters)
 
   useEffect(() => {
     if (clockRunning) {
@@ -294,9 +296,78 @@ export default function SessionView({ token, user, session, campaign, party, ini
     return () => clearInterval(clockRef.current)
   }, [clockRunning])
 
+  useEffect(() => {
+    clockSecondsRef.current = clockSeconds
+  }, [clockSeconds])
+
+  useEffect(() => {
+    encountersRef.current = encounters
+  }, [encounters])
+
   const octokit  = useMemo(() => new Octokit({ auth: token }), [token])
   const slug     = campaign.slug
   const basePath = `campaigns/${slug}`
+
+  const updateStoredSession = useCallback(async (patch, message = 'Update session', showSaving = false) => {
+    if (showSaving) setSaving(true)
+    try {
+      let sessions = []
+      let sessionsSha
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: user.login, repo: CAMPAIGNS_REPO,
+          path: `${basePath}/sessions.json`,
+        })
+        sessions = decode(data.content).sessions ?? []
+        sessionsSha = data.sha
+      } catch { /* no sessions yet */ }
+
+      const hasSession = sessions.some(s => s.sessionId === session.sessionId)
+      const updatedSession = {
+        ...session,
+        encounters: encountersRef.current,
+        duration: clockSecondsRef.current,
+        status: 'live',
+        ...patch,
+      }
+      const updatedSessions = hasSession
+        ? sessions.map(s => s.sessionId === session.sessionId ? { ...s, ...updatedSession } : s)
+        : [updatedSession, ...sessions]
+
+      await octokit.repos.createOrUpdateFileContents({
+        owner:   user.login,
+        repo:    CAMPAIGNS_REPO,
+        path:    `${basePath}/sessions.json`,
+        message,
+        content: encode({ sessions: updatedSessions }),
+        ...(sessionsSha ? { sha: sessionsSha } : {}),
+      })
+    } catch (e) {
+      console.error('Save failed:', e)
+    }
+    if (showSaving) setSaving(false)
+  }, [basePath, octokit, session, user.login])
+
+  const saveDuration = useCallback(() => {
+    return updateStoredSession(
+      { duration: clockSecondsRef.current, encounters: encountersRef.current },
+      'Update session timer'
+    )
+  }, [updateStoredSession])
+
+  useEffect(() => {
+    if (!clockRunning) {
+      saveDuration()
+      return
+    }
+    const persistRef = setInterval(() => {
+      saveDuration()
+    }, 15000)
+    return () => {
+      clearInterval(persistRef)
+      saveDuration()
+    }
+  }, [clockRunning, saveDuration])
 
   useEffect(() => {
     const loadPreparedEncounters = async () => {
@@ -326,38 +397,11 @@ export default function SessionView({ token, user, session, campaign, party, ini
   const activeRounds    = activeEncounter?.rounds ?? 0
 
   const saveEncounters = async (updated) => {
-    setSaving(true)
-    try {
-      // Read all sessions, update this one's encounters
-      let sessions = []
-      let sessionsSha
-      try {
-        const { data } = await octokit.repos.getContent({
-          owner: user.login, repo: CAMPAIGNS_REPO,
-          path: `${basePath}/sessions.json`,
-        })
-        sessions = decode(data.content).sessions ?? []
-        sessionsSha = data.sha
-      } catch { /* no sessions yet */ }
-
-      const updatedSessions = sessions.map(s =>
-        s.sessionId === session.sessionId
-          ? { ...s, encounters: updated, duration: clockSeconds, status: 'live' }
-          : s
-      )
-
-      await octokit.repos.createOrUpdateFileContents({
-        owner:   user.login,
-        repo:    CAMPAIGNS_REPO,
-        path:    `${basePath}/sessions.json`,
-        message: 'Update session encounters',
-        content: encode({ sessions: updatedSessions }),
-        ...(sessionsSha ? { sha: sessionsSha } : {}),
-      })
-    } catch (e) {
-      console.error('Save failed:', e)
-    }
-    setSaving(false)
+    await updateStoredSession(
+      { encounters: updated, duration: clockSecondsRef.current, status: 'live' },
+      'Update session encounters',
+      true
+    )
   }
 
   const createEncounter = async (name, preparedEncounter = null) => {
@@ -392,6 +436,15 @@ export default function SessionView({ token, user, session, campaign, party, ini
   }, [])
 
   const chars = allActiveChars(party)
+  const currentSession = { ...session, duration: clockSeconds, encounters }
+  const handleBack = async () => {
+    await saveDuration()
+    onBack()
+  }
+  const handleOpenEncounter = async (encounter) => {
+    await saveDuration()
+    onOpenEncounter(encounter, currentSession, campaign)
+  }
 
   return (
     <div className="app-page app-page--full">
@@ -400,7 +453,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
       <aside className="sv-sidebar">
         {/* Back + title */}
         <div className="sv-sidebar-top">
-          <button className="sv-back-btn" onClick={onBack}>← Campaign</button>
+          <button className="sv-back-btn" onClick={handleBack}>← Campaign</button>
           <div className="sv-session-name">{session.name}</div>
         </div>
 
@@ -487,12 +540,12 @@ export default function SessionView({ token, user, session, campaign, party, ini
                 <div className="sv-sec-label">Active Encounter</div>
                 <EncounterRow
                   encounter={activeEncounter}
-                  onOpen={enc => onOpenEncounter(enc, session, campaign)}
+                  onOpen={handleOpenEncounter}
                   isActive
                 />
                 <button
                   className="sv-enter-enc-btn"
-                  onClick={() => onOpenEncounter(activeEncounter, session, campaign)}
+                  onClick={() => handleOpenEncounter(activeEncounter)}
                 >
                   ⚔️ Enter Encounter View →
                 </button>
@@ -516,7 +569,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
                   <EncounterRow
                     key={enc.encounterId}
                     encounter={enc}
-                    onOpen={enc => onOpenEncounter(enc, session, campaign)}
+                    onOpen={handleOpenEncounter}
                     isActive={false}
                   />
                 ))}
