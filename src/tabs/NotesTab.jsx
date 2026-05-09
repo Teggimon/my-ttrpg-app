@@ -125,7 +125,8 @@ export default function NotesTab({ char, locked, isOwner, updateChar }) {
   }
 
   const deleteSection = (id) => {
-    const { [id]: _removed, ...rest } = notes
+    const rest = { ...notes }
+    delete rest[id]
     updateChar({
       notesSections: customs.filter(s => s.id !== id),
       notes: rest,

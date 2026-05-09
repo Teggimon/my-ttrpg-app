@@ -100,13 +100,6 @@ const FEATS = [
   { name: 'Weapon Master',      prereq: null,            desc: '+1 STR or DEX. Gain proficiency with 4 weapons of your choice.' },
 ]
 
-const SKILLS = [
-  'Acrobatics','Animal Handling','Arcana','Athletics','Deception',
-  'History','Insight','Intimidation','Investigation','Medicine',
-  'Nature','Perception','Performance','Persuasion','Religion',
-  'Sleight of Hand','Stealth','Survival',
-]
-
 const ABILITY_SCORES = ['STR','DEX','CON','INT','WIS','CHA']
 
 // ── Spell slot tables ─────────────────────────────────────────

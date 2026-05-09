@@ -94,7 +94,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     !item.damage?.dice && !srdMap[item.index]?.damage?.damage_dice
   )
 
-  function useCharge(item) {
+  function spendCharge(item) {
     const current = item.chargesCurrent ?? item.chargesMax
     if (current <= 0) return
     updateChar({ inventory: (char.inventory ?? []).map(i =>
@@ -221,7 +221,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
               <div className="atk-btns">
                 <button
                   className="atk-btn atk-btn--use"
-                  onClick={() => isOwner && !locked && useCharge(item)}
+                  onClick={() => isOwner && !locked && spendCharge(item)}
                   disabled={!isOwner || locked || current <= 0}
                   title="Use one charge"
                 >Use</button>

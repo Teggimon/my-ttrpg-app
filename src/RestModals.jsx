@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import './RestModals.css'
 
 // ── D&D helpers ───────────────────────────────────────────────
@@ -91,7 +91,6 @@ export function ShortRestModal({ char, onConfirm, onClose }) {
   const [hdSpend, setHdSpend] = useState(1)
 
   const alreadyFull  = hpCur >= hpMax
-  const maxSpendable = Math.min(hdState.available, Math.max(0, hpMax - hpCur > 0 ? hdState.available : 0))
   const estimate     = estimateRecovery(hdSpend, die, conMod, hpCur, hpMax)
 
   const decHD = () => setHdSpend(v => Math.max(0, v - 1))

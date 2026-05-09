@@ -205,7 +205,7 @@ const S = {
   cardSub: { fontSize: '0.78rem', color: '#888', marginTop: '0.2rem' },
   row: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' },
   btn: (primary) => ({
-    flex: primary ? 2 : 1, padding: '0.65rem', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
+    flex: primary ? 2 : 1, padding: '0.65rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
     background: primary ? '#6c3fff' : '#1a1a35',
     color: primary ? '#fff' : '#aaa',
     border: primary ? 'none' : '1px solid #333',
@@ -257,10 +257,6 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
   for (const b of (raceBonusOptions ?? []))
     racialBonus[b.ability_score.index] = (racialBonus[b.ability_score.index] ?? 0) + b.bonus
 
-  const base = method === 'standard'
-    ? Object.fromEntries(ABILITIES.map(a => [a, assign[a] ?? null]))
-    : method === 'pointbuy' ? pb : manual
-
   const canNext = method === 'standard'
     ? ABILITIES.every(a => assign[a] != null)
     : method === 'pointbuy'
@@ -268,7 +264,6 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
     : ABILITIES.every(a => (manual[a] ?? 0) >= 3 && (manual[a] ?? 0) <= 20)
 
   const used       = Object.values(assign).filter(Boolean)
-  const available  = STANDARD_ARRAY.filter(v => !used.includes(v))
   const pbSpent    = ABILITIES.reduce((s, a) => s + (PB_COST[pb[a]] ?? 0), 0)
   const pbLeft     = 27 - pbSpent
 
@@ -280,8 +275,8 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
     onNext()
   }
 
-  const tabBtn = (id, label) => ({
-    flex: 1, padding: '0.5rem', borderRadius: '6px', border: 'none', cursor: 'pointer',
+  const tabBtn = (id) => ({
+    flex: 1, padding: '0.5rem', borderRadius: '6px', cursor: 'pointer',
     fontWeight: 600, fontSize: '0.82rem', fontFamily: 'system-ui',
     background: method === id ? '#6c3fff' : '#1a1a35',
     color:      method === id ? '#fff'    : '#888',
@@ -895,8 +890,6 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
           {group.choices.map(choice => {
             const checked = selectedEquipment.some(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
             const isExpanded = expandedChoice === choice.id
-            const catItems = categoryItems[choice.id] ?? []
-
             if (choice.isCategory) {
               const choose = choice.choose ?? 1
               const selectedForChoice = selectedEquipment.filter(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
@@ -1056,9 +1049,8 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
 
   const equipOptions = backgroundData.starting_equipment_options ?? []
   const equipGroups = equipOptions.map((opt, gi) => {
-    let choices = []
-    if (opt.from?.option_set_type === 'options_array') {
-      choices = (opt.from.options ?? []).map((o, oi) => {
+    const choices = opt.from?.option_set_type === 'options_array'
+      ? (opt.from.options ?? []).map((o, oi) => {
         if (o.option_type === 'counted_reference') {
           const idx = o.of?.index ?? `__ref__${gi}_${oi}`
           const name = o.of?.name ?? 'Item'
@@ -1075,10 +1067,10 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
         }
         return null
       }).filter(Boolean)
-    } else {
-      const desc = `Any ${opt.from?.equipment_category?.name ?? 'item'}`
-      choices = [{ id: `${gi}_0`, label: desc, items: [{ index: `__category__${gi}`, name: desc, quantity: 1 }], isChoice: true, choiceDesc: desc }]
-    }
+      : (() => {
+          const desc = `Any ${opt.from?.equipment_category?.name ?? 'item'}`
+          return [{ id: `${gi}_0`, label: desc, items: [{ index: `__category__${gi}`, name: desc, quantity: 1 }], isChoice: true, choiceDesc: desc }]
+        })()
     return { desc: opt.desc, choices, groupIndex: gi }
   })
 
@@ -1217,8 +1209,6 @@ function StepAlignment({ raceData, selected, onSelect, onNext, onBack, creating 
 }
 
 // ─── Progress bar ─────────────────────────────────────────────────────────────
-
-const STEP_LABELS = ['Name', 'Race', 'Subrace', 'Class', 'Class Setup', 'Background', 'BG Setup', 'Alignment']
 
 function ProgressBar({ step, totalSteps }) {
   return (
