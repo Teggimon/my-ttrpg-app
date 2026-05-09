@@ -4,7 +4,7 @@
 .ob-body {
   width: 100%;
   min-height: 100vh;
-  background: #080712;
+  background: var(--bg-page);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,7 +13,7 @@
 }
 
 .ob-body--dm {
-  background: #0e0608;
+  background: var(--bg-page);
 }
 
 /* ── Panel ── */
@@ -33,8 +33,8 @@
 }
 
 .ob-panel--dm {
-  border-color: rgba(224, 82, 82, 0.35);
-  box-shadow: 0 24px 80px var(--overlay-bg), 0 0 0 0.5px rgba(224, 82, 82, 0.2);
+  border-color: var(--dm-border);
+  box-shadow: var(--shadow-lg), 0 0 0 0.5px var(--dm-border);
 }
 
 /* ── Logo ── */
@@ -46,7 +46,7 @@
 
 /* ── Text ── */
 .ob-title {
-  font-family: var(--font-display);
+  font-family: var(--font-name);
   font-size: 22px;
   font-weight: 700;
   color: var(--text-primary);
@@ -79,7 +79,7 @@
 }
 
 .ob-repo-pill--dm {
-  border-color: rgba(224, 82, 82, 0.35);
+  border-color: var(--dm-border);
 }
 
 .ob-repo-icon { font-size: 14px; }
@@ -98,7 +98,7 @@
   line-height: 1.5;
   width: 100%;
   text-align: left;
-  background: rgba(248,113,113,0.08);
+  background: var(--danger-subtle);
   border: 0.5px solid var(--danger-border);
   border-radius: var(--radius-md);
   padding: 10px 12px;
@@ -184,15 +184,15 @@
 
 .ob-btn--accent {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-primary);
 }
 .ob-btn--accent:not(:disabled):hover { background: var(--accent-hover); }
 
 .ob-btn--dm {
-  background: #e05252;
-  color: #fff;
+  background: var(--dm);
+  color: var(--text-primary);
 }
-.ob-btn--dm:not(:disabled):hover { background: #f07070; }
+.ob-btn--dm:not(:disabled):hover { background: var(--dm-hover); }
 
 .ob-btn--ghost {
   background: transparent;

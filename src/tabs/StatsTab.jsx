@@ -346,7 +346,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
                 <form onSubmit={e => { e.preventDefault(); addCategory(newCat) }} style={{ display:'flex', gap:6, width:'100%' }}>
                   <input className="prof-add-input" placeholder="Category name…" value={newCat}
                     onChange={e => setNewCat(e.target.value)} autoFocus style={{ flex:1, width:'auto' }} />
-                  <button type="submit" style={{ background:'var(--accent)', border:'none', borderRadius:'var(--radius-md)', color:'#fff', fontSize:11, fontWeight:700, padding:'4px 10px', cursor:'pointer', fontFamily:'var(--font-body)' }}>Add</button>
+                  <button type="submit" style={{ background:'var(--accent)', border:'none', borderRadius:'var(--radius-md)', color:'var(--text-primary)', fontSize:11, fontWeight:700, padding:'4px 10px', cursor:'pointer', fontFamily:'var(--font-body)' }}>Add</button>
                   <button type="button" onClick={() => setAddingCat(false)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:13, fontFamily:'var(--font-body)' }}>Cancel</button>
                 </form>
               ) : (

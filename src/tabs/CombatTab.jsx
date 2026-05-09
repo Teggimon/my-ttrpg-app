@@ -210,7 +210,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
               <span className="atk-name">{item.name}</span>
             </div>
             <div className="atk-line2">
-              <span className="badge" style={{ color: pct === 0 ? '#f09090' : pct < 0.34 ? '#efa027' : undefined }}>
+              <span className="badge" style={{ color: pct === 0 ? 'var(--danger)' : pct < 0.34 ? 'var(--warning)' : undefined }}>
                 {current} / {item.chargesMax} charges
               </span>
               {useDice && (

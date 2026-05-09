@@ -70,12 +70,12 @@ img { display: block; max-width: 100%; }
   --success:             #4ade80;
   --warning:             #f59e0b;
   --danger:              #f87171;
-  --success-subtle:      var(--success-subtle);
-  --success-border:      var(--success-border);
+  --success-subtle:      rgba(74, 222, 128, 0.12);
+  --success-border:      rgba(74, 222, 128, 0.35);
   --warning-subtle:      rgba(245, 158, 11, 0.12);
-  --warning-border:      var(--warning-border);
-  --danger-subtle:       var(--danger-subtle);
-  --danger-border:       var(--danger-border);
+  --warning-border:      rgba(245, 158, 11, 0.35);
+  --danger-subtle:       rgba(248, 113, 113, 0.12);
+  --danger-border:       rgba(248, 113, 113, 0.35);
 
   /* ── Tabs ── */
   --tab-active-bg:       #1c1b35;
@@ -90,20 +90,21 @@ img { display: block; max-width: 100%; }
 
   /* ── Shadows ── */
   --shadow-sm:           0 2px 8px rgba(0, 0, 0, 0.5);
-  --shadow-md:           0 8px 32px var(--overlay-bg);
+  --shadow-md:           0 8px 32px rgba(0, 0, 0, 0.4);
   --shadow-lg:           0 24px 80px rgba(0, 0, 0, 0.8);
-  --overlay-bg:          var(--overlay-bg);
+  --overlay-bg:          rgba(0, 0, 0, 0.72);
   --hover-subtle:        rgba(255, 255, 255, 0.02);
   --hover-strong:        rgba(255, 255, 255, 0.06);
-  --accent-glow:         var(--accent-glow);
-  --dm-glow:             var(--dm-glow);
-  --condition-border:    var(--condition-border);
+  --accent-glow:         0 8px 28px rgba(124, 111, 245, 0.2);
+  --dm-glow:             0 8px 28px rgba(224, 82, 82, 0.15);
+  --condition-border:    rgba(239, 100, 60, 0.35);
 
   /* ── Typography ── */
-  --font-display:        'Cinzel', Georgia, serif;
+  --font-name:           'Cinzel', Georgia, serif;
+  --font-display:        var(--font-name);
   --font-body:           'Nunito', system-ui, sans-serif;
   --font-mono:           'JetBrains Mono', monospace;
-  --font-name:           'Outfit', system-ui, sans-serif;
+  --font-character:      'Outfit', system-ui, sans-serif;
 
   /* ── Spacing (8px grid) ── */
   --spacing-xs:          4px;
@@ -281,16 +282,16 @@ body {
 /* ── 6. TYPOGRAPHY ─────────────────────────────────────────────────── */
 /*
   RULES (from design system §4):
-  - NEVER use --font-display below 16px. Use --font-body instead.
+  - Use --font-name for display headings.
   - Game mechanic numbers (HP, AC, dice, modifiers) → --font-mono
-  - Character name, race, class text → --font-display
+  - Character name, race, class text → --font-name
   - Button labels, form labels, all UI text → --font-body
-  - Character name element only → --font-name (Outfit 800)
+  - Character name element only → --font-character (Outfit 800)
 */
 
-.type-display-xl { font-family: var(--font-display); font-size: 28px; font-weight: 700; line-height: 1.1; }
-.type-display-lg { font-family: var(--font-display); font-size: 22px; font-weight: 600; line-height: 1.2; }
-.type-display-md { font-family: var(--font-display); font-size: 18px; font-weight: 600; line-height: 1.2; }
+.type-display-xl { font-family: var(--font-name); font-size: 28px; font-weight: 700; line-height: 1.1; }
+.type-display-lg { font-family: var(--font-name); font-size: 22px; font-weight: 600; line-height: 1.2; }
+.type-display-md { font-family: var(--font-name); font-size: 18px; font-weight: 600; line-height: 1.2; }
 
 .type-label-lg   { font-family: var(--font-body); font-size: 15px; font-weight: 600; }
 .type-label-md   { font-family: var(--font-body); font-size: 13px; font-weight: 600; }
@@ -305,7 +306,7 @@ body {
 
 /* Character name — Outfit 800 ONLY — applied to .char-name element */
 .char-name {
-  font-family: var(--font-name);
+  font-family: var(--font-character);
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--text-primary);

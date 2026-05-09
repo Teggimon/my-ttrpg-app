@@ -228,7 +228,7 @@
 /* Level 1: circle outline (accent) with filled inner dot */
 .skill-dot--1 {
   border-color: var(--accent);
-  background: rgba(124,111,245,0.08);
+  background: var(--accent-subtle);
 }
 .skill-dot--1::after {
   content: '';
@@ -247,7 +247,7 @@
 
 .skill-dot-star {
   font-size: 9px;
-  color: #fff;
+  color: var(--text-primary);
   line-height: 1;
   position: relative;
   z-index: 1;
@@ -277,7 +277,7 @@
   flex-shrink: 0;
 }
 .skill-bonus--1 { color: var(--accent-light); }
-.skill-bonus--2 { color: #b8aeff; font-weight: 700; }
+.skill-bonus--2 { color: var(--accent-hover); font-weight: 700; }
 
 /* ── Other proficiencies ── */
 .prof-card {
@@ -326,9 +326,9 @@
   color: var(--text-secondary);
 }
 .prof-pill--half {
-  border-color: rgba(201,162,39,0.4);
-  color: #c9a227;
-  background: rgba(201,162,39,0.08);
+  border-color: var(--gold-border);
+  color: var(--gold);
+  background: var(--gold-subtle);
 }
 
 .prof-pill-remove {
@@ -340,7 +340,7 @@
   padding: 0;
   line-height: 1;
 }
-.prof-pill-remove:hover { color: #f09090; }
+.prof-pill-remove:hover { color: var(--danger); }
 
 .prof-add-input {
   background: transparent;
@@ -392,7 +392,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #c9a227;
+  background: var(--gold);
   flex-shrink: 0;
   cursor: default;
 }
@@ -403,12 +403,12 @@
   left: 50%;
   transform: translateX(-50%);
   background: var(--bg-elevated);
-  border: 1px solid rgba(201,162,39,0.4);
+  border: 1px solid var(--gold-border);
   border-radius: var(--radius-md);
   padding: 7px 10px;
   white-space: nowrap;
   z-index: 100;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  box-shadow: var(--shadow-sm);
   pointer-events: none;
 }
 
@@ -421,7 +421,7 @@
   line-height: 1.5;
 }
 
-.effect-tooltip-gem { color: #c9a227; flex-shrink: 0; }
+.effect-tooltip-gem { color: var(--gold); flex-shrink: 0; }
 .effect-tooltip-sep { color: var(--text-faint); }
 .effect-tooltip-item { color: var(--text-primary); font-weight: 600; }
 .effect-tooltip-state { color: var(--text-faint); font-size: 10px; }

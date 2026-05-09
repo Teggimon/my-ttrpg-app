@@ -46,7 +46,7 @@
 }
 
 .lp-char-name {
-  font-family: 'Outfit', var(--font-body);
+  font-family: var(--font-character);
   font-size: 22px;
   font-weight: 800;
   line-height: 1.1;
@@ -142,7 +142,7 @@
 .lp-hp-btn--plus {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--text-primary);
 }
 .lp-hp-btn--plus:hover { background: var(--accent-hover); }
 
@@ -203,8 +203,8 @@
 }
 
 .lp-condition-pill {
-  background: rgba(239, 100, 60, 0.22);
-  color: #f4845f;
+  background: var(--condition-bg);
+  color: var(--condition-text);
   font-size: 11px;
   font-weight: 700;
   padding: 3px 9px;
@@ -274,7 +274,7 @@
 .lp-xp-submit {
   font-size: 11px; font-weight: 700; font-family: var(--font-body);
   padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer;
-  background: var(--accent); border: none; color: #fff;
+  background: var(--accent); border: none; color: var(--text-primary);
 }
 .lp-xp-submit:hover { background: var(--accent-hover); }
 
@@ -327,14 +327,14 @@
 }
 
 .lp-rest-btn--short {
-  background: rgba(124, 111, 245, 0.08);
-  border-color: rgba(124, 111, 245, 0.3);
+  background: var(--accent-subtle);
+  border-color: var(--accent-border);
   color: var(--accent-light);
 }
 .lp-rest-btn--short:hover {
-  background: rgba(124, 111, 245, 0.16);
-  border-color: rgba(124, 111, 245, 0.55);
-  color: #fff;
+  background: var(--hover-strong);
+  border-color: var(--accent);
+  color: var(--text-primary);
 }
 
 .lp-rest-btn--long {

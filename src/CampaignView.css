@@ -45,7 +45,7 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  font-family: var(--font-display);
+  font-family: var(--font-name);
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
@@ -869,7 +869,7 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-.npc-sr-badge--srd      { background: var(--accent-subtle); color: var(--accent); border: 1px solid rgba(124,111,245,0.3); }
+.npc-sr-badge--srd      { background: var(--accent-subtle); color: var(--accent); border: 1px solid var(--accent-border); }
 .npc-sr-badge--campaign { background: var(--dm-subtle); color: var(--dm); border: 1px solid var(--dm-border); }
 
 .npc-sr-btns { display: flex; gap: 4px; flex-shrink: 0; }
@@ -886,11 +886,11 @@
   white-space: nowrap;
 }
 .npc-add-btn--enemy { color: var(--dm); border-color: var(--dm-border); background: var(--dm-subtle); }
-.npc-add-btn--enemy:hover { background: var(--dm); color: var(--text-inverse); }
+.npc-add-btn--enemy:hover { background: var(--dm); color: var(--text-primary); }
 .npc-add-btn--ally  { color: var(--text-muted); border-color: var(--border); background: transparent; }
 .npc-add-btn--ally:hover  { border-color: var(--border-strong); color: var(--text-secondary); }
 .npc-add-btn--boss  { color: var(--warning); border-color: var(--warning-border); background: var(--warning-subtle); }
-.npc-add-btn--boss:hover  { background: rgba(245,158,11,0.2); }
+.npc-add-btn--boss:hover  { background: var(--warning-subtle); }
 
 .npc-search-hint {
   text-align: center;

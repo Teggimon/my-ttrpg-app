@@ -36,7 +36,7 @@
 
 .gm-dash-title {
   display: block;
-  font-family: var(--font-display);
+  font-family: var(--font-name);
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
@@ -109,8 +109,8 @@
 }
 
 .party-card:hover { border-color: var(--border-strong); }
-.party-card--warn { border-color: #5a1a1a; background: #130505; }
-.party-card--warn:hover { border-color: #8b2020; }
+.party-card--warn { border-color: var(--danger-border); background: var(--danger-subtle); }
+.party-card--warn:hover { border-color: var(--danger); }
 .party-card--inactive { opacity: 0.45; }
 .party-card--loading { cursor: default; }
 
@@ -165,7 +165,7 @@
 }
 .party-card-hd-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .party-card-name {
-  font-family: 'Outfit', var(--font-body);
+  font-family: var(--font-character);
   font-weight: 800;
   font-size: 15px;
   color: var(--text-primary);
@@ -199,9 +199,9 @@
   margin-bottom: 10px;
 }
 .status-badge--active {
-  background: rgba(74, 222, 128, 0.12);
+  background: var(--success-subtle);
   color: var(--hp-high);
-  border: 0.5px solid rgba(74, 222, 128, 0.3);
+  border: 0.5px solid var(--success-border);
 }
 .status-badge--inactive {
   background: var(--bg-elevated);
@@ -298,7 +298,7 @@
 .gm-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.65);
+  background: var(--overlay-bg);
   display: flex;
   align-items: flex-end;
   justify-content: center;

@@ -81,7 +81,7 @@
   font-size: 11px; font-weight: 700; font-family: var(--font-body);
   padding: 4px 12px; border-radius: var(--radius-sm); cursor: pointer; border: none;
 }
-.atk-btn--roll { background: var(--accent); color: #fff; }
+.atk-btn--roll { background: var(--accent); color: var(--text-primary); }
 .atk-btn--roll:hover { background: var(--accent-hover); }
 .atk-btn--use  { background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-secondary); }
 

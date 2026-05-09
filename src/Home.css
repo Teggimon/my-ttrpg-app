@@ -88,8 +88,8 @@
 }
 
 .home-logo-icon--dm {
-  background: rgba(220, 60, 60, 0.15);
-  border-color: #8b2020;
+  background: var(--dm-subtle);
+  border-color: var(--dm-border);
 }
 
 .home-wordmark {
@@ -203,10 +203,10 @@
   align-items: center;
   gap: 10px;
   padding: 12px 20px;
-  background: rgba(180, 40, 40, 0.12);
-  border-bottom: 0.5px solid rgba(180, 40, 40, 0.35);
+  background: var(--dm-subtle);
+  border-bottom: 0.5px solid var(--dm-border);
   font-size: 13px;
-  color: #ff9090;
+  color: var(--dm-hover);
   flex-shrink: 0;
 }
 
@@ -274,22 +274,22 @@
   align-items: center;
   gap: 14px;
   padding: 16px 18px;
-  background: rgba(180, 40, 40, 0.1);
-  border: 0.5px solid rgba(180, 40, 40, 0.4);
+  background: var(--dm-subtle);
+  border: 0.5px solid var(--dm-border);
   border-radius: var(--radius-lg);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 
 .gm-strip:hover {
-  background: rgba(180, 40, 40, 0.18);
-  border-color: rgba(180, 40, 40, 0.7);
+  background: var(--hover-strong);
+  border-color: var(--dm);
 }
 
 .gm-strip-emoji  { font-size: 22px; flex-shrink: 0; }
-.gm-strip-title  { font-size: 14px; font-weight: 700; color: #ff8080; }
-.gm-strip-sub    { font-size: 11px; color: #8b4040; margin-top: 2px; }
-.gm-strip-arrow  { margin-left: auto; font-size: 16px; color: #8b4040; }
+.gm-strip-title  { font-size: 14px; font-weight: 700; color: var(--dm-hover); }
+.gm-strip-sub    { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.gm-strip-arrow  { margin-left: auto; font-size: 16px; color: var(--text-muted); }
 
 /* ════════════════════════════════════════════
    Loading
@@ -347,7 +347,7 @@
 .char-card:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(124, 111, 245, 0.2);
+  box-shadow: var(--accent-glow);
 }
 
 /* Top accent line (HP colour) */
@@ -477,7 +477,7 @@
   width: 28px;
   height: 28px;
   border-radius: var(--radius-sm);
-  background: rgba(14, 13, 26, 0.75);
+  background: var(--bg-base);
   border: 0.5px solid var(--border-strong);
   color: var(--text-secondary);
   font-size: 18px;
@@ -529,7 +529,7 @@
 
 .char-menu-item:hover { background: var(--accent-subtle); }
 .char-menu-item--danger { color: var(--danger); }
-.char-menu-item--danger:hover { background: rgba(248, 113, 113, 0.08); }
+.char-menu-item--danger:hover { background: var(--danger-subtle); }
 
 /* ════════════════════════════════════════════
    New Character Card
@@ -590,7 +590,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: var(--overlay-bg);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -657,9 +657,9 @@
 .home-btn--ghost:hover { color: var(--text-primary); }
 
 .home-btn--danger {
-  background: rgba(248, 113, 113, 0.12);
+  background: var(--danger-subtle);
   border: 1px solid var(--danger);
   color: var(--danger);
 }
 
-.home-btn--danger:not(:disabled):hover { background: rgba(248, 113, 113, 0.22); }
+.home-btn--danger:not(:disabled):hover { background: var(--danger-bg); }

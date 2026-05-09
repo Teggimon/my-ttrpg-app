@@ -100,7 +100,7 @@
   width: 8px; height: 8px; border-radius: 50%;
   border: 1.5px solid var(--border-hi); background: transparent;
 }
-.conc-dot--on { background: #378add; border-color: #378add; }
+.conc-dot--on { background: var(--concentration-indicator); border-color: var(--concentration-indicator); }
 
 .spell-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-primary); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

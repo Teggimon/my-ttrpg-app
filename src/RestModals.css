@@ -45,7 +45,7 @@
 }
 
 .rest-title {
-  font-family: var(--font-display);
+  font-family: var(--font-name);
   font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
@@ -101,7 +101,7 @@
 .rest-val--warn   { color: var(--warning); }
 .rest-val--danger { color: var(--danger); }
 .rest-val--muted  { color: var(--text-muted); font-weight: 400; }
-.rest-val--gold   { color: var(--gold, #c9a227); }
+.rest-val--gold   { color: var(--gold); }
 
 .rest-delta {
   color: var(--success);
@@ -243,7 +243,7 @@
 
 .rest-btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-primary);
 }
 .rest-btn--primary:not(:disabled):hover { background: var(--accent-hover); }
 

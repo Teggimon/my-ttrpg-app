@@ -502,7 +502,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
         <button onClick={onCancel} style={{ flex:1, padding:'8px', background:'var(--bg-inset)', border:'0.5px solid var(--border-strong)', borderRadius:'var(--radius-md)', color:'var(--text-secondary)', fontFamily:'var(--font-body)', fontSize:13, cursor:'pointer' }}>
           Cancel
         </button>
-        <button onClick={save} disabled={!name.trim()} style={{ flex:2, padding:'8px', background:'var(--accent)', border:'none', borderRadius:'var(--radius-md)', color:'#fff', fontFamily:'var(--font-body)', fontSize:13, fontWeight:700, cursor:'pointer', opacity: name.trim() ? 1 : 0.4 }}>
+        <button onClick={save} disabled={!name.trim()} style={{ flex:2, padding:'8px', background:'var(--accent)', border:'none', borderRadius:'var(--radius-md)', color:'var(--text-primary)', fontFamily:'var(--font-body)', fontSize:13, fontWeight:700, cursor:'pointer', opacity: name.trim() ? 1 : 0.4 }}>
           {initial ? 'Save Changes' : '+ Add Item'}
         </button>
       </div>
@@ -723,7 +723,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
             <span>{pct}%</span>
           </div>
           <div className="carry-track">
-            <div className="carry-fill" style={{ width:`${pct}%`, background: pct>90?'#f09090':pct>66?'#efa027':'var(--accent)' }} />
+            <div className="carry-fill" style={{ width:`${pct}%`, background: pct>90?'var(--danger)':pct>66?'var(--warning)':'var(--accent)' }} />
           </div>
         </div>
       )}

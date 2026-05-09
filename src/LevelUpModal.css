@@ -2,19 +2,11 @@
    Level Up Modal
    ════════════════════════════════════════════ */
 
-/* Gold token */
-:root {
-  --gold:        #c9a227;
-  --gold-hover:  #e8bb30;
-  --gold-subtle: rgba(201, 162, 39, 0.12);
-  --gold-border: rgba(201, 162, 39, 0.40);
-}
-
 /* ── Overlay + sheet ── */
 .lu-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -73,13 +65,13 @@
 .lu-step-dot--active {
   background: var(--accent);
   transform: scale(1.25);
-  box-shadow: 0 0 6px rgba(124, 111, 245, 0.6);
+  box-shadow: 0 0 6px var(--accent);
 }
 
 /* Gold variant for ASI/subclass steps */
 .lu-title--gold ~ .lu-step-dot--active {
   background: var(--gold);
-  box-shadow: 0 0 6px rgba(201, 162, 39, 0.6);
+  box-shadow: 0 0 6px var(--gold);
 }
 
 /* ── Step container ── */
@@ -151,9 +143,9 @@
 }
 
 .tag-new {
-  background: rgba(124, 111, 245, 0.15);
+  background: var(--accent-subtle);
   color: var(--accent);
-  border: 0.5px solid var(--accent-glow);
+  border: 0.5px solid var(--accent-border);
 }
 
 .lu-hp-gain {
@@ -507,13 +499,13 @@
 
 .lu-btn--primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-primary);
 }
 .lu-btn--primary:not(:disabled):hover { background: var(--accent-hover); }
 
 .lu-btn--gold {
   background: var(--gold);
-  color: #0e0d1a;
+  color: var(--text-inverse);
 }
 .lu-btn--gold:not(:disabled):hover { background: var(--gold-hover); }
 

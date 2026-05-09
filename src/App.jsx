@@ -156,7 +156,7 @@ function App() {
       <div style={{ fontSize: 48 }}>⚔️</div>
       <div style={{ textAlign: 'center' }}>
         <div style={{
-          fontFamily: 'var(--font-display)',
+          fontFamily: 'var(--font-name)',
           fontSize: '24px',
           fontWeight: 700,
           color: 'var(--text-primary)',
@@ -172,7 +172,7 @@ function App() {
           display: 'flex', alignItems: 'center', gap: '10px',
           padding: '12px 28px',
           background: 'var(--accent)',
-          color: '#fff',
+          color: 'var(--text-primary)',
           border: 'none',
           borderRadius: 'var(--radius-md)',
           fontFamily: 'var(--font-body)',
