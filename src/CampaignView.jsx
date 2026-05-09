@@ -985,7 +985,7 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
   }
 
   return createPortal(
-    <div className="cv-modal-overlay" onClick={onClose}>
+    <div className="cv-modal-overlay">
       <div className="cv-modal-sheet encounter-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="cv-modal-handle" />
         <div className="npc-modal-title">{encounter ? 'Edit Encounter' : 'Build Encounter'}</div>
