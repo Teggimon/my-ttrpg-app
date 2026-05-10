@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { getEquipment, getMagicItems } from '../srdContent'
+import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from '../sourceFilters'
 import '../TabShared.css'
 import './InventoryTab.css'
 
@@ -531,6 +532,7 @@ function CustomItemForm({ initial, onSave, onCancel }) {
 function SrdPicker({ onAdd, onClose }) {
   const [tab,      setTab]      = useState('equipment')
   const [search,   setSearch]   = useState('')
+  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
   const [allEquip, setAllEquip] = useState([])
   const [allMagic, setAllMagic] = useState([])
 
@@ -540,13 +542,15 @@ function SrdPicker({ onAdd, onClose }) {
   }, [])
 
   const pool     = tab === 'equipment' ? allEquip : allMagic
-  const filtered = pool.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).slice(0, 60)
+  const sources  = sourceOptions(pool)
+  const filtered = filterBySearchAndSource(pool, search, sourceFilter).slice(0, 60)
 
   function addSrd(srdItem) {
     onAdd({
       itemId:   uuidv4(),
       index:    srdItem.index,
       name:     srdItem.name,
+      source:   srdItem.source,
       quantity: 1,
       equipped: false,
       ...(srdItem.armor_class         && { armor_class:        srdItem.armor_class }),
@@ -564,17 +568,32 @@ function SrdPicker({ onAdd, onClose }) {
       <div className="ip-tabs">
         {[{ key:'equipment', label:'Equipment' }, { key:'magic', label:'Magic Items' }].map(t => (
           <button key={t.key} className={`ip-tab${tab === t.key ? ' ip-tab--active' : ''}`}
-            onClick={() => { setTab(t.key); setSearch('') }}>{t.label}</button>
+            onClick={() => { setTab(t.key); setSearch(''); setSourceFilter(ALL_SOURCES) }}>{t.label}</button>
         ))}
         <button className="ip-close" onClick={onClose}>✕</button>
       </div>
       <input className="ip-search" placeholder="Search…" value={search}
         onChange={e => setSearch(e.target.value)} autoFocus />
+      {sources.length > 1 && (
+        <div className="ip-source-chips">
+          {[ALL_SOURCES, ...sources].map(source => (
+            <button
+              key={source}
+              type="button"
+              className={`ip-source-chip${sourceFilter === source ? ' ip-source-chip--active' : ''}`}
+              onClick={() => setSourceFilter(source)}
+            >
+              {source === ALL_SOURCES ? 'All sources' : source}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="ip-list">
         {filtered.length === 0 && <div className="ip-empty">No results</div>}
         {filtered.map(item => (
           <button key={item.index} className="ip-row" onClick={() => addSrd(item)}>
             <span className="ip-row-name">{item.name}</span>
+            <span className="ip-row-tag ip-row-tag--source">{sourceCode(item)}</span>
             {item.armor_class && <span className="ip-row-tag">AC {item.armor_class.base}</span>}
             {item.damage      && <span className="ip-row-tag">{item.damage.damage_dice}</span>}
             {item.weight      && <span className="ip-row-tag ip-row-tag--dim">{item.weight} lb</span>}

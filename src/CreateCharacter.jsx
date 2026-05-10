@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment } from './srdContent'
 import { SUBCLASSES, SUBCLASS_LEVELS, getSlotsForClass, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
 import { getSpells } from './srdContent'
+import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
 
 // Spellcasting ability by class index
 const SPELLCASTING_ABILITY = {
@@ -87,13 +88,13 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     inventory.push({ itemId: uuidv4(), index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of classEquipment) {
-    inventory.push({ itemId: uuidv4(), index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
+    inventory.push({ itemId: uuidv4(), index: item.index, name: item.name, source: item.source, quantity: item.quantity ?? 1, equipped: false })
   }
   for (const item of (backgroundData?.starting_equipment ?? [])) {
     inventory.push({ itemId: uuidv4(), index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
   }
   for (const item of backgroundEquipment) {
-    inventory.push({ itemId: uuidv4(), index: item.index, name: item.name, quantity: item.quantity ?? 1, equipped: false })
+    inventory.push({ itemId: uuidv4(), index: item.index, name: item.name, source: item.source, quantity: item.quantity ?? 1, equipped: false })
   }
 
   // 9. Racial traits
@@ -211,6 +212,39 @@ const S = {
   featureDesc: { fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 },
   error: { color: 'var(--danger)', fontSize: '0.85rem', marginTop: '0.75rem' },
   scrollList: { marginTop: '0.5rem' },
+  sourceRow: { display:'flex', gap:'0.4rem', overflowX:'auto', padding:'0.45rem 0 0.2rem', marginBottom:'0.35rem', scrollbarWidth:'thin' },
+  sourceChip: (active) => ({
+    flex:'0 0 auto', minHeight:32, padding:'0.35rem 0.7rem', borderRadius:'9999px', cursor:'pointer',
+    border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+    background: active ? 'var(--accent-subtle)' : 'transparent',
+    color: active ? 'var(--accent-hover)' : 'var(--text-muted)',
+    fontFamily:'var(--font-body)', fontSize:'0.75rem', fontWeight:700,
+  }),
+  sourceBadge: { flex:'0 0 auto', padding:'0.15rem 0.5rem', borderRadius:'9999px', border:'1px solid var(--border-strong)', background:'var(--bg-inset)', color:'var(--text-muted)', fontSize:'0.68rem', fontWeight:800, fontFamily:'var(--font-mono)', letterSpacing:'0.02em' },
+  cardTop: { display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'0.65rem' },
+}
+
+function SourceFilter({ items, value, onChange }) {
+  const options = sourceOptions(items)
+  if (options.length <= 1) return null
+  return (
+    <div style={S.sourceRow}>
+      {[ALL_SOURCES, ...options].map(source => (
+        <button
+          key={source}
+          type="button"
+          style={S.sourceChip(value === source)}
+          onClick={() => onChange(source)}
+        >
+          {source === ALL_SOURCES ? 'All sources' : source}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SourceBadge({ item }) {
+  return <span style={S.sourceBadge}>{sourceCode(item)}</span>
 }
 
 // ─── Ability score constants ──────────────────────────────────────────────────
@@ -430,17 +464,22 @@ function StepName({ value, onChange, onNext, onCancel }) {
 
 function StepRace({ races, selected, onSelect, onNext, onBack }) {
   const [search, setSearch] = useState('')
-  const filtered = races.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
+  const filtered = filterBySearchAndSource(races, search, sourceFilter)
 
   return (
     <div style={S.wrap}>
       <div style={S.h1}>Choose a Race</div>
       <div style={S.sub}>Your race shapes your innate abilities and traits.</div>
       <input style={S.input} placeholder="Search races…" value={search} onChange={e => setSearch(e.target.value)} />
+      <SourceFilter items={races} value={sourceFilter} onChange={setSourceFilter} />
       <div style={S.scrollList}>
         {filtered.map(r => (
           <div key={r.index} style={S.card(selected?.index === r.index)} onClick={() => onSelect(r)}>
-            <div style={S.cardName}>{r.name}</div>
+            <div style={S.cardTop}>
+              <div style={S.cardName}>{r.name}</div>
+              <SourceBadge item={r} />
+            </div>
             <div style={S.cardSub}>
               Speed {r.speed}ft · {r.size}
               {r.ability_bonuses?.map(b => ` · +${b.bonus} ${b.ability_score.name}`).join('')}
@@ -467,8 +506,10 @@ function StepRace({ races, selected, onSelect, onNext, onBack }) {
 // ─── Step 3: Subrace ──────────────────────────────────────────────────────────
 
 function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonusOptions, onNext, onBack }) {
+  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
   // Filter subraces for this race
-  const available = subraces.filter(s => s.race?.index === race.index)
+  const allAvailable = subraces.filter(s => s.race?.index === race.index)
+  const available = allAvailable.filter(s => sourceFilter === ALL_SOURCES || sourceCode(s) === sourceFilter)
 
   // Half-Elf style: ability_bonus_options on the race itself
   const hasBonusOptions = !!race.ability_bonus_options
@@ -496,9 +537,13 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
       {available.length > 0 && (
         <>
           <label style={S.label}>Choose a Subrace</label>
+          <SourceFilter items={allAvailable} value={sourceFilter} onChange={setSourceFilter} />
           {available.map(s => (
             <div key={s.index} style={S.card(selected?.index === s.index)} onClick={() => onSelect(s)}>
-              <div style={S.cardName}>{s.name}</div>
+              <div style={S.cardTop}>
+                <div style={S.cardName}>{s.name}</div>
+                <SourceBadge item={s} />
+              </div>
               <div style={S.cardSub}>
                 {s.ability_bonuses?.map(b => `+${b.bonus} ${b.ability_score.name}`).join(' · ')}
               </div>
@@ -541,7 +586,8 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
 
 function SpellPicker({ label, spells, selected, max, onToggle }) {
   const [search, setSearch] = useState('')
-  const filtered = spells.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).slice(0, 80)
+  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
+  const filtered = filterBySearchAndSource(spells, search, sourceFilter).slice(0, 80)
   return (
     <div style={{ marginBottom: '1rem' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
@@ -551,6 +597,7 @@ function SpellPicker({ label, spells, selected, max, onToggle }) {
         </span>
       </div>
       <input style={{ ...S.input, marginBottom:'0.4rem' }} placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
+      <SourceFilter items={spells} value={sourceFilter} onChange={setSourceFilter} />
       <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid var(--border)', borderRadius:6 }}>
         {filtered.map(sp => {
           const sel = selected.some(s => s.index === sp.index)
@@ -565,6 +612,7 @@ function SpellPicker({ label, spells, selected, max, onToggle }) {
             >
               <span style={{ color: sel ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize:'1rem', lineHeight:1 }}>{sel ? '◉' : '○'}</span>
               <span style={{ fontSize:'0.87rem', fontWeight: sel ? 600 : 400, color: sel ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{sp.name}</span>
+              <SourceBadge item={sp} />
               {sp.level === 0 && <span style={{ fontSize:'0.7rem', color:'var(--accent)', marginLeft:'auto' }}>cantrip</span>}
               {sp.level > 0  && <span style={{ fontSize:'0.7rem', color:'var(--text-muted)', marginLeft:'auto' }}>Lv {sp.level}</span>}
             </div>
@@ -593,13 +641,13 @@ function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, o
     if (selectedCantrips.some(s => s.index === sp.index))
       onCantrips(selectedCantrips.filter(s => s.index !== sp.index))
     else if (selectedCantrips.length < cantripMax)
-      onCantrips([...selectedCantrips, { id: sp.index, index: sp.index, name: sp.name, level: 0 }])
+      onCantrips([...selectedCantrips, { id: sp.index, index: sp.index, name: sp.name, source: sp.source, level: 0 }])
   }
   const toggleSpell = (sp) => {
     if (selectedSpells.some(s => s.index === sp.index))
       onSpells(selectedSpells.filter(s => s.index !== sp.index))
     else if (selectedSpells.length < spellMax)
-      onSpells([...selectedSpells, { id: sp.index, index: sp.index, name: sp.name, level: sp.level }])
+      onSpells([...selectedSpells, { id: sp.index, index: sp.index, name: sp.name, source: sp.source, level: sp.level }])
   }
 
   const cantripDone = cantripMax === 0 || selectedCantrips.length === cantripMax
@@ -671,17 +719,22 @@ function StepSubclass({ classData, selected, onSelect, onNext, onBack }) {
 
 function StepClass({ classes, selected, onSelect, onNext, onBack }) {
   const [search, setSearch] = useState('')
-  const filtered = classes.filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
+  const filtered = filterBySearchAndSource(classes, search, sourceFilter)
 
   return (
     <div style={S.wrap}>
       <div style={S.h1}>Choose a Class</div>
       <div style={S.sub}>Your class defines your combat role and abilities.</div>
       <input style={S.input} placeholder="Search classes…" value={search} onChange={e => setSearch(e.target.value)} />
+      <SourceFilter items={classes} value={sourceFilter} onChange={setSourceFilter} />
       <div style={S.scrollList}>
         {filtered.map(c => (
           <div key={c.index} style={S.card(selected?.index === c.index)} onClick={() => onSelect(c)}>
-            <div style={S.cardName}>{c.name}</div>
+            <div style={S.cardTop}>
+              <div style={S.cardName}>{c.name}</div>
+              <SourceBadge item={c} />
+            </div>
             <div style={S.cardSub}>
               d{c.hit_die} hit die
               {c.saving_throws?.length > 0 && ` · Saves: ${c.saving_throws.map(s => s.name).join(', ')}`}
@@ -728,12 +781,13 @@ async function fetchCategoryItems(categoryIndex) {
       }
     }
 
-    return items.map(item => ({ index: item.index, name: item.name, quantity: 1 }))
+    return items.map(item => ({ index: item.index, name: item.name, source: item.source, quantity: 1 }))
   } catch { return [] }
 }
 
 function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEquipment, onEquipmentChange, onNext, onBack }) {
   const [categoryItems, setCategoryItems] = useState({}) // { choiceId: [items] }
+  const [categorySourceFilters, setCategorySourceFilters] = useState({})
   const [expandedChoice, setExpandedChoice] = useState(null) // choiceId being expanded
 
   const profChoices = classData.proficiency_choices?.filter(pc => pc.type === 'proficiencies') ?? []
@@ -880,6 +934,8 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
               const selectedForChoice = selectedEquipment.filter(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
               const choiceComplete = selectedForChoice.length >= choose
               const loadedItems = categoryItems[choice.id] // null=loading, undefined=not started, []=empty, [...]
+              const itemSourceFilter = categorySourceFilters[choice.id] ?? ALL_SOURCES
+              const visibleItems = (loadedItems ?? []).filter(item => itemSourceFilter === ALL_SOURCES || sourceCode(item) === itemSourceFilter)
               return (
                 <div key={choice.id}>
                   <div
@@ -899,7 +955,13 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                         ? <div style={S.cardSub}>Loading…</div>
                         : loadedItems.length === 0
                         ? <div style={S.cardSub}>No items found for this category.</div>
-                        : loadedItems.map(item => {
+                        : <>
+                          <SourceFilter
+                            items={loadedItems}
+                            value={itemSourceFilter}
+                            onChange={(source) => setCategorySourceFilters(prev => ({ ...prev, [choice.id]: source }))}
+                          />
+                          {visibleItems.map(item => {
                             const itemChecked = selectedForChoice.some(e => e.index === item.index)
                             const disabled = !itemChecked && selectedForChoice.length >= choose
                             return (
@@ -918,9 +980,11 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                               >
                                 <span style={{ color: itemChecked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{itemChecked ? '◉' : '○'}</span>
                                 <span>{item.name}</span>
+                                <span style={{ marginLeft:'auto' }}><SourceBadge item={item} /></span>
                               </div>
                             )
-                          })
+                          })}
+                        </>
                       }
                     </div>
                   )}
@@ -977,17 +1041,22 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
 
 function StepBackground({ backgrounds, selected, onSelect, onNext, onBack }) {
   const [search, setSearch] = useState('')
-  const filtered = backgrounds.filter(b => b.name.toLowerCase().includes(search.toLowerCase()))
+  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
+  const filtered = filterBySearchAndSource(backgrounds, search, sourceFilter)
 
   return (
     <div style={S.wrap}>
       <div style={S.h1}>Choose a Background</div>
       <div style={S.sub}>Your background reflects your life before adventuring.</div>
       <input style={S.input} placeholder="Search backgrounds…" value={search} onChange={e => setSearch(e.target.value)} />
+      <SourceFilter items={backgrounds} value={sourceFilter} onChange={setSourceFilter} />
       <div style={S.scrollList}>
         {filtered.map(b => (
           <div key={b.index} style={S.card(selected?.index === b.index)} onClick={() => onSelect(b)}>
-            <div style={S.cardName}>{b.name}</div>
+            <div style={S.cardTop}>
+              <div style={S.cardName}>{b.name}</div>
+              <SourceBadge item={b} />
+            </div>
             <div style={S.cardSub}>
               Skills: {b.starting_proficiencies?.filter(p => p.index.startsWith('skill-')).map(p => p.name.replace('Skill: ', '')).join(', ')}
             </div>

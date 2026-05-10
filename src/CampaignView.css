@@ -842,6 +842,11 @@
   margin-bottom: 10px;
   flex-wrap: wrap;
 }
+.npc-source-chips--books {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
 
 .npc-source-chip {
   font-size: 11px;

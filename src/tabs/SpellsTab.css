@@ -211,6 +211,14 @@
   display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 12px;
   border-bottom: 1px solid var(--border-strong);
 }
+.spell-picker-sources {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-strong);
+  scrollbar-width: thin;
+}
 .spell-picker-list {
   max-height: 260px; overflow-y: auto;
   scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
@@ -224,4 +232,12 @@
 .spell-picker-row:last-child { border-bottom: none; }
 .spell-picker-row:hover { background: var(--hover-strong); }
 .spell-picker-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.spell-picker-meta { font-size: 10px; font-family: var(--font-mono); color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
+.spell-picker-meta { display: flex; align-items: center; gap: 5px; font-size: 10px; font-family: var(--font-mono); color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
+.spell-picker-source {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-weight: 700;
+}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Octokit } from '@octokit/rest'
 import { getMonsters } from './srdContent'
+import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
 import './CampaignView.css'
 
 const CAMPAIGNS_REPO  = 'ttrpg-campaigns'
@@ -477,6 +478,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
   const [view, setView]               = useState('search')
   const [query, setQuery]             = useState('')
   const [sourceFilter, setSourceFilter] = useState('all')
+  const [bookFilter, setBookFilter]   = useState(ALL_SOURCES)
   const [srdMonsters, setSrdMonsters] = useState([])
   const [loadingSrd, setLoadingSrd]   = useState(false)
 
@@ -523,9 +525,10 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
       .catch(() => setLoadingSrd(false))
   }, [])
 
-  const filteredSrd = srdMonsters.filter(m =>
-    query.trim() && m.name.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 20)
+  const srdSources = sourceOptions(srdMonsters)
+  const filteredSrd = query.trim()
+    ? filterBySearchAndSource(srdMonsters, query, bookFilter).slice(0, 20)
+    : []
 
   const filteredCampaign = campaignNpcs.filter(n =>
     query.trim() && n.name.toLowerCase().includes(query.toLowerCase())
@@ -547,6 +550,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
       category:   cat,
       actions:    (monster.actions ?? []).map(a => ({ name: a.name, desc: a.desc })),
       source:     'srd',
+      sourceBook: monster.source,
     })
     onClose()
   }
@@ -647,6 +651,21 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
               ))}
             </div>
 
+            {(sourceFilter === 'all' || sourceFilter === 'srd') && srdSources.length > 1 && (
+              <div className="npc-source-chips npc-source-chips--books">
+                {[ALL_SOURCES, ...srdSources].map(source => (
+                  <button
+                    key={source}
+                    type="button"
+                    className={`npc-source-chip${bookFilter === source ? ' npc-source-chip--active' : ''}`}
+                    onClick={() => setBookFilter(source)}
+                  >
+                    {source === ALL_SOURCES ? 'All books' : source}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {query.trim() && (
               <div className="npc-search-results">
                 {loadingSrd && showSrd && <div className="npc-search-hint">Loading SRD…</div>}
@@ -657,7 +676,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
                       <div className="npc-sr-name">{m.name}</div>
                       <div className="npc-sr-meta">{m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP{firstText(m.hit_dice, m.hitDie) ? ` · ${firstText(m.hit_dice, m.hitDie)}` : ''} · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}</div>
                     </div>
-                    <span className="npc-sr-badge npc-sr-badge--srd">SRD</span>
+                    <span className="npc-sr-badge npc-sr-badge--srd">{sourceCode(m)}</span>
                     <div className="npc-sr-btns">
                       {m.challenge_rating >= 4 && (
                         <button className="npc-add-btn npc-add-btn--boss" onClick={() => addFromSrd(m, 'boss')}>Boss</button>

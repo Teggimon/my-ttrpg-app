@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { getSpells } from '../srdContent'
+import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from '../sourceFilters'
 import '../TabShared.css'
 import './SpellsTab.css'
 
@@ -18,16 +19,17 @@ function uid()              { return Math.random().toString(36).slice(2) }
 function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
   const [search,      setSearch]      = useState('')
   const [filterLevel, setFilterLevel] = useState('all')
+  const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
   const inputRef = useRef(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
   const levels = ['all', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+  const sources = sourceOptions(srdSpells)
 
-  const results = srdSpells.filter(s => {
+  const results = filterBySearchAndSource(srdSpells, search, sourceFilter).filter(s => {
     if (knownIds.has(s.index)) return false
     if (filterLevel !== 'all' && String(s.level) !== filterLevel) return false
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false
     return true
   }).slice(0, 50)
 
@@ -54,12 +56,27 @@ function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
           </button>
         ))}
       </div>
+      {sources.length > 1 && (
+        <div className="spell-picker-sources">
+          {[ALL_SOURCES, ...sources].map(source => (
+            <button
+              key={source}
+              type="button"
+              className={`filter-chip${sourceFilter === source ? ' filter-chip--on' : ''}`}
+              onClick={() => setSourceFilter(source)}
+            >
+              {source === ALL_SOURCES ? 'All sources' : source}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="spell-picker-list">
         {results.length === 0 && <p className="empty-hint">No spells match.</p>}
         {results.map(s => (
           <button key={s.index} className="spell-picker-row" onClick={() => onAdd(s)}>
             <span className="spell-picker-name">{s.name}</span>
             <span className="spell-picker-meta">
+              <span className="spell-picker-source">{sourceCode(s)}</span>
               {s.level === 0 ? 'Cantrip' : `Lv ${s.level}`} · {s.school?.name}
             </span>
           </button>
@@ -167,6 +184,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
       id:    uid(),
       index: srdSpell.index,
       name:  srdSpell.name,
+      source: srdSpell.source,
       level: srdSpell.level,
     }
     updateChar({ spells: { ...char.spells, known: [...known, newSpell] } })

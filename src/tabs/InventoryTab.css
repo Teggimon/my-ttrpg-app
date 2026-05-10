@@ -457,6 +457,35 @@
 }
 .ip-search::placeholder { color: var(--text-muted); }
 
+.ip-source-chips {
+  display: flex;
+  gap: 5px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+
+.ip-source-chip {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ip-source-chip--active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent-light);
+}
+
 .ip-list {
   max-height: 220px;
   overflow-y: auto;
@@ -500,6 +529,7 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+.ip-row-tag--source { font-family: var(--font-mono); border: 1px solid var(--border-strong); }
 .ip-row-tag--magic { background: var(--gold-subtle); color: var(--gold); }
 .ip-row-tag--dim   { color: var(--text-faint); }
 
