@@ -26,6 +26,35 @@ function trimClassLevels(classes, targetTotal) {
   }).reverse()
 }
 
+function HpAdjustModal({ amount, setAmount, hpCur, hpMax, onAdjust, onClose }) {
+  const step = Math.max(1, Math.abs(parseInt(amount, 10) || 1))
+
+  return (
+    <div className="lp-modal-overlay" onClick={onClose}>
+      <div className="lp-hp-modal" onClick={e => e.stopPropagation()}>
+        <div className="lp-hp-modal-title">Adjust Hit Points</div>
+        <div className="lp-hp-modal-sub">Current HP {hpCur} / {hpMax}</div>
+        <label className="lp-hp-modal-field">
+          Amount
+          <input
+            className="lp-hp-modal-input"
+            type="number"
+            min="1"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            autoFocus
+          />
+        </label>
+        <div className="lp-hp-modal-actions">
+          <button className="lp-hp-modal-btn" onClick={() => onAdjust(-step)}>- HP</button>
+          <button className="lp-hp-modal-btn lp-hp-modal-btn--plus" onClick={() => onAdjust(step)}>+ HP</button>
+        </div>
+        <button className="lp-hp-modal-close" onClick={onClose}>Done</button>
+      </div>
+    </div>
+  )
+}
+
 export default function LeftPanel({
   char, isOwner, locked, onToggleLock,
   updateChar, onBack,
@@ -37,6 +66,7 @@ export default function LeftPanel({
   const [xpInput,       setXpInput]       = useState('')
   const [showXpInput,   setShowXpInput]   = useState(false)
   const [showLevelUp,   setShowLevelUp]   = useState(false)
+  const [showHpAdjust,  setShowHpAdjust]  = useState(false)
   const [hpDelta,       setHpDelta]       = useState('5')
 
   if (!char) return null
@@ -74,8 +104,6 @@ export default function LeftPanel({
     const max = char.combat.hpMax ?? 0
     updateChar({ combat: { ...char.combat, hpCurrent: Math.max(0, Math.min(max, cur + delta)) } })
   }
-
-  const hpStep = Math.max(1, Math.abs(parseInt(hpDelta, 10) || 1))
 
   const removeCondition = (cond) => {
     updateChar({
@@ -128,23 +156,10 @@ export default function LeftPanel({
               <div className="lp-hp-controls">
                 <button className="lp-hp-btn" onClick={() => adjustHP(-1)}>−</button>
                 <button className="lp-hp-btn lp-hp-btn--plus" onClick={() => adjustHP(+1)}>+</button>
+                <button className="lp-hp-btn lp-hp-btn--more" onClick={() => setShowHpAdjust(true)} title="More HP options">...</button>
               </div>
             )}
           </div>
-          {isOwner && !locked && (
-            <div className="lp-hp-bulk">
-              <input
-                className="lp-hp-bulk-input"
-                type="number"
-                min="1"
-                value={hpDelta}
-                onChange={e => setHpDelta(e.target.value)}
-                aria-label="HP adjustment amount"
-              />
-              <button className="lp-hp-bulk-btn" onClick={() => adjustHP(-hpStep)}>- HP</button>
-              <button className="lp-hp-bulk-btn lp-hp-bulk-btn--plus" onClick={() => adjustHP(hpStep)}>+ HP</button>
-            </div>
-          )}
           <div className="lp-hp-bar-track">
             <div className="lp-hp-bar-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
           </div>
@@ -273,6 +288,16 @@ export default function LeftPanel({
       )}
       {showLongRest && (
         <LongRestModal char={char} onConfirm={handleRestConfirm} onClose={() => setShowLongRest(false)} />
+      )}
+      {showHpAdjust && (
+        <HpAdjustModal
+          amount={hpDelta}
+          setAmount={setHpDelta}
+          hpCur={hpCur}
+          hpMax={hpMax}
+          onAdjust={adjustHP}
+          onClose={() => setShowHpAdjust(false)}
+        />
       )}
       {showLevelUp && (
         <LevelUpModal

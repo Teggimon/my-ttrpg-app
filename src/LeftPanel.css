@@ -165,40 +165,10 @@
 }
 .lp-hp-btn--plus:hover { background: var(--accent-hover); }
 
-.lp-hp-bulk {
-  display: grid;
-  grid-template-columns: minmax(48px, 0.7fr) 1fr 1fr;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.lp-hp-bulk-input,
-.lp-hp-bulk-btn {
-  min-height: 34px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
-  background: var(--bg-inset);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-weight: 800;
-}
-
-.lp-hp-bulk-input {
-  width: 100%;
-  min-width: 0;
-  padding: 0 8px;
-  text-align: center;
+.lp-hp-btn--more {
+  color: var(--text-secondary);
   font-family: var(--font-mono);
-}
-
-.lp-hp-bulk-btn {
-  cursor: pointer;
-}
-
-.lp-hp-bulk-btn--plus {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--text-primary);
+  letter-spacing: 0.08em;
 }
 
 .lp-hp-bar-track {
@@ -213,6 +183,104 @@
   height: 100%;
   border-radius: var(--radius-full);
   transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* ── HP adjust modal ─────────────────────────────────────────── */
+.lp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 230;
+  padding: 16px;
+}
+
+.lp-hp-modal {
+  width: min(100%, 360px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-lg);
+  animation: lp-modal-appear 0.18s ease-out;
+}
+
+@keyframes lp-modal-appear {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.lp-hp-modal-title {
+  font-family: var(--font-name);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lp-hp-modal-sub {
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.lp-hp-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 18px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.lp-hp-modal-input {
+  width: 100%;
+  min-height: 52px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+}
+
+.lp-hp-modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.lp-hp-modal-btn,
+.lp-hp-modal-close {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-inset);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lp-hp-modal-btn--plus {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.lp-hp-modal-close {
+  width: 100%;
+  margin-top: 10px;
+  color: var(--text-secondary);
 }
 
 /* ── Stat tiles ──────────────────────────────────────────────── */

@@ -53,6 +53,7 @@ This section records the current implementation state so the build and the desig
 - Campaign encounter building is no longer inside NPC management. It is a separate campaign tab.
 - Magic item affordance is now a full gold outline rather than a thick left stripe.
 - `--font-name` is the Cinzel display token. `--font-character` is used for the app wordmark, character card names, campaign card names, and similar Outfit-style name text.
+- Rest rules currently use the app standard: a long rest fully restores all Hit Dice. Future alternate rules must allow the D&D 5e default half-Hit-Dice recovery as a DM / campaign option.
 
 ---
 
@@ -996,6 +997,17 @@ GM Mode
   [ toggle ]
   Enable GM features and party dashboard
 
+DM / Campaign Rules
+  Default Rest Rules
+  [ Full Hit Dice recovery on long rest ▾ ]
+
+  Options:
+    Full Hit Dice recovery on long rest
+    D&D 5e default — recover half total Hit Dice on long rest
+
+  Apply rules to players who have set this user / campaign as DM
+  [ Manage Player Links ]
+
 Sync
   Frequency  [ 15s ▾ ]
   Last synced: 2 minutes ago
@@ -1124,6 +1136,8 @@ Impact is minimal — sync is pull-based so background sync limitations don't af
 - Rich enemy stat block builder and saved enemy repository
 - Draw from full saved stat blocks in encounter builder
 - Advanced enemy automation beyond manual HP tracking
+- DM options page for campaign standards and table rules. Initial rule group: rest rules, including full Hit Dice recovery on long rest as the app default and D&D 5e half-Hit-Dice recovery as an alternate.
+- "Set DM" player flow. A player can link their character / profile to a DM or campaign so DM-selected standards apply automatically to rests and future rules-driven sheet behaviours.
 
 **Party Repository Content**
 - Custom items, spells, and monster/NPC stat blocks saved to party repo
