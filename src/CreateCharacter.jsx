@@ -226,9 +226,9 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  shell: { minHeight: '100dvh', padding: '1rem', boxSizing: 'border-box', display: 'grid', placeItems: 'center', background: 'var(--bg-base)' },
-  panel: { width: 'min(100%, 920px)', height: 'calc(100dvh - 2rem)', display: 'flex', flexDirection: 'column', overflowY: 'auto', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', boxSizing: 'border-box' },
-  wrap: { flex: 1, display: 'flex', flexDirection: 'column', padding: '1.25rem 1rem 0', width: 'min(100%, 720px)', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', boxSizing: 'border-box' },
+  shell: { minHeight: '100dvh', width: '100vw', marginLeft: 'calc(50% - 50vw)', padding: '1rem', boxSizing: 'border-box', display: 'grid', placeItems: 'center', background: 'var(--bg-base)' },
+  panel: { width: 'min(calc(100vw - 2rem), 920px)', minWidth: 'min(calc(100vw - 2rem), 720px)', height: 'calc(100dvh - 2rem)', display: 'flex', flexDirection: 'column', overflowY: 'auto', scrollbarGutter: 'stable', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', boxSizing: 'border-box' },
+  wrap: { flex: 1, display: 'flex', flexDirection: 'column', padding: '1.25rem 1rem 0', width: '720px', maxWidth: '100%', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', boxSizing: 'border-box' },
   h1: { fontSize: '1.05rem', fontWeight: 800, marginBottom: '0.25rem', color: 'var(--text-primary)', letterSpacing:'0.01em' },
   sub: { fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight:1.45 },
   label: { display: 'block', fontSize: '0.72rem', fontWeight:700, color: 'var(--text-muted)', marginBottom: '0.35rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.08em' },
