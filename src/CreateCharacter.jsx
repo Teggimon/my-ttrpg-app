@@ -14,7 +14,7 @@ const SPELLCASTING_ABILITY = {
 
 // ─── Character builder ────────────────────────────────────────────────────────
 
-function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores, startingCantrips, startingSpells }) {
+function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores, startingCantrips, startingSpells, equipmentCatalog = [] }) {
   const {
     raceBonusOptions = [],   // [{ability_score:{index}, bonus}]
     classSkills = [],        // ['skill-perception', ...]
@@ -85,17 +85,36 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
 
   // 8. Inventory: class starting_equipment + chosen class equipment + background equipment
   const inventory = []
+  const equipmentByIndex = Object.fromEntries(equipmentCatalog.map(item => [item.index, item]))
+  const addInventoryItem = (item, originPack = null) => {
+    const catalogItem = equipmentByIndex[item.index]
+    if (catalogItem?.pack_contents?.length) {
+      for (const packItem of catalogItem.pack_contents) {
+        addInventoryItem({ ...packItem, quantity: (packItem.quantity ?? 1) * (item.quantity ?? 1) }, catalogItem.name)
+      }
+      return
+    }
+    inventory.push({
+      itemId: uuidv4(),
+      index: item.index,
+      name: item.name,
+      source: item.source ?? catalogItem?.source,
+      quantity: item.quantity ?? 1,
+      equipped: false,
+      ...(originPack && { sourcePack: originPack }),
+    })
+  }
   for (const item of (classData?.starting_equipment ?? [])) {
-    inventory.push({ itemId: uuidv4(), index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
+    addInventoryItem({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity })
   }
   for (const item of classEquipment) {
-    inventory.push({ itemId: uuidv4(), index: item.index, name: item.name, source: item.source, quantity: item.quantity ?? 1, equipped: false })
+    addInventoryItem(item)
   }
   for (const item of (backgroundData?.starting_equipment ?? [])) {
-    inventory.push({ itemId: uuidv4(), index: item.equipment.index, name: item.equipment.name, quantity: item.quantity, equipped: false })
+    addInventoryItem({ index: item.equipment.index, name: item.equipment.name, quantity: item.quantity })
   }
   for (const item of backgroundEquipment) {
-    inventory.push({ itemId: uuidv4(), index: item.index, name: item.name, source: item.source, quantity: item.quantity ?? 1, equipped: false })
+    addInventoryItem(item)
   }
 
   // 9. Racial traits
@@ -1434,6 +1453,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const [allSubraces, setAllSubraces] = useState([])
   const [classes, setClasses] = useState([])
   const [backgrounds, setBackgrounds] = useState([])
+  const [equipmentCatalog, setEquipmentCatalog] = useState([])
 
   // Wizard state
   const [name, setName] = useState('')
@@ -1457,8 +1477,8 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const repoName = localStorage.getItem('character_repo')
 
   useEffect(() => {
-    Promise.all([getRaces(), getSubraces(), getClasses(), getBackgrounds()])
-      .then(([r, s, c, b]) => { setRaces(r); setAllSubraces(s); setClasses(c); setBackgrounds(b) })
+    Promise.all([getRaces(), getSubraces(), getClasses(), getBackgrounds(), getEquipment()])
+      .then(([r, s, c, b, e]) => { setRaces(r); setAllSubraces(s); setClasses(c); setBackgrounds(b); setEquipmentCatalog(e) })
       .catch(err => setError(err.message))
   }, [])
 
@@ -1492,6 +1512,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
         baseAbilityScores: abilityScores,
         startingCantrips,
         startingSpells,
+        equipmentCatalog,
         choices: {
           raceBonusOptions,
           classSkills,

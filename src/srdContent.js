@@ -464,7 +464,22 @@ function normalizeItem(item, isMagic = false) {
     rarity: item.rarity && item.rarity !== 'none' ? item.rarity : undefined,
     requires_attunement: !!item.reqAttune,
     desc: [stripTags(item.entries ?? item.additionalEntries)],
+    ...(item.packContents && { pack_contents: item.packContents.map(normalizePackContent) }),
   }
+}
+
+function normalizePackContent(content) {
+  if (typeof content === 'string') {
+    const [name, source] = content.split('|')
+    return { index: slug(name), name: stripTags(name), source: source?.toUpperCase(), quantity: 1 }
+  }
+  const item = content?.item
+  if (item) {
+    const [name, source] = item.split('|')
+    return { index: slug(name), name: stripTags(name), source: source?.toUpperCase(), quantity: content.quantity ?? 1 }
+  }
+  const special = content?.special ?? 'Pack item'
+  return { index: slug(special), name: stripTags(special), quantity: content?.quantity ?? 1 }
 }
 
 function normalizeSpell(spell, sourceLookup) {
