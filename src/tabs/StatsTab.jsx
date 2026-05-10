@@ -56,7 +56,7 @@ function EffectDot({ infos }) {
         <div className="effect-tooltip">
           {infos.map((info, i) => (
             <div key={i} className="effect-tooltip-line">
-              <span className="effect-tooltip-gem">♦</span>
+              <span className="effect-tooltip-gem">Item</span>
               <span>{info.bonus}</span>
               <span className="effect-tooltip-sep">·</span>
               <span className="effect-tooltip-item">{info.itemName}</span>
@@ -294,7 +294,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
                     >
                       {/* Prof / expertise indicator */}
                       <span className={`skill-dot skill-dot--${lvl}`}>
-                        {lvl === 2 && <span className="skill-dot-star">★</span>}
+                        {lvl === 2 && <span className="skill-dot-star">2</span>}
                       </span>
                       <span className="skill-name">
                         {sk.label}

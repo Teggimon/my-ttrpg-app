@@ -72,7 +72,7 @@ export default function Onboarding({ token, user, onComplete }) {
   if (step === 1) return (
     <div className="ob-body">
       <div className="ob-panel">
-        <div className="ob-logo">⚔️</div>
+        <div className="ob-logo"><img src="/uploaded-avatar.jpg" alt="" /></div>
         <h1 className="ob-title">Welcome, {user.login}!</h1>
         <p className="ob-body-text">
           First, let's create your character repository. This is where all your characters
@@ -80,7 +80,7 @@ export default function Onboarding({ token, user, onComplete }) {
         </p>
 
         <div className="ob-repo-pill">
-          <span className="ob-repo-icon">📁</span>
+          <span className="ob-repo-icon">Repo</span>
           <span className="ob-repo-name">{CHARACTERS_REPO}</span>
         </div>
 
@@ -103,7 +103,7 @@ export default function Onboarding({ token, user, onComplete }) {
   if (step === 2) return (
     <div className="ob-body">
       <div className="ob-panel">
-        <div className="ob-logo">🎲</div>
+        <div className="ob-logo"><img src="/uploaded-avatar.jpg" alt="" /></div>
         <h1 className="ob-title">One quick question…</h1>
         <p className="ob-body-text">
           Do you ever run games as a Game Master?
@@ -115,14 +115,14 @@ export default function Onboarding({ token, user, onComplete }) {
             className="ob-choice-btn"
             onClick={() => { setIsGM(true); setStep(3) }}
           >
-            <span className="ob-choice-emoji">📖</span>
+            <span className="ob-choice-emoji">GM</span>
             <span className="ob-choice-label">Yes, I'm a GM</span>
           </button>
           <button
             className="ob-choice-btn"
             onClick={() => { setIsGM(false); setStep(4) }}
           >
-            <span className="ob-choice-emoji">⚔️</span>
+            <span className="ob-choice-emoji">PC</span>
             <span className="ob-choice-label">No, just a player</span>
           </button>
         </div>
@@ -136,7 +136,7 @@ export default function Onboarding({ token, user, onComplete }) {
   if (step === 3) return (
     <div className="ob-body ob-body--dm">
       <div className="ob-panel ob-panel--dm">
-        <div className="ob-logo">📖</div>
+        <div className="ob-logo"><img src="/uploaded-avatar.jpg" alt="" /></div>
         <h1 className="ob-title">Set up your Campaign Repository</h1>
         <p className="ob-body-text">
           A dedicated space for your campaigns, sessions, party data, and notes.
@@ -144,7 +144,7 @@ export default function Onboarding({ token, user, onComplete }) {
         </p>
 
         <div className="ob-repo-pill ob-repo-pill--dm">
-          <span className="ob-repo-icon">📁</span>
+          <span className="ob-repo-icon">Repo</span>
           <span className="ob-repo-name">{CAMPAIGNS_REPO}</span>
         </div>
 
@@ -175,7 +175,7 @@ export default function Onboarding({ token, user, onComplete }) {
   if (step === 4) return (
     <div className={`ob-body${isGM ? ' ob-body--dm' : ''}`}>
       <div className={`ob-panel${isGM ? ' ob-panel--dm' : ''}`}>
-        <div className="ob-logo">{isGM ? '⚔️' : '🎲'}</div>
+        <div className="ob-logo"><img src="/uploaded-avatar.jpg" alt="" /></div>
         <h1 className="ob-title">{isGM ? 'GM All Set!' : 'All set!'}</h1>
         <p className="ob-body-text">
           {isGM

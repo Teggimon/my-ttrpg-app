@@ -157,7 +157,7 @@ function PartyCard({ entry, char, onRemove, onToggleActive, onView }) {
           <span className="party-card-sub">{char.identity.race} · {classLine(char)}</span>
         </div>
         <div className="party-card-hd-right">
-          {warn && <span className="party-warn-icon" title="Needs attention">⚠️</span>}
+          {warn && <span className="party-warn-icon" title="Needs attention">!</span>}
           <span className="party-username">@{entry.username}</span>
         </div>
       </div>
@@ -269,7 +269,7 @@ export default function GMDashboard({ onBack, onViewCharacter }) {
           <span className="gm-dash-title">Party Dashboard</span>
           <span className="gm-dash-meta">
             {activeCount} active · {party.length} total
-            {warnCount > 0 && <span className="gm-warn-count"> · ⚠️ {warnCount}</span>}
+            {warnCount > 0 && <span className="gm-warn-count"> · ! {warnCount}</span>}
             {lastPoll && <span className="gm-sync"> · {polling ? '⟳' : '✓'} {lastPoll.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
           </span>
         </div>
@@ -281,7 +281,7 @@ export default function GMDashboard({ onBack, onViewCharacter }) {
       {/* Empty state */}
       {!party.length && (
         <div className="gm-empty">
-          <span className="gm-empty-icon">⚔️</span>
+          <span className="gm-empty-icon">PC</span>
           <p className="gm-empty-title">No players yet</p>
           <p className="gm-empty-sub">Ask your players for their GitHub username, then tap Add Player.</p>
           <button className="gm-btn gm-btn--accent" style={{ maxWidth: 200 }} onClick={() => setShowModal(true)}>+ Add Player</button>

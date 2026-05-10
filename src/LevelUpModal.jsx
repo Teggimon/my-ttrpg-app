@@ -240,7 +240,7 @@ function ClassChoiceStep({ char, onNext, onBack }) {
   const [selected, setSelected] = useState(null)
   return (
     <div className="lu-step">
-      <div className="lu-title">⬆ Level Up — Choose Class</div>
+      <div className="lu-title">Level Up — Choose Class</div>
       <div className="lu-sub">Which class gains this level?</div>
       <div className="lu-class-choices">
         {classes.map((cls, i) => (
@@ -277,7 +277,7 @@ function FeaturesStep({ char, classIdx, hpResult, onNext, isLast }) {
 
   return (
     <div className="lu-step">
-      <div className="lu-title">⬆ Level Up — {cls} {lvl}</div>
+      <div className="lu-title">Level Up — {cls} {lvl}</div>
       <div className="lu-sub">
         {hasASI(char, classIdx) || hasSubclassChoice(char, classIdx)
           ? 'You gain the following automatically. More choices coming next.'
@@ -378,7 +378,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
 
   return (
     <div className="lu-step">
-      <div className="lu-title lu-title--gold">⬆ Level {nextClassLevel(char, classIdx)} — Improvement</div>
+      <div className="lu-title lu-title--gold">Level {nextClassLevel(char, classIdx)} — Improvement</div>
       <div className="lu-sub">Choose between an Ability Score Improvement or a Feat.</div>
 
       {/* Choice selector */}
@@ -469,7 +469,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
       )}
 
       <div className="lu-warning lu-warning--gold">
-        ⚠ This is a permanent character-defining choice.
+        This is a permanent character-defining choice.
       </div>
 
       <div className="lu-actions">
@@ -502,7 +502,7 @@ function SubclassStep({ char, classIdx, onNext, onBack }) {
       </div>
 
       <div className="lu-warning lu-warning--gold">
-        ⚠ This is a permanent choice. It cannot be changed later.
+        This is a permanent choice. It cannot be changed later.
       </div>
 
       <div className="lu-subclass-list">

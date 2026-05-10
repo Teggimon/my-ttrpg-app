@@ -59,12 +59,12 @@ function CharRefCard({ char, isPresent, onTogglePresent }) {
         onClick={() => onTogglePresent(char.characterId)}
         title={isPresent ? 'Mark absent' : 'Mark present'}
       >
-        {isPresent ? '✓' : '✕'}
+        {isPresent ? 'In' : 'Out'}
       </button>
 
       {/* Header */}
       <div className="crc-header">
-        <div className="crc-portrait">{char.portrait ? <img src={char.portrait} alt={char.name} /> : '⚔️'}</div>
+        <div className="crc-portrait">{char.portrait ? <img src={char.portrait} alt={char.name} /> : <img src="/uploaded-avatar.jpg" alt="" />}</div>
         <div className="crc-header-info">
           <div className="crc-name">{char.name}</div>
           <div className="crc-sub">{char.race} · {char.class} · Lv {char.level}</div>
@@ -155,15 +155,15 @@ function EncounterRow({ encounter, onOpen, isActive }) {
       </div>
       <div className={`sv-enc-status${isActive ? ' sv-enc-status--live' : encounter.outcome ? ' sv-enc-status--done' : ''}`}>
         {isActive
-          ? '● Live'
+          ? 'Live'
           : encounter.defeated
-            ? '✓ Defeated'
+            ? 'Defeated'
           : encounter.outcome === 'victory'
-            ? '⚔ Victory'
+            ? 'Victory'
             : encounter.outcome === 'fled'
-              ? '↩ Fled'
+              ? 'Fled'
               : encounter.outcome === 'defeat'
-                ? '💀 Defeat'
+                ? 'Defeat'
                 : '—'
         }
       </div>
@@ -488,7 +488,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
               className={`sv-clock-btn${clockRunning ? '' : ' sv-clock-btn--paused'}`}
               onClick={() => setClockRunning(r => !r)}
             >
-              {clockRunning ? '⏸ Pause' : '▶ Resume'}
+              {clockRunning ? 'Pause' : 'Resume'}
             </button>
           </div>
         </div>
@@ -496,9 +496,9 @@ export default function SessionView({ token, user, session, campaign, party, ini
         {/* Sidebar tabs */}
         <div className="sv-sidebar-tabs">
           {[
-            { id: 'party',     label: '👥', title: 'Party' },
-            { id: 'encounter', label: '⚔️',  title: 'Encounter' },
-            { id: 'notes',     label: '📝', title: 'Notes' },
+            { id: 'party',     label: 'PTY', title: 'Party' },
+            { id: 'encounter', label: 'ENC', title: 'Encounter' },
+            { id: 'notes',     label: 'NT', title: 'Notes' },
           ].map(t => (
             <button
               key={t.id}
@@ -521,7 +521,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
           <div className="sv-tab-content">
             {chars.length === 0 ? (
               <div className="sv-empty">
-                <div className="sv-empty-icon">👥</div>
+                <div className="sv-empty-icon">PTY</div>
                 <div className="sv-empty-title">No active characters</div>
                 <div className="sv-empty-sub">Add players and activate characters in the Campaign Party tab</div>
               </div>
@@ -556,12 +556,12 @@ export default function SessionView({ token, user, session, campaign, party, ini
                   className="sv-enter-enc-btn"
                   onClick={() => handleOpenEncounter(activeEncounter)}
                 >
-                  ⚔️ Enter Encounter View →
+                  Enter Encounter View
                 </button>
               </div>
             ) : (
               <div className="sv-no-encounter">
-                <div className="sv-no-enc-icon">⚔️</div>
+                <div className="sv-no-enc-icon">ENC</div>
                 <div className="sv-no-enc-title">No active encounter</div>
                 <div className="sv-no-enc-sub">Start a new encounter to begin combat tracking</div>
                 <button className="sv-enter-enc-btn" onClick={() => setShowNewEncounter(true)}>

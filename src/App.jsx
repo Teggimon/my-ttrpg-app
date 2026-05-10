@@ -153,7 +153,17 @@ function App() {
       padding: '2rem',
       gap: '24px',
     }}>
-      <div style={{ fontSize: 48 }}>⚔️</div>
+      <img
+        src="/uploaded-avatar.jpg"
+        alt=""
+        style={{
+          width: 72,
+          height: 72,
+          objectFit: 'cover',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border)',
+        }}
+      />
       <div style={{ textAlign: 'center' }}>
         <div style={{
           fontFamily: 'var(--font-name)',

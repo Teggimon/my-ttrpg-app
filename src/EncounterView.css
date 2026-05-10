@@ -395,6 +395,28 @@
 .combatant.active-turn .init-badge { background: var(--dm); border-color: var(--dm); color: var(--text-primary); }
 
 .comb-portrait { font-size: 16px; flex-shrink: 0; }
+.comb-token {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+}
+.comb-token--player {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.comb-token--enemy {
+  color: var(--dm);
+  border-color: var(--dm-border);
+}
 .comb-info { flex: 1; min-width: 0; }
 .comb-name { font-family: var(--font-body); font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .comb-sub  { font-family: var(--font-body); font-size: 9px; color: var(--text-muted); }

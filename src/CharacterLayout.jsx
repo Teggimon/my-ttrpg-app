@@ -10,12 +10,12 @@ import BackgroundTab from './tabs/BackgroundTab'
 import './CharacterLayout.css'
 
 const TABS = [
-  { id: 'combat',     label: 'Combat',     icon: '⚔' },
-  { id: 'stats',      label: 'Stats',      icon: '🎲' },
-  { id: 'spells',     label: 'Spells',     icon: '✨' },
-  { id: 'inventory',  label: 'Gear',       icon: '🎒' },
-  { id: 'background', label: 'Background', icon: '📖' },
-  { id: 'notes',      label: 'Notes',      icon: '📝' },
+  { id: 'combat',     label: 'Combat',     icon: 'CBT' },
+  { id: 'stats',      label: 'Stats',      icon: 'ST' },
+  { id: 'spells',     label: 'Spells',     icon: 'SP' },
+  { id: 'inventory',  label: 'Gear',       icon: 'GR' },
+  { id: 'background', label: 'Background', icon: 'BG' },
+  { id: 'notes',      label: 'Notes',      icon: 'NT' },
 ]
 
 function useIsLandscape() {

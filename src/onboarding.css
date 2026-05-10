@@ -39,9 +39,18 @@
 
 /* ── Logo ── */
 .ob-logo {
-  font-size: 40px;
-  line-height: 1;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
   margin-bottom: 4px;
+  margin-inline: auto;
+  border: 1px solid var(--border);
+}
+.ob-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* ── Text ── */
@@ -132,7 +141,11 @@
   transform: translateY(-1px);
 }
 
-.ob-choice-emoji { font-size: 28px; }
+.ob-choice-emoji {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 800;
+}
 
 .ob-choice-label {
   font-family: var(--font-body);

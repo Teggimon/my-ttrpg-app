@@ -94,8 +94,8 @@ export default function LeftPanel({
           </div>
           <div className="lp-char-actions">
             {isOwner
-              ? <button className="icon-btn" onClick={onToggleLock} title={locked ? 'Unlock' : 'Lock'}>{locked ? '🔒' : '🔓'}</button>
-              : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🔒</span>
+              ? <button className="icon-btn" onClick={onToggleLock} title={locked ? 'Unlock' : 'Lock'}>{locked ? 'Lock' : 'Open'}</button>
+              : <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Lock</span>
             }
           </div>
         </div>
@@ -216,10 +216,10 @@ export default function LeftPanel({
       {!portrait && isOwner && !locked && (
         <div className="lp-rest-btns">
           <button className="lp-rest-btn lp-rest-btn--short" onClick={() => setShowShortRest(true)}>
-            🌙 Short Rest
+            Short Rest
           </button>
           <button className="lp-rest-btn lp-rest-btn--long" onClick={() => setShowLongRest(true)}>
-            🌑 Long Rest
+            Long Rest
           </button>
         </div>
       )}

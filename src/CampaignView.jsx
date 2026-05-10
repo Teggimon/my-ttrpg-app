@@ -59,7 +59,6 @@ function npcToCombatant(npc, index = 0, hpOverride = null) {
     type: npc.category === 'boss' ? 'boss' : 'enemy',
     name: baseName,
     baseName: npc.name,
-    emoji: npc.category === 'boss' ? '👑' : '👺',
     hp,
     hpMax: hp,
     initiativeMod: npc.initiative ?? 0,
@@ -133,7 +132,7 @@ function SessionRow({ session, index, onOpen }) {
           {isLive
             ? <span className="status-live"><span className="live-dot" />Live</span>
             : session.status === 'done'
-              ? <span className="status-done">✓ Done</span>
+              ? <span className="status-done">Done</span>
               : <span className="status-planned">Planned</span>
           }
         </div>
@@ -159,7 +158,7 @@ function SessionRow({ session, index, onOpen }) {
                   <span className="session-enc-name">{enc.name}</span>
                   <span className="session-enc-meta">{enc.rounds} rounds · {formatInGameTime(enc.rounds ?? 0)}</span>
                   <span className={`session-enc-outcome session-enc-outcome--${enc.outcome ?? 'unknown'}`}>
-                    {enc.outcome === 'victory' ? '⚔ Victory' : enc.outcome === 'fled' ? '↩ Fled' : enc.outcome === 'defeat' ? '💀 Defeat' : '—'}
+                    {enc.outcome === 'victory' ? 'Victory' : enc.outcome === 'fled' ? 'Fled' : enc.outcome === 'defeat' ? 'Defeat' : '—'}
                   </span>
                 </div>
               ))}
@@ -167,7 +166,7 @@ function SessionRow({ session, index, onOpen }) {
           )}
 
           <button className="session-open-btn" onClick={() => onOpen(session)}>
-            {isLive ? '▶ Resume Session →' : '📋 Open Session →'}
+            {isLive ? 'Resume Session' : 'Open Session'}
           </button>
         </div>
       )}
@@ -365,7 +364,7 @@ function NPCRow({ npc, onDelete }) {
   return (
     <div className={`npc-row${npc.category === 'boss' ? ' npc-row--boss' : ''}`}>
       <div className="npc-row-head" onClick={() => setExpanded(e => !e)}>
-        <div className="npc-portrait">{npc.category === 'boss' ? '👑' : npc.category === 'ally' ? '🤝' : '👺'}</div>
+        <div className="npc-portrait"><img src="/uploaded-avatar.jpg" alt="" /></div>
         <div className="npc-info">
           <div className="npc-name">{npc.name}</div>
           <div className="npc-meta">
@@ -374,9 +373,9 @@ function NPCRow({ npc, onDelete }) {
           </div>
         </div>
         <div className="npc-stats">
-          {npc.hp  && <span className="npc-stat">❤️ {npc.hp}</span>}
-          {npc.ac  && <span className="npc-stat">🛡 {npc.ac}</span>}
-          {npc.initiative != null && <span className="npc-stat">⚡ {npc.initiative >= 0 ? '+' : ''}{npc.initiative}</span>}
+          {npc.hp  && <span className="npc-stat">HP {npc.hp}</span>}
+          {npc.ac  && <span className="npc-stat">AC {npc.ac}</span>}
+          {npc.initiative != null && <span className="npc-stat">Init {npc.initiative >= 0 ? '+' : ''}{npc.initiative}</span>}
         </div>
         <button
           className="npc-delete-btn"
@@ -415,7 +414,7 @@ function EncounterBuildRow({ encounter, onToggleDefeated, onEdit }) {
   return (
     <div className={`enc-build-row${encounter.defeated ? ' enc-build-row--defeated' : ''}`}>
       <div className="enc-build-head" onClick={() => setExpanded(e => !e)}>
-        <div className="enc-build-icon">⚔️</div>
+        <div className="enc-build-icon">ENC</div>
         <div className="enc-build-info">
           <div className="enc-build-name">{encounter.name}</div>
           <div className="enc-build-meta">
@@ -651,7 +650,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
 
                 {showSrd && filteredSrd.map(m => (
                   <div key={m.index} className="npc-search-row">
-                    <div className="npc-sr-icon">👺</div>
+                    <div className="npc-sr-icon"><img src="/uploaded-avatar.jpg" alt="" /></div>
                     <div className="npc-sr-info">
                       <div className="npc-sr-name">{m.name}</div>
                       <div className="npc-sr-meta">{m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP{firstText(m.hit_dice, m.hitDie) ? ` · ${firstText(m.hit_dice, m.hitDie)}` : ''} · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}</div>
@@ -669,7 +668,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
 
                 {showCampaign && filteredCampaign.map(n => (
                   <div key={n.npcId} className="npc-search-row">
-                    <div className="npc-sr-icon">{n.category === 'boss' ? '👑' : n.category === 'ally' ? '🤝' : '👺'}</div>
+                    <div className="npc-sr-icon"><img src="/uploaded-avatar.jpg" alt="" /></div>
                     <div className="npc-sr-info">
                       <div className="npc-sr-name">{n.name}</div>
                       <div className="npc-sr-meta">Custom{n.type ? ` · ${n.type}` : ''}{n.cr ? ` · CR ${n.cr}` : ''}{n.hp ? ` · ${n.hp} HP` : ''}</div>
@@ -705,8 +704,8 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
             </div>
 
             <div className="npc-mode-toggle">
-              <button className={`npc-mode-btn${createMode === 'quick' ? ' npc-mode-btn--active' : ''}`} onClick={() => setCreateMode('quick')}>⚡ Quick</button>
-              <button className={`npc-mode-btn${createMode === 'full'  ? ' npc-mode-btn--active' : ''}`} onClick={() => setCreateMode('full')}>📋 Full Stat Block</button>
+              <button className={`npc-mode-btn${createMode === 'quick' ? ' npc-mode-btn--active' : ''}`} onClick={() => setCreateMode('quick')}>Quick</button>
+              <button className={`npc-mode-btn${createMode === 'full'  ? ' npc-mode-btn--active' : ''}`} onClick={() => setCreateMode('full')}>Full Stat Block</button>
             </div>
 
             {/* ── Quick mode ── */}
@@ -1370,7 +1369,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
         <div className="cv-sidebar-top">
           <button className="cv-back-btn" onClick={onBack}>← Campaigns</button>
           <div className="cv-campaign-name">
-            <span className="cv-campaign-emoji">{campaign.emoji}</span>
+            <img src={campaign.image || '/uploaded-avatar.jpg'} alt="" className="cv-campaign-img" />
             <span>{campaign.name}</span>
           </div>
         </div>
@@ -1384,7 +1383,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
             </div>
             <div className="sidebar-live-session">{liveSession.name}</div>
             <button className="sidebar-resume-btn" onClick={() => onOpenSession(liveSession, campaign, party, encounterBuilds)}>
-              ▶ Resume
+              Resume
             </button>
           </div>
         )}
@@ -1419,11 +1418,11 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
         {/* Tab bar */}
         <div className="cv-tab-bar">
           {[
-            { id: 'sessions', label: '📋 Sessions' },
-            { id: 'party',    label: '👥 Party' },
-            { id: 'npcs',     label: '👺 NPCs' },
-            { id: 'encounters', label: '⚔️ Encounters' },
-            { id: 'notes',    label: '📝 Notes' },
+            { id: 'sessions', label: 'Sessions' },
+            { id: 'party',    label: 'Party' },
+            { id: 'npcs',     label: 'NPCs' },
+            { id: 'encounters', label: 'Encounters' },
+            { id: 'notes',    label: 'Notes' },
           ].map(t => (
             <button
               key={t.id}
@@ -1445,7 +1444,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                 <div className="cv-section">
                   {sessions.length === 0 && (
                     <div className="cv-empty">
-                      <div className="cv-empty-icon">📋</div>
+                      <div className="cv-empty-icon">SES</div>
                       <div className="cv-empty-title">No sessions yet</div>
                       <div className="cv-empty-sub">Start your first session to begin tracking</div>
                     </div>
@@ -1474,7 +1473,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                 <div className="cv-section">
                   {party.length === 0 && (
                     <div className="cv-empty">
-                      <div className="cv-empty-icon">👥</div>
+                      <div className="cv-empty-icon">PTY</div>
                       <div className="cv-empty-title">No players yet</div>
                       <div className="cv-empty-sub">Add players to start tracking their characters</div>
                     </div>
@@ -1501,7 +1500,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                   {/* Bosses */}
                   {bosses.length > 0 && (
                     <>
-                      <div className="npc-category-head npc-category-head--boss">👑 Bosses & Named NPCs</div>
+                      <div className="npc-category-head npc-category-head--boss">Bosses & Named NPCs</div>
                       {bosses.map(npc => <NPCRow key={npc.npcId} npc={npc} onDelete={deleteNPC} />)}
                     </>
                   )}
@@ -1509,7 +1508,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                   {/* Standard enemies */}
                   {enemies.length > 0 && (
                     <>
-                      <div className="npc-category-head">👺 Standard Enemies</div>
+                      <div className="npc-category-head">Standard Enemies</div>
                       {enemies.map(npc => <NPCRow key={npc.npcId} npc={npc} onDelete={deleteNPC} />)}
                     </>
                   )}
@@ -1517,14 +1516,14 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                   {/* Allies */}
                   {allies.length > 0 && (
                     <>
-                      <div className="npc-category-head npc-category-head--ally">🤝 Ally NPCs</div>
+                      <div className="npc-category-head npc-category-head--ally">Ally NPCs</div>
                       {allies.map(npc => <NPCRow key={npc.npcId} npc={npc} onDelete={deleteNPC} />)}
                     </>
                   )}
 
                   {npcs.length === 0 && (
                     <div className="cv-empty">
-                      <div className="cv-empty-icon">👺</div>
+                      <div className="cv-empty-icon">NPC</div>
                       <div className="cv-empty-title">No NPCs yet</div>
                       <div className="cv-empty-sub">Add monsters and NPCs for your campaign</div>
                     </div>
@@ -1537,10 +1536,10 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
               {/* ── ENCOUNTERS TAB ── */}
               {tab === 'encounters' && (
                 <div className="cv-section">
-                  <div className="npc-category-head npc-category-head--encounter">⚔️ Prepared Encounters</div>
+                  <div className="npc-category-head npc-category-head--encounter">Prepared Encounters</div>
                   {encounterBuilds.length === 0 ? (
                     <div className="cv-empty">
-                      <div className="cv-empty-icon">⚔️</div>
+                      <div className="cv-empty-icon">ENC</div>
                       <div className="cv-empty-title">No prepared encounters</div>
                       <div className="cv-empty-sub">Build reusable encounter tables from your saved enemies.</div>
                     </div>

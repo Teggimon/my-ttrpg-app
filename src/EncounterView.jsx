@@ -78,7 +78,6 @@ function buildCombatants(party, encounter) {
       id:       char.characterId ?? genId(),
       type:     'player',
       name:     char.name,
-      emoji:    '⚔️',
       hp:       char.hpCurrent ?? char.hpMax ?? 10,
       hpMax:    char.hpMax ?? 10,
       initiative: null,
@@ -106,7 +105,7 @@ function buildCombatants(party, encounter) {
     return [
       ...playerCombatants,
       {
-        id: genId(), type: 'enemy', name: 'Goblin', emoji: '👺',
+        id: genId(), type: 'enemy', name: 'Goblin',
         hp: 7, hpMax: 7, initiative: null, initiativeMod: 2,
         ac: 15, attackBonus: 4, saveDC: 8, cr: '1/4',
         conditions: [], downed: false,
@@ -141,7 +140,7 @@ function InitiativeOverlay({ combatants, onStart, onCancel }) {
   return (
     <div className="init-overlay">
       <div className="init-panel">
-        <div className="init-title">⚔️ Initiative Order</div>
+        <div className="init-title">Initiative Order</div>
         <div className="init-subtitle">Roll or adjust initiative for each combatant</div>
 
         <div className="init-list">
@@ -161,7 +160,7 @@ function InitiativeOverlay({ combatants, onStart, onCancel }) {
                 value={c.initiative}
                 onChange={e => setInit(c.id, e.target.value)}
               />
-              <button className="init-reroll-btn" onClick={() => reroll(c.id)} title="Re-roll">🎲</button>
+              <button className="init-reroll-btn" onClick={() => reroll(c.id)} title="Re-roll">Roll</button>
             </div>
           ))}
         </div>
@@ -288,7 +287,7 @@ function PlayerRow({ combatant, isActive }) {
     <div className={`combatant player-comb${isActive ? ' active-turn' : ''}${combatant.downed ? ' downed' : ''}`}>
       <div className="comb-head" onClick={() => setExpanded(e => !e)}>
         <div className="init-badge">{combatant.initiative}</div>
-        <div className="comb-portrait">{combatant.emoji}</div>
+        <div className={`comb-token${combatant.type === 'player' ? ' comb-token--player' : ' comb-token--enemy'}`}>{tokenFor(combatant)}</div>
         <div className="comb-info">
           <div className="comb-name">{combatant.name}</div>
           <div className="comb-sub">{combatant.type === 'player' ? 'Player' : combatant.cr ? `CR ${combatant.cr}` : 'Enemy'}</div>
@@ -329,7 +328,7 @@ function EnemyRow({ combatant, isActive, onHpChange, onAddCondition, onRemoveCon
     <div className={`combatant enemy-comb${isActive ? ' active-turn' : ''}${combatant.downed ? ' downed' : ''}`}>
       <div className="comb-head" onClick={() => setExpanded(e => !e)}>
         <div className="init-badge">{combatant.initiative}</div>
-        <div className="comb-portrait">{combatant.emoji ?? '👺'}</div>
+        <div className="comb-token comb-token--enemy">{tokenFor(combatant)}</div>
         <div className="comb-info">
           <div className="comb-name">{combatant.name}</div>
           <div className="comb-sub">{combatant.cr ? `CR ${combatant.cr}` : 'Enemy'}</div>
@@ -728,7 +727,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
                         })
                       }}
                     >
-                      {outcome === 'victory' ? '⚔ Victory' : outcome === 'fled' ? '↩ Fled' : '💀 Defeat'}
+                      {outcome === 'victory' ? 'Victory' : outcome === 'fled' ? 'Fled' : 'Defeat'}
                     </button>
                   ))}
                 </div>

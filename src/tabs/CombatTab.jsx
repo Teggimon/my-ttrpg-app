@@ -426,7 +426,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       {isOwner && !locked && (
         <>
           <button className="edit-toggle-btn" onClick={() => setShowEdit(v => !v)}>
-            {showEdit ? '▲ Hide edit' : '✎ Edit stats'}
+            {showEdit ? 'Hide edit' : 'Edit stats'}
           </button>
 
           {showEdit && (

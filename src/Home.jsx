@@ -44,7 +44,7 @@ function CharCard({ char, onClick, onDelete }) {
       <div className="char-card-portrait">
         {char.identity?.portrait
           ? <img src={char.identity.portrait} alt={char.identity.name} className="char-card-img" />
-          : <span className="char-card-placeholder">⚔️</span>
+          : <img src="/uploaded-avatar.jpg" alt="" className="char-card-img char-card-img--placeholder" />
         }
       </div>
 
@@ -89,13 +89,13 @@ function CharCard({ char, onClick, onDelete }) {
       {menuOpen && (
         <div className="char-card-menu" onClick={e => e.stopPropagation()}>
           <button className="char-menu-item" onClick={() => { setMenuOpen(false); onClick() }}>
-            ✏️ Edit Character
+            Edit Character
           </button>
           <button
             className="char-menu-item char-menu-item--danger"
             onClick={() => { setMenuOpen(false); onDelete(char) }}
           >
-            🗑️ Delete
+            Delete
           </button>
         </div>
       )}
@@ -224,7 +224,7 @@ export default function Home({
           {/* Logo + wordmark */}
           <div className="home-logo-wrap">
             <div className={`home-logo-icon${gmMode ? ' home-logo-icon--dm' : ''}`}>
-              {gmMode ? '📖' : '⚔️'}
+              <img src="/uploaded-avatar.jpg" alt="" className="home-logo-img" />
             </div>
             <div>
               <div className="home-wordmark">TTRPG Sheet</div>
@@ -238,13 +238,13 @@ export default function Home({
               className={`mode-btn${!gmMode ? ' mode-btn--active' : ''}`}
               onClick={() => { setGmMode(false); onGMToggle?.(false) }}
             >
-              ⚔️ Player
+              Player
             </button>
             <button
               className={`mode-btn mode-btn--dm${gmMode ? ' mode-btn--active mode-btn--dm-active' : ''}`}
               onClick={() => { setGmMode(true); onGMToggle?.(true); onOpenGMDashboard() }}
             >
-              📖 DM
+              DM
             </button>
           </div>
 
@@ -264,7 +264,7 @@ export default function Home({
         {/* ── DM mode banner ── */}
         {gmMode && (
           <div className="dm-banner">
-            <span className="dm-banner-icon">📖</span>
+            <span className="dm-banner-icon">DM</span>
             You're in DM mode. Your characters are safe — switch back to Player mode anytime.
           </div>
         )}
@@ -280,7 +280,7 @@ export default function Home({
                 <button className="section-action-btn" onClick={onOpenGMDashboard}>Open →</button>
               </div>
               <div className="gm-strip" onClick={onOpenGMDashboard}>
-                <span className="gm-strip-emoji">⚔️</span>
+                <img src="/uploaded-avatar.jpg" alt="" className="gm-strip-img" />
                 <div>
                   <div className="gm-strip-title">Open Party Dashboard</div>
                   <div className="gm-strip-sub">Track HP, conditions and stats for all your players live</div>

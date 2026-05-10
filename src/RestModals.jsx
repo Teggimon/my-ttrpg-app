@@ -128,7 +128,7 @@ export function ShortRestModal({ char, onConfirm, onClose }) {
         <div className="rest-handle" />
 
         <div className="rest-title-row">
-          <div className="rest-title">🌙 Short Rest</div>
+          <div className="rest-title">Short Rest</div>
           <div className="rest-sub">Spend Hit Dice to recover HP. A short rest takes 1 hour.</div>
         </div>
 
@@ -198,7 +198,7 @@ export function ShortRestModal({ char, onConfirm, onClose }) {
 
           {hdState.available === 0 && (
             <div className="rest-row">
-              <span className="rest-label rest-label--warn">⚠ No Hit Dice left</span>
+              <span className="rest-label rest-label--warn">No Hit Dice left</span>
               <span className="rest-val rest-val--muted">Take a long rest to restore them</span>
             </div>
           )}
@@ -283,7 +283,7 @@ export function LongRestModal({ char, onConfirm, onClose }) {
         <div className="rest-handle" />
 
         <div className="rest-title-row">
-          <div className="rest-title">🌑 Long Rest</div>
+          <div className="rest-title">Long Rest</div>
           <div className="rest-sub">A long rest of at least 8 hours fully restores HP, spell slots, and most abilities.</div>
         </div>
 
@@ -339,7 +339,7 @@ export function LongRestModal({ char, onConfirm, onClose }) {
             <>
               <div className="rest-divider" />
               <div className="rest-row">
-                <span className="rest-label rest-label--warn">⚠ Concentration</span>
+                <span className="rest-label rest-label--warn">Concentration</span>
                 <span className="rest-val rest-val--warn">
                   {typeof concentration === 'string' ? concentration : 'Active spell'} ends
                 </span>

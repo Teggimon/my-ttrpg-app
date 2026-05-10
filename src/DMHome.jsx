@@ -23,8 +23,6 @@ function decodeContent(b64) {
   return JSON.parse(atob(b64.replace(/\s/g, '')))
 }
 
-const CAMPAIGN_EMOJIS = ['🗺️','🏰','🐉','⚔️','🌑','🏔️','🌊','🔥','💀','🌿','🕯️','🗡️']
-
 // ── Campaign Card ─────────────────────────────────────────────
 function CampaignCard({ campaign, onClick, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -55,7 +53,7 @@ function CampaignCard({ campaign, onClick, onDelete }) {
     >
       {/* Cover */}
       <div className="campaign-cover">
-        <span className="campaign-emoji">{campaign.emoji || '🗺️'}</span>
+        <img src={campaign.image || '/uploaded-avatar.jpg'} alt="" className="campaign-cover-img" />
 
         {isLive && (
           <div className="live-badge">
@@ -73,14 +71,14 @@ function CampaignCard({ campaign, onClick, onDelete }) {
         {menuOpen && (
           <div className="campaign-menu" onClick={e => e.stopPropagation()}>
             <button className="campaign-menu-item" onClick={() => { setMenuOpen(false); onClick() }}>
-              {isLive ? '▶ Open Session' : '🎯 Open Campaign'}
+              {isLive ? 'Open Session' : 'Open Campaign'}
             </button>
             <div className="campaign-menu-divider" />
             <button
               className="campaign-menu-item campaign-menu-item--danger"
               onClick={() => { setMenuOpen(false); onDelete(campaign) }}
             >
-              🗑️ Delete
+              Delete
             </button>
           </div>
         )}
@@ -100,18 +98,18 @@ function CampaignCard({ campaign, onClick, onDelete }) {
 
         <div className="campaign-stats">
           {playerCount > 0 && (
-            <span className="cstat">👥 <span className="cstat-val">{playerCount} player{playerCount !== 1 ? 's' : ''}</span></span>
+            <span className="cstat"><span className="cstat-val">{playerCount} player{playerCount !== 1 ? 's' : ''}</span></span>
           )}
           {avgLevel && (
-            <span className="cstat">⚔️ <span className="cstat-val">Lv {avgLevel}</span></span>
+            <span className="cstat"><span className="cstat-val">Lv {avgLevel}</span></span>
           )}
-          <span className="cstat">📋 <span className="cstat-val">Session {nextSession}</span></span>
+          <span className="cstat"><span className="cstat-val">Session {nextSession}</span></span>
         </div>
 
         {isLive
-          ? <button className="campaign-enter-btn" onClick={onClick}>▶ Enter Session</button>
+          ? <button className="campaign-enter-btn" onClick={onClick}>Enter Session</button>
           : <button className="campaign-start-btn" onClick={e => { e.stopPropagation(); onClick() }}>
-              {sessionCount === 0 ? '🎯 Start First Session' : `🎯 Start Session ${nextSession}`}
+              {sessionCount === 0 ? 'Start First Session' : `Start Session ${nextSession}`}
             </button>
         }
       </div>
@@ -135,7 +133,7 @@ function NewCampaignCard({ onClick }) {
 // ── Create Campaign Modal ─────────────────────────────────────
 function CreateCampaignModal({ onClose, onCreate }) {
   const [name, setName]       = useState('')
-  const [emoji, setEmoji]     = useState('🗺️')
+  const [image]               = useState('/uploaded-avatar.jpg')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState(null)
 
@@ -144,7 +142,7 @@ function CreateCampaignModal({ onClose, onCreate }) {
     setLoading(true)
     setError(null)
     try {
-      await onCreate({ name: name.trim(), emoji })
+      await onCreate({ name: name.trim(), image })
       onClose()
     } catch {
       setError('Failed to create campaign. Please try again.')
@@ -158,15 +156,7 @@ function CreateCampaignModal({ onClose, onCreate }) {
         <div className="dm-modal-handle" />
         <div className="dm-modal-title">New Campaign</div>
 
-        <div className="emoji-grid">
-          {CAMPAIGN_EMOJIS.map(e => (
-            <button
-              key={e}
-              className={`emoji-btn${emoji === e ? ' emoji-btn--active' : ''}`}
-              onClick={() => setEmoji(e)}
-            >{e}</button>
-          ))}
-        </div>
+        <img src={image} alt="" className="campaign-image-preview" />
 
         <label className="dm-field-label">Campaign name</label>
         <input
@@ -220,14 +210,14 @@ function DeleteModal({ campaign, onConfirm, onCancel, loading }) {
 function NoRepoState({ onSetup, loading }) {
   return (
     <div className="no-repo-state">
-      <div className="no-repo-emoji">📖</div>
+      <img src="/uploaded-avatar.jpg" alt="" className="no-repo-img" />
       <div className="no-repo-title">No campaign repository found</div>
       <div className="no-repo-body">
         Your campaigns live in a GitHub repository called{' '}
         <code>ttrpg-campaigns</code>. It doesn't exist yet — create it to get started.
       </div>
       <button className="dm-btn dm-btn--accent no-repo-btn" onClick={onSetup} disabled={loading}>
-        {loading ? 'Creating…' : '⚔️ Create ttrpg-campaigns'}
+        {loading ? 'Creating…' : 'Create ttrpg-campaigns'}
       </button>
     </div>
   )
@@ -313,13 +303,13 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
   }
 
   // ── Create a campaign ──
-  const createCampaign = async ({ name, emoji }) => {
+  const createCampaign = async ({ name, image }) => {
     const slug = slugify(name) + '-' + Math.random().toString(36).slice(2, 6)
     const campaign = {
       campaignId: generateId(),
       slug,
       name,
-      emoji,
+      image,
       createdAt: new Date().toISOString(),
       status: 'planning',
       players: [],
@@ -366,7 +356,7 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
         {/* Header */}
         <header className="dm-home-header">
           <div className="dm-home-brand">
-            <div className="dm-home-logo">📖</div>
+            <div className="dm-home-logo"><img src="/uploaded-avatar.jpg" alt="" className="dm-home-logo-img" /></div>
             <div>
               <div className="dm-home-wordmark">TTRPG Sheet</div>
               <div className="dm-home-tagline">Dungeon Master</div>
@@ -375,10 +365,10 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
 
           <div className="dm-mode-toggle" aria-label="View mode">
             <button className="dm-mode-btn" onClick={onBack}>
-              ⚔️ Player
+              Player
             </button>
             <button className="dm-mode-btn dm-mode-btn--active" aria-current="page">
-              📖 DM
+              DM
             </button>
           </div>
 

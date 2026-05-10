@@ -38,7 +38,7 @@ function PersonalityField({ label, value, isOwner, locked, onChange }) {
         <span className="personality-label">{label}</span>
         {isOwner && !locked && (
           <button className="bg-edit-btn" onClick={() => setEditing(v => !v)}>
-            {editing ? 'Done' : '✎ Edit'}
+            {editing ? 'Done' : 'Edit'}
           </button>
         )}
       </div>
@@ -58,7 +58,7 @@ function FreeformCard({ label, value, isOwner, locked, onChange, tall }) {
         <span className="freeform-label">{label}</span>
         {isOwner && !locked && (
           <button className="bg-edit-btn" onClick={() => setEditing(v => !v)}>
-            {editing ? 'Done' : '✎ Edit'}
+            {editing ? 'Done' : 'Edit'}
           </button>
         )}
       </div>
@@ -110,7 +110,7 @@ function AllyCard({ ally, isOwner, locked, onUpdate, onRemove }) {
             <>
               <p className="ally-desc">{ally.description || <span className="bg-empty">No description.</span>}</p>
               {isOwner && !locked && (
-                <button className="bg-edit-btn" style={{ marginTop: 8 }} onClick={() => setEditing(true)}>✎ Edit</button>
+                <button className="bg-edit-btn" style={{ marginTop: 8 }} onClick={() => setEditing(true)}>Edit</button>
               )}
             </>
           )}
@@ -190,7 +190,7 @@ function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove
                 <button className="level-step-btn" onClick={() => onLevelChange(cls.level + 1)} disabled={!canLevelUp || cls.level >= 20}>+</button>
               </div>
               {!isPrimary && <button className="dact" onClick={onSetPrimary}>Set as primary</button>}
-              <button className="dact" onClick={onEdit}>✎ Edit</button>
+              <button className="dact" onClick={onEdit}>Edit</button>
               <button className="dact dact--danger" onClick={onRemove}>✕ Remove</button>
             </div>
           )}
@@ -316,7 +316,7 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
                 {subrace && <div className="race-subrace">{subrace}</div>}
               </div>
               {isOwner && !locked && (
-                <button className="bg-edit-btn" onClick={e => { e.stopPropagation() }}>✎ Edit</button>
+                <button className="bg-edit-btn" onClick={e => { e.stopPropagation() }}>Edit</button>
               )}
               <button className="xbtn" onClick={e => { e.stopPropagation(); setRaceExpanded(v => !v) }}>▾</button>
             </div>
@@ -380,7 +380,7 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
           <div className="bg-card">
             <div className="bg-card-row">
               <div className="bg-name">{char.identity.background || 'No background selected'}</div>
-              {isOwner && !locked && <button className="bg-edit-btn">✎ Edit</button>}
+              {isOwner && !locked && <button className="bg-edit-btn">Edit</button>}
             </div>
             {srdBackground?.feature && (
               <>
@@ -429,7 +429,7 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
                 {!alignEditing && alignment && <span style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 400, marginLeft: 6 }}>— tap Edit to change</span>}
               </div>
               {isOwner && !locked && !alignEditing && (
-                <button className="bg-edit-btn" onClick={() => setAlignEditing(true)}>✎ Edit</button>
+                <button className="bg-edit-btn" onClick={() => setAlignEditing(true)}>Edit</button>
               )}
             </div>
             {alignEditing && (

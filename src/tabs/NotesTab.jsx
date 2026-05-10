@@ -42,7 +42,7 @@ function NoteSection({ name, isDefault, isOwner, locked, collapsed, text, onTogg
     <div className={`note-section${collapsed ? ' note-section--collapsed' : ''}`}>
       <div className="note-section-head" onClick={onToggle}>
         {isDefault
-          ? <span className="note-lock" title="Default section">🔒</span>
+          ? <span className="note-lock" title="Default section">Lock</span>
           : canEdit && <button className="note-delete-btn" onClick={e => { e.stopPropagation(); onDelete() }} title="Delete section">✕</button>
         }
 

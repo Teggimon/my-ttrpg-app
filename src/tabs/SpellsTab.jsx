@@ -277,7 +277,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 className="slot-configure-btn"
                 onClick={() => setShowSlotEditor(v => !v)}
               >
-                {showSlotEditor ? 'Cancel' : '⚙ Configure slots'}
+                {showSlotEditor ? 'Cancel' : 'Configure slots'}
               </button>
             )}
           </div>
@@ -366,7 +366,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                           onClick={e => { e.stopPropagation(); isOwner && !locked && togglePrepared(spell.id) }}
                           title={isPrep ? 'Prepared — click to unprepare' : 'Not prepared — click to prepare'}
                         >
-                          {isPrep ? '★' : '☆'}
+                          {isPrep ? 'Prepared' : 'Add'}
                         </span>
                       )}
                       {school && <span className="spell-school-badge">{school}</span>}
@@ -391,7 +391,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                               className={`spell-prep-btn${isPrep ? ' spell-prep-btn--on' : ''}`}
                               onClick={() => togglePrepared(spell.id)}
                             >
-                              {isPrep ? '★ Prepared' : '☆ Add to prepared'}
+                              {isPrep ? 'Prepared' : 'Add to prepared'}
                             </button>
                           )}
                           {isOwner && !locked && (

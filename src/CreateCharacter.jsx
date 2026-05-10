@@ -420,7 +420,7 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
 function StepName({ value, onChange, onNext, onCancel }) {
   return (
     <div style={S.wrap}>
-      <div style={S.h1}>⚔️ New Character</div>
+      <div style={S.h1}>New Character</div>
       <div style={S.sub}>Let's start with a name.</div>
       <label style={S.label}>Character Name *</label>
       <input
@@ -980,8 +980,8 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
       </div>
       {(!allSkillsSelected || !allEquipSelected) && (
         <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-          {!allSkillsSelected && <div>⚠ Skills not complete ({allSkillGroups.map(g => `${selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length}/${g.choose}`).join(', ')})</div>}
-          {!allEquipSelected && <div>⚠ Equipment not complete — groups: {equipGroups.length}, selected groupIndexes: [{selectedEquipment.map(e => e.groupIndex).join(', ')}]</div>}
+          {!allSkillsSelected && <div>Skills not complete ({allSkillGroups.map(g => `${selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length}/${g.choose}`).join(', ')})</div>}
+          {!allEquipSelected && <div>Equipment not complete — groups: {equipGroups.length}, selected groupIndexes: [{selectedEquipment.map(e => e.groupIndex).join(', ')}]</div>}
         </div>
       )}
     </div>
@@ -1460,7 +1460,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
 
       {error && (
         <div style={{ ...S.wrap, paddingTop: 0 }}>
-          <div style={S.error}>⚠ {error}</div>
+          <div style={S.error}>{error}</div>
         </div>
       )}
     </>
