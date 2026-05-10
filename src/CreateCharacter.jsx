@@ -195,23 +195,24 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  wrap: { padding: '1.25rem 1rem 5rem', maxWidth: '720px', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' },
+  wrap: { padding: '1.25rem 1rem 6.5rem', width: 'min(100% - 2rem, 720px)', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', boxSizing: 'border-box' },
   h1: { fontSize: '1.05rem', fontWeight: 800, marginBottom: '0.25rem', color: 'var(--text-primary)', letterSpacing:'0.01em' },
   sub: { fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight:1.45 },
   label: { display: 'block', fontSize: '0.72rem', fontWeight:700, color: 'var(--text-muted)', marginBottom: '0.35rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.08em' },
   input: { width: '100%', minHeight:44, padding: '0.62rem 0.75rem', background: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 'var(--radius-md)', fontSize: '0.9rem', boxSizing: 'border-box', outline:'none' },
-  card: (selected) => ({
-    padding: '0.8rem 0.9rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', marginBottom: '0.45rem',
+  card: (selected, disabled = false) => ({
+    minHeight: 74, padding: '0.8rem 0.9rem', borderRadius: 'var(--radius-md)', cursor: disabled ? 'default' : 'pointer', marginBottom: '0.45rem', boxSizing: 'border-box',
     background: selected ? 'var(--accent-subtle)' : 'var(--bg-elevated)',
     border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
     boxShadow: selected ? 'var(--shadow-sm)' : 'none',
+    opacity: disabled ? 0.45 : 1,
     transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
   }),
   cardName: { fontWeight: 800, fontSize: '0.95rem', color:'var(--text-primary)' },
   cardSub: { fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' },
-  row: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' },
+  row: { position:'sticky', bottom:0, zIndex:30, display: 'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.75rem', marginTop: '1.5rem', padding:'0.75rem 0', background:'var(--bg-base)' },
   btn: (primary) => ({
-    flex: primary ? 2 : 1, minHeight:44, padding: '0.65rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem',
+    width:'100%', minHeight:44, padding: '0.65rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem',
     background: primary ? 'var(--accent)' : 'var(--bg-elevated)',
     color: primary ? 'var(--text-inverse)' : 'var(--text-secondary)',
     border: primary ? 'none' : '1px solid var(--border-strong)',
@@ -235,16 +236,24 @@ const S = {
   clearBtn: { position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', width:32, height:32, border:'none', borderRadius:'var(--radius-sm)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontSize:'1rem', fontFamily:'var(--font-body)' },
   sourceWrap: { position:'relative', flex:'0 0 auto' },
   sourceButton: (active) => ({
-    minHeight:44, minWidth:44, padding:'0 0.7rem', borderRadius:'var(--radius-md)', cursor:'pointer',
+    minHeight:44, width:54, padding:'0', borderRadius:'var(--radius-md)', cursor:'pointer',
     border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
     background: active ? 'var(--accent-subtle)' : 'var(--bg-elevated)',
     color: active ? 'var(--accent-hover)' : 'var(--text-secondary)',
-    fontFamily:'var(--font-body)', fontSize:'0.78rem', fontWeight:800,
+    fontFamily:'var(--font-body)', fontSize:'0.72rem', fontWeight:800, display:'grid', placeItems:'center',
   }),
   sourceMenu: { position:'absolute', right:0, top:'calc(100% + 6px)', zIndex:40, width:190, maxHeight:260, overflowY:'auto', padding:'0.35rem', border:'1px solid var(--border-strong)', borderRadius:'var(--radius-md)', background:'var(--bg-elevated)', boxShadow:'var(--shadow-lg)' },
   sourceOption: (active) => ({ width:'100%', minHeight:36, padding:'0.45rem 0.6rem', border:'none', borderRadius:'var(--radius-sm)', background: active ? 'var(--accent-subtle)' : 'transparent', color: active ? 'var(--accent-hover)' : 'var(--text-secondary)', textAlign:'left', cursor:'pointer', fontSize:'0.78rem', fontWeight:700, fontFamily:'var(--font-body)' }),
   sourceBadge: { flex:'0 0 auto', padding:'0.15rem 0.5rem', borderRadius:'9999px', border:'1px solid var(--border-strong)', background:'var(--bg-inset)', color:'var(--text-muted)', fontSize:'0.68rem', fontWeight:800, fontFamily:'var(--font-mono)', letterSpacing:'0.02em' },
   cardTop: { display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'0.65rem' },
+}
+
+function FunnelIcon() {
+  return (
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M4 6h16l-6 7v5l-4 2v-7L4 6Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 function SourceFilter({ items, value, onChange }) {
@@ -260,7 +269,7 @@ function SourceFilter({ items, value, onChange }) {
         style={S.sourceButton(active)}
         onClick={() => setOpen(o => !o)}
       >
-        {active ? sourceCode({ source: value }) : 'Filter'}
+        {active ? sourceCode({ source: value }) : <FunnelIcon />}
       </button>
       {open && (
         <div style={S.sourceMenu}>
@@ -549,11 +558,6 @@ function StepRace({ races, selected, onSelect, onNext, onBack }) {
               {r.ability_bonuses?.map(b => ` · +${b.bonus} ${b.ability_score.name}`).join('')}
               {r.subraces?.length > 0 && ` · ${r.subraces.length} subrace${r.subraces.length > 1 ? 's' : ''}`}
             </div>
-            {selected?.index === r.index && r.traits?.length > 0 && (
-              <div style={{ marginTop: '0.4rem' }}>
-                {r.traits.map(t => <span key={t.index} style={S.tag}>{t.name}</span>)}
-              </div>
-            )}
           </div>
         ))}
       </div>
@@ -611,11 +615,6 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
               <div style={S.cardSub}>
                 {s.ability_bonuses?.map(b => `+${b.bonus} ${b.ability_score.name}`).join(' · ')}
               </div>
-              {selected?.index === s.index && s.racial_traits?.length > 0 && (
-                <div style={{ marginTop: '0.4rem' }}>
-                  {s.racial_traits.map(t => <span key={t.index} style={S.tag}>{t.name}</span>)}
-                </div>
-              )}
             </div>
           ))}
         </>
@@ -1055,11 +1054,14 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
           <label style={S.label}>Choose Starting Equipment</label>
           <div style={S.cardSub}>{group.desc}</div>
           {group.choices.map(choice => {
-            const checked = selectedEquipment.some(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
+            const groupSelections = selectedEquipment.filter(e => e.groupIndex === group.groupIndex)
+            const activeChoiceId = groupSelections[0]?.choiceId ?? null
+            const checked = groupSelections.some(e => e.choiceId === choice.id)
+            const lockedByOtherChoice = !!activeChoiceId && activeChoiceId !== choice.id
             const isExpanded = expandedChoice === choice.id
             if (choice.isCategory) {
               const choose = choice.choose ?? 1
-              const selectedForChoice = selectedEquipment.filter(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
+              const selectedForChoice = groupSelections.filter(e => e.choiceId === choice.id)
               const choiceComplete = selectedForChoice.length >= choose
               const loadedItems = categoryItems[choice.id] // null=loading, undefined=not started, []=empty, [...]
               const itemSourceFilter = categorySourceFilters[choice.id] ?? ALL_SOURCES
@@ -1067,17 +1069,19 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
               return (
                 <div key={choice.id}>
                   <div
-                    style={{ ...S.card(choiceComplete), opacity: 1, cursor: 'pointer' }}
-                    onClick={() => expandCategory(choice)}
+                    style={S.card(choiceComplete, lockedByOtherChoice)}
+                    onClick={() => !lockedByOtherChoice && expandCategory(choice)}
                   >
                     <div style={S.cardName}>{choice.label}</div>
                     <div style={S.cardSub}>
-                      {isExpanded
+                      {lockedByOtherChoice
+                        ? 'Locked by another option in this group'
+                        : isExpanded
                         ? `${selectedForChoice.length}/${choose} selected — choose below ↓`
                         : `Tap to expand · choose ${choose}`}
                     </div>
                   </div>
-                  {isExpanded && (
+                  {isExpanded && !lockedByOtherChoice && (
                     <div style={{ paddingLeft: '1rem', marginBottom: '0.5rem' }}>
                       {loadedItems === null || loadedItems === undefined
                         ? <div style={S.cardSub}>Loading…</div>
@@ -1098,11 +1102,12 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                                 style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: itemChecked ? '1px solid var(--accent)' : '1px solid var(--border)', marginBottom: '0.35rem' }}
                                 onClick={() => {
                                   if (disabled) return
-                                  const withoutThis = selectedEquipment.filter(e => !(e.groupIndex === group.groupIndex && e.choiceId === choice.id && e.index === item.index))
+                                  const otherGroups = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
+                                  const sameChoiceWithoutItem = selectedForChoice.filter(e => e.index !== item.index)
                                   if (itemChecked) {
-                                    onEquipmentChange(withoutThis)
+                                    onEquipmentChange([...otherGroups, ...sameChoiceWithoutItem])
                                   } else {
-                                    onEquipmentChange([...withoutThis, { ...item, groupIndex: group.groupIndex, choiceId: choice.id }])
+                                    onEquipmentChange([...otherGroups, ...sameChoiceWithoutItem, { ...item, groupIndex: group.groupIndex, choiceId: choice.id }])
                                   }
                                 }}
                               >
@@ -1124,13 +1129,15 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
             return (
               <div
                 key={choice.id}
-                style={{ ...S.card(checked) }}
+                style={S.card(checked, lockedByOtherChoice)}
                 onClick={() => {
+                  if (lockedByOtherChoice) return
                   const without = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
-                  onEquipmentChange([...without, ...choice.items.map(item => ({ ...item, groupIndex: group.groupIndex, choiceId: choice.id }))])
+                  onEquipmentChange(checked ? without : [...without, ...choice.items.map(item => ({ ...item, groupIndex: group.groupIndex, choiceId: choice.id }))])
                 }}
               >
                 <div style={S.cardName}>{choice.label}</div>
+                {lockedByOtherChoice && <div style={S.cardSub}>Locked by another option in this group</div>}
               </div>
             )
           })}
@@ -1194,12 +1201,6 @@ function StepBackground({ backgrounds, selected, onSelect, onNext, onBack }) {
             <div style={S.cardSub}>
               Skills: {b.starting_proficiencies?.filter(p => p.index.startsWith('skill-')).map(p => p.name.replace('Skill: ', '')).join(', ')}
             </div>
-            {selected?.index === b.index && b.feature && (
-              <div style={S.featureBox}>
-                <div style={S.featureName}>Feature: {b.feature.name}</div>
-                <div style={S.featureDesc}>{b.feature.desc?.[0]}</div>
-              </div>
-            )}
           </div>
         ))}
       </div>
@@ -1400,7 +1401,7 @@ function StepAlignment({ raceData, selected, onSelect, onNext, onBack, creating 
 
 function ProgressBar({ step, totalSteps }) {
   return (
-    <div style={{ padding: '1rem 1.5rem 0', maxWidth: '520px', margin: '0 auto' }}>
+    <div style={{ padding: '1rem 1rem 0', width: 'min(100% - 2rem, 720px)', margin: '0 auto', boxSizing:'border-box' }}>
       <div style={S.progress}>
         {Array.from({ length: totalSteps }).map((_, i) => (
           <div key={i} style={S.dot(i === step, i < step)} />
