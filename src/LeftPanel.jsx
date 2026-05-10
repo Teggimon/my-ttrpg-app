@@ -7,6 +7,15 @@ const XP_THRESHOLDS = [0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,1
 
 function fmtBonus(n) { return n >= 0 ? `+${n}` : `${n}` }
 
+function CharacterPortrait({ char }) {
+  const src = char.identity?.portrait || '/uploads/placeholders/default-portrait.jpg'
+  return (
+    <div className="lp-portrait">
+      <img src={src} alt="" />
+    </div>
+  )
+}
+
 function trimClassLevels(classes, targetTotal) {
   let toRemove = classes.reduce((s, c) => s + (c.level ?? 0), 0) - targetTotal
   if (toRemove <= 0) return classes
@@ -82,11 +91,13 @@ export default function LeftPanel({
 
       {/* ── Char info ── */}
       <div className="lp-char-info">
+        {!portrait && <CharacterPortrait char={char} />}
         <div className="lp-char-info-row">
           <div className="lp-name-block">
             {onBack && (
               <button className="icon-btn lp-back" onClick={onBack} title="Back">←</button>
             )}
+            {portrait && <CharacterPortrait char={char} />}
             <div>
               <div className="lp-char-name">{char.identity.name}</div>
               <div className="lp-char-meta">{race} · {className} · Lv {level}</div>

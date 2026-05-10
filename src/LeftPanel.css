@@ -24,6 +24,25 @@
   border-bottom: 1px solid var(--border);
 }
 
+.lp-portrait {
+  width: 132px;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-inset);
+  box-shadow: var(--shadow-sm);
+  margin: 0 auto 12px;
+  flex-shrink: 0;
+}
+
+.lp-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .lp-char-info-row {
   display: flex;
   align-items: flex-start;
@@ -396,6 +415,11 @@
 
 /* ── Portrait strip overrides ────────────────────────────────── */
 .left-panel--portrait .lp-char-info { border-bottom: none; }
+.left-panel--portrait .lp-portrait {
+  width: 46px;
+  margin: 0;
+  border-radius: var(--radius-sm);
+}
 .left-panel--portrait .lp-hp-wrap   { display: none; }
 .left-panel--portrait .lp-stat-tiles { padding: 8px 14px; }
 .left-panel--portrait .lp-stat-tiles { grid-template-columns: repeat(3, auto); justify-content: flex-start; }
