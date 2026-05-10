@@ -64,7 +64,7 @@ function CharRefCard({ char, isPresent, onTogglePresent }) {
 
       {/* Header */}
       <div className="crc-header">
-        <div className="crc-portrait">{char.portrait ? <img src={char.portrait} alt={char.name} /> : <img src="/uploaded-avatar.jpg" alt="" />}</div>
+        <div className="crc-portrait">{char.portrait ? <img src={char.portrait} alt={char.name} /> : <img src="/uploads/placeholders/default-portrait.jpg" alt="" />}</div>
         <div className="crc-header-info">
           <div className="crc-name">{char.name}</div>
           <div className="crc-sub">{char.race} · {char.class} · Lv {char.level}</div>

@@ -44,7 +44,7 @@ function CharCard({ char, onClick, onDelete }) {
       <div className="char-card-portrait">
         {char.identity?.portrait
           ? <img src={char.identity.portrait} alt={char.identity.name} className="char-card-img" />
-          : <img src="/uploaded-avatar.jpg" alt="" className="char-card-img char-card-img--placeholder" />
+          : <img src="/uploads/placeholders/default-portrait.jpg" alt="" className="char-card-img char-card-img--placeholder" />
         }
       </div>
 
@@ -224,7 +224,7 @@ export default function Home({
           {/* Logo + wordmark */}
           <div className="home-logo-wrap">
             <div className={`home-logo-icon${gmMode ? ' home-logo-icon--dm' : ''}`}>
-              <img src="/uploaded-avatar.jpg" alt="" className="home-logo-img" />
+              <img src="/uploads/placeholders/default-portrait.jpg" alt="" className="home-logo-img" />
             </div>
             <div>
               <div className="home-wordmark">TTRPG Sheet</div>
@@ -280,7 +280,7 @@ export default function Home({
                 <button className="section-action-btn" onClick={onOpenGMDashboard}>Open →</button>
               </div>
               <div className="gm-strip" onClick={onOpenGMDashboard}>
-                <img src="/uploaded-avatar.jpg" alt="" className="gm-strip-img" />
+                <img src="/uploads/placeholders/default-portrait.jpg" alt="" className="gm-strip-img" />
                 <div>
                   <div className="gm-strip-title">Open Party Dashboard</div>
                   <div className="gm-strip-sub">Track HP, conditions and stats for all your players live</div>

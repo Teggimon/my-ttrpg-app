@@ -146,7 +146,7 @@ function InitiativeOverlay({ combatants, onStart, onCancel }) {
         <div className="init-list">
           {order.map(c => (
             <div key={c.id} className={`init-row${c.type === 'player' ? ' init-row--player' : ' init-row--enemy'}`}>
-              <div className={`init-token${c.type === 'player' ? ' init-token--player' : ' init-token--enemy'}`}>{tokenFor(c)}</div>
+              {c.type === 'player' && <div className="init-token init-token--player">{tokenFor(c)}</div>}
               <div className="init-info">
                 <div className="init-name">{c.name}</div>
                 <div className="init-sub">
@@ -234,7 +234,6 @@ function HpSetupOverlay({ combatants, onContinue, onCancel }) {
         <div className="init-list">
           {enemies.map(c => (
             <div key={c.id} className="init-row init-row--enemy hp-setup-row">
-              <div className="init-token init-token--enemy">{tokenFor(c)}</div>
               <div className="init-info">
                 <div className="init-name">{c.name}</div>
                 <div className="init-sub">
@@ -287,7 +286,7 @@ function PlayerRow({ combatant, isActive }) {
     <div className={`combatant player-comb${isActive ? ' active-turn' : ''}${combatant.downed ? ' downed' : ''}`}>
       <div className="comb-head" onClick={() => setExpanded(e => !e)}>
         <div className="init-badge">{combatant.initiative}</div>
-        <div className={`comb-token${combatant.type === 'player' ? ' comb-token--player' : ' comb-token--enemy'}`}>{tokenFor(combatant)}</div>
+        <div className="comb-token comb-token--player">{tokenFor(combatant)}</div>
         <div className="comb-info">
           <div className="comb-name">{combatant.name}</div>
           <div className="comb-sub">{combatant.type === 'player' ? 'Player' : combatant.cr ? `CR ${combatant.cr}` : 'Enemy'}</div>
@@ -328,7 +327,6 @@ function EnemyRow({ combatant, isActive, onHpChange, onAddCondition, onRemoveCon
     <div className={`combatant enemy-comb${isActive ? ' active-turn' : ''}${combatant.downed ? ' downed' : ''}`}>
       <div className="comb-head" onClick={() => setExpanded(e => !e)}>
         <div className="init-badge">{combatant.initiative}</div>
-        <div className="comb-token comb-token--enemy">{tokenFor(combatant)}</div>
         <div className="comb-info">
           <div className="comb-name">{combatant.name}</div>
           <div className="comb-sub">{combatant.cr ? `CR ${combatant.cr}` : 'Enemy'}</div>

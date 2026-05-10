@@ -72,7 +72,7 @@ export default function Onboarding({ token, user, onComplete }) {
   if (step === 1) return (
     <div className="ob-body">
       <div className="ob-panel">
-        <div className="ob-logo"><img src="/uploaded-avatar.jpg" alt="" /></div>
+        <div className="ob-logo"><img src="/uploads/placeholders/default-portrait.jpg" alt="" /></div>
         <h1 className="ob-title">Welcome, {user.login}!</h1>
         <p className="ob-body-text">
           First, let's create your character repository. This is where all your characters
@@ -103,7 +103,7 @@ export default function Onboarding({ token, user, onComplete }) {
   if (step === 2) return (
     <div className="ob-body">
       <div className="ob-panel">
-        <div className="ob-logo"><img src="/uploaded-avatar.jpg" alt="" /></div>
+        <div className="ob-logo"><img src="/uploads/placeholders/default-portrait.jpg" alt="" /></div>
         <h1 className="ob-title">One quick question…</h1>
         <p className="ob-body-text">
           Do you ever run games as a Game Master?
@@ -136,7 +136,7 @@ export default function Onboarding({ token, user, onComplete }) {
   if (step === 3) return (
     <div className="ob-body ob-body--dm">
       <div className="ob-panel ob-panel--dm">
-        <div className="ob-logo"><img src="/uploaded-avatar.jpg" alt="" /></div>
+        <div className="ob-logo"><img src="/uploads/placeholders/default-portrait.jpg" alt="" /></div>
         <h1 className="ob-title">Set up your Campaign Repository</h1>
         <p className="ob-body-text">
           A dedicated space for your campaigns, sessions, party data, and notes.
@@ -175,7 +175,7 @@ export default function Onboarding({ token, user, onComplete }) {
   if (step === 4) return (
     <div className={`ob-body${isGM ? ' ob-body--dm' : ''}`}>
       <div className={`ob-panel${isGM ? ' ob-panel--dm' : ''}`}>
-        <div className="ob-logo"><img src="/uploaded-avatar.jpg" alt="" /></div>
+        <div className="ob-logo"><img src="/uploads/placeholders/default-portrait.jpg" alt="" /></div>
         <h1 className="ob-title">{isGM ? 'GM All Set!' : 'All set!'}</h1>
         <p className="ob-body-text">
           {isGM

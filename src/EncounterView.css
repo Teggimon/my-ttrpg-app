@@ -81,10 +81,6 @@
   border-color: var(--accent);
   color: var(--accent);
 }
-.init-token--enemy {
-  border-color: var(--dm-border);
-  color: var(--dm);
-}
 .init-info     { flex: 1; min-width: 0; }
 .init-name     { font-family: var(--font-body); font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .init-sub      { font-family: var(--font-body); font-size: 10px; color: var(--text-muted); }
@@ -366,7 +362,10 @@
 
 .player-comb { border-left: 3px solid var(--accent); }
 .player-comb.active-turn { border-left-color: var(--dm); }
-.enemy-comb  { border-left: 3px solid var(--dm); }
+.enemy-comb  {
+  border-color: var(--danger);
+  border-left: 4px solid var(--danger);
+}
 
 .comb-head {
   display: flex;
@@ -412,10 +411,6 @@
 .comb-token--player {
   color: var(--accent);
   border-color: var(--accent);
-}
-.comb-token--enemy {
-  color: var(--dm);
-  border-color: var(--dm-border);
 }
 .comb-info { flex: 1; min-width: 0; }
 .comb-name { font-family: var(--font-body); font-size: 12px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

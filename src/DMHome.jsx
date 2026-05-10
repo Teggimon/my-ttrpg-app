@@ -53,7 +53,7 @@ function CampaignCard({ campaign, onClick, onDelete }) {
     >
       {/* Cover */}
       <div className="campaign-cover">
-        <img src={campaign.image || '/uploaded-avatar.jpg'} alt="" className="campaign-cover-img" />
+        <img src={campaign.image || '/uploads/placeholders/default-portrait.jpg'} alt="" className="campaign-cover-img" />
 
         {isLive && (
           <div className="live-badge">
@@ -133,7 +133,7 @@ function NewCampaignCard({ onClick }) {
 // ── Create Campaign Modal ─────────────────────────────────────
 function CreateCampaignModal({ onClose, onCreate }) {
   const [name, setName]       = useState('')
-  const [image]               = useState('/uploaded-avatar.jpg')
+  const [image]               = useState('/uploads/placeholders/default-portrait.jpg')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState(null)
 
@@ -210,7 +210,7 @@ function DeleteModal({ campaign, onConfirm, onCancel, loading }) {
 function NoRepoState({ onSetup, loading }) {
   return (
     <div className="no-repo-state">
-      <img src="/uploaded-avatar.jpg" alt="" className="no-repo-img" />
+      <img src="/uploads/placeholders/default-portrait.jpg" alt="" className="no-repo-img" />
       <div className="no-repo-title">No campaign repository found</div>
       <div className="no-repo-body">
         Your campaigns live in a GitHub repository called{' '}
@@ -356,7 +356,7 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
         {/* Header */}
         <header className="dm-home-header">
           <div className="dm-home-brand">
-            <div className="dm-home-logo"><img src="/uploaded-avatar.jpg" alt="" className="dm-home-logo-img" /></div>
+            <div className="dm-home-logo"><img src="/uploads/placeholders/default-portrait.jpg" alt="" className="dm-home-logo-img" /></div>
             <div>
               <div className="dm-home-wordmark">TTRPG Sheet</div>
               <div className="dm-home-tagline">Dungeon Master</div>

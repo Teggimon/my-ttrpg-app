@@ -154,7 +154,7 @@ function App() {
       gap: '24px',
     }}>
       <img
-        src="/uploaded-avatar.jpg"
+        src="/uploads/placeholders/default-portrait.jpg"
         alt=""
         style={{
           width: 72,

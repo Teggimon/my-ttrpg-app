@@ -360,11 +360,14 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
 // ── NPC Row ───────────────────────────────────────────────────
 function NPCRow({ npc, onDelete }) {
   const [expanded, setExpanded] = useState(false)
+  const categoryClass =
+    npc.category === 'boss' ? ' npc-row--boss'
+      : npc.category === 'ally' ? ' npc-row--ally'
+        : ' npc-row--enemy'
 
   return (
-    <div className={`npc-row${npc.category === 'boss' ? ' npc-row--boss' : ''}`}>
+    <div className={`npc-row${categoryClass}`}>
       <div className="npc-row-head" onClick={() => setExpanded(e => !e)}>
-        <div className="npc-portrait"><img src="/uploaded-avatar.jpg" alt="" /></div>
         <div className="npc-info">
           <div className="npc-name">{npc.name}</div>
           <div className="npc-meta">
@@ -649,8 +652,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
                 {loadingSrd && showSrd && <div className="npc-search-hint">Loading SRD…</div>}
 
                 {showSrd && filteredSrd.map(m => (
-                  <div key={m.index} className="npc-search-row">
-                    <div className="npc-sr-icon"><img src="/uploaded-avatar.jpg" alt="" /></div>
+                  <div key={m.index} className="npc-search-row npc-search-row--enemy">
                     <div className="npc-sr-info">
                       <div className="npc-sr-name">{m.name}</div>
                       <div className="npc-sr-meta">{m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP{firstText(m.hit_dice, m.hitDie) ? ` · ${firstText(m.hit_dice, m.hitDie)}` : ''} · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}</div>
@@ -667,8 +669,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
                 ))}
 
                 {showCampaign && filteredCampaign.map(n => (
-                  <div key={n.npcId} className="npc-search-row">
-                    <div className="npc-sr-icon"><img src="/uploaded-avatar.jpg" alt="" /></div>
+                  <div key={n.npcId} className={`npc-search-row${n.category === 'ally' ? ' npc-search-row--ally' : ' npc-search-row--enemy'}`}>
                     <div className="npc-sr-info">
                       <div className="npc-sr-name">{n.name}</div>
                       <div className="npc-sr-meta">Custom{n.type ? ` · ${n.type}` : ''}{n.cr ? ` · CR ${n.cr}` : ''}{n.hp ? ` · ${n.hp} HP` : ''}</div>
@@ -1369,7 +1370,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
         <div className="cv-sidebar-top">
           <button className="cv-back-btn" onClick={onBack}>← Campaigns</button>
           <div className="cv-campaign-name">
-            <img src={campaign.image || '/uploaded-avatar.jpg'} alt="" className="cv-campaign-img" />
+            <img src={campaign.image || '/uploads/placeholders/default-portrait.jpg'} alt="" className="cv-campaign-img" />
             <span>{campaign.name}</span>
           </div>
         </div>
