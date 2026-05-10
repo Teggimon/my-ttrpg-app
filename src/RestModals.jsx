@@ -41,7 +41,7 @@ function getSpellSlots(char) {
 // Hit dice state: { available, max }
 function getHitDiceState(char) {
   const max       = totalLevel(char)
-  const available = char.combat?.hitDiceAvailable ?? max
+  const available = Math.max(0, Math.min(max, char.combat?.hitDiceAvailable ?? max))
   return { available, max }
 }
 
@@ -182,9 +182,8 @@ export function LongRestModal({ char, onConfirm, onClose }) {
   const concentration = getConcentration(char)
   const deathSaves = char.combat?.deathSaves ?? { successes: 0, failures: 0 }
 
-  // HD restored = half max, rounded down (min 1)
-  const hdRestored  = Math.max(1, Math.floor(hdState.max / 2))
-  const newHdTotal  = Math.min(hdState.max, hdState.available + hdRestored)
+  const hdRestored  = Math.max(0, hdState.max - hdState.available)
+  const newHdTotal  = hdState.max
 
   const hpGain     = hpMax - hpCur
   const hasSlots   = Object.values(slots).some(s => s?.max > 0)
