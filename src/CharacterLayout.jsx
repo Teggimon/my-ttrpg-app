@@ -6,7 +6,7 @@ import StatsTab from './tabs/StatsTab'
 import SpellsTab from './tabs/SpellsTab'
 import InventoryTab from './tabs/InventoryTab'
 import NotesTab from './tabs/NotesTab'
-import BackgroundTab from './tabs/BackgroundTab'
+import BackgroundTab, { AboutTab } from './tabs/BackgroundTab'
 import './CharacterLayout.css'
 
 const TABS = [
@@ -14,6 +14,7 @@ const TABS = [
   { id: 'stats',      label: 'Stats',      icon: 'ST' },
   { id: 'spells',     label: 'Spells',     icon: 'SP' },
   { id: 'inventory',  label: 'Gear',       icon: 'GR' },
+  { id: 'about',      label: 'About',      icon: 'AB' },
   { id: 'background', label: 'Background', icon: 'BG' },
   { id: 'notes',      label: 'Notes',      icon: 'NT' },
 ]
@@ -61,6 +62,7 @@ export default function CharacterLayout({
       {activeTab === 'stats'     && <StatsTab     {...tabProps} />}
       {activeTab === 'spells'    && <SpellsTab    {...tabProps} />}
       {activeTab === 'inventory'  && <InventoryTab  {...tabProps} />}
+      {activeTab === 'about'      && <AboutTab {...tabProps} />}
       {activeTab === 'background' && <BackgroundTab {...tabProps} />}
       {activeTab === 'notes'      && <NotesTab      {...tabProps} />}
     </div>

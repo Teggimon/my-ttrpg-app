@@ -200,6 +200,99 @@ function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove
   )
 }
 
+export function AboutTab({ char, locked, isOwner, updateChar }) {
+  const personality = char.identity.personality ?? {}
+  const allies      = char.allies ?? []
+
+  function patchIdentity(patch) {
+    updateChar({ identity: { ...char.identity, ...patch } })
+  }
+
+  function patchPersonality(field, value) {
+    patchIdentity({ personality: { ...personality, [field]: value } })
+  }
+
+  function patchAlly(id, data) {
+    updateChar({ allies: allies.map(a => a.id === id ? { ...a, ...data } : a) })
+  }
+
+  function removeAlly(id) {
+    updateChar({ allies: allies.filter(a => a.id !== id) })
+  }
+
+  function addAlly() {
+    updateChar({ allies: [...allies, { id: Date.now().toString(), name: '', type: 'Ally', description: '' }] })
+  }
+
+  return (
+    <div className="bg-root">
+      <div className="bg-scroll">
+        <section>
+          <div className="sec-head">Traits, Ideals, Bonds & Flaws</div>
+          <div className="personality-grid">
+            {[
+              ['Traits',  'traits'],
+              ['Ideals',  'ideals'],
+              ['Bonds',   'bonds'],
+              ['Flaws',   'flaws'],
+            ].map(([label, key]) => (
+              <PersonalityField
+                key={key}
+                label={label}
+                value={personality[key]}
+                isOwner={isOwner}
+                locked={locked}
+                onChange={v => patchPersonality(key, v)}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <div className="sec-head">Appearance</div>
+          <FreeformCard
+            label="Physical Description"
+            value={char.identity.appearance}
+            isOwner={isOwner}
+            locked={locked}
+            onChange={v => patchIdentity({ appearance: v })}
+          />
+        </section>
+
+        <section>
+          <div className="sec-head">Background Story</div>
+          <FreeformCard
+            label="Character History"
+            value={char.identity.backstory}
+            isOwner={isOwner}
+            locked={locked}
+            onChange={v => patchIdentity({ backstory: v })}
+            tall
+          />
+        </section>
+
+        <section>
+          <div className="sec-head">Allies & Organisations</div>
+          {allies.map(ally => (
+            <AllyCard
+              key={ally.id}
+              ally={ally}
+              isOwner={isOwner}
+              locked={locked}
+              onUpdate={data => patchAlly(ally.id, data)}
+              onRemove={() => removeAlly(ally.id)}
+            />
+          ))}
+          {isOwner && !locked && (
+            <button className="add-ally-btn" onClick={addAlly}>+ Add ally or organisation</button>
+          )}
+          {allies.length === 0 && !isOwner && <p className="empty-hint">No allies recorded.</p>}
+        </section>
+      </div>
+    </div>
+  )
+}
+
 export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
   const [srdClasses,     setSrdClasses]     = useState({})
   const [srdRace,        setSrdRace]        = useState(null)
@@ -212,8 +305,6 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
   const primaryIdx  = char.identity.primaryClassIndex ?? 0
   const alignment   = char.identity.alignment ?? ''
   const subrace     = char.identity.subrace ?? ''
-  const personality = char.identity.personality ?? {}
-  const allies      = char.allies ?? []
   const totalLevel  = xpToLevel(char.identity?.xp ?? 0)
   const assignedLvl = classes.reduce((s, c) => s + (c.level ?? 0), 0)
 
@@ -246,22 +337,6 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
 
   function patchIdentity(patch) {
     updateChar({ identity: { ...char.identity, ...patch } })
-  }
-
-  function patchPersonality(field, value) {
-    patchIdentity({ personality: { ...personality, [field]: value } })
-  }
-
-  function patchAlly(id, data) {
-    updateChar({ allies: allies.map(a => a.id === id ? { ...a, ...data } : a) })
-  }
-
-  function removeAlly(id) {
-    updateChar({ allies: allies.filter(a => a.id !== id) })
-  }
-
-  function addAlly() {
-    updateChar({ allies: [...allies, { id: Date.now().toString(), name: '', type: 'Ally', description: '' }] })
   }
 
   function removeClass(idx) {
@@ -382,6 +457,14 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
               <div className="bg-name">{char.identity.background || 'No background selected'}</div>
               {isOwner && !locked && <button className="bg-edit-btn">Edit</button>}
             </div>
+            {srdBackground?.starting_proficiencies?.length > 0 && (
+              <div className="race-bonus-grid" style={{ marginTop: 10 }}>
+                <div className="ds">
+                  <span className="ds-lbl">Proficiencies</span>
+                  <span className="ds-val">{srdBackground.starting_proficiencies.map(p => p.name).join(', ')}</span>
+                </div>
+              </div>
+            )}
             {srdBackground?.feature && (
               <>
                 <div className="bg-feature-label">Background Feature</div>
@@ -391,28 +474,6 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
                 </div>
               </>
             )}
-          </div>
-        </section>
-
-        {/* ── Personality ── */}
-        <section>
-          <div className="sec-head">Personality</div>
-          <div className="personality-grid">
-            {[
-              ['Traits',  'traits'],
-              ['Ideals',  'ideals'],
-              ['Bonds',   'bonds'],
-              ['Flaws',   'flaws'],
-            ].map(([label, key]) => (
-              <PersonalityField
-                key={key}
-                label={label}
-                value={personality[key]}
-                isOwner={isOwner}
-                locked={locked}
-                onChange={v => patchPersonality(key, v)}
-              />
-            ))}
           </div>
         </section>
 
@@ -457,50 +518,6 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
               </>
             )}
           </div>
-        </section>
-
-        {/* ── Appearance ── */}
-        <section>
-          <div className="sec-head">Appearance</div>
-          <FreeformCard
-            label="Physical Description"
-            value={char.identity.appearance}
-            isOwner={isOwner}
-            locked={locked}
-            onChange={v => patchIdentity({ appearance: v })}
-          />
-        </section>
-
-        {/* ── Backstory ── */}
-        <section>
-          <div className="sec-head">Backstory</div>
-          <FreeformCard
-            label="Character History"
-            value={char.identity.backstory}
-            isOwner={isOwner}
-            locked={locked}
-            onChange={v => patchIdentity({ backstory: v })}
-            tall
-          />
-        </section>
-
-        {/* ── Allies & Organisations ── */}
-        <section>
-          <div className="sec-head">Allies & Organisations</div>
-          {allies.map(ally => (
-            <AllyCard
-              key={ally.id}
-              ally={ally}
-              isOwner={isOwner}
-              locked={locked}
-              onUpdate={data => patchAlly(ally.id, data)}
-              onRemove={() => removeAlly(ally.id)}
-            />
-          ))}
-          {isOwner && !locked && (
-            <button className="add-ally-btn" onClick={addAlly}>+ Add ally or organisation</button>
-          )}
-          {allies.length === 0 && !isOwner && <p className="empty-hint">No allies recorded.</p>}
         </section>
 
       </div>
