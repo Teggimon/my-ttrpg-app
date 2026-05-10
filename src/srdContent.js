@@ -206,6 +206,7 @@ function normalizeRace(race) {
 }
 
 function normalizeSubrace(subrace) {
+  if (!subrace.name) return null
   const { bonuses } = normalizeAbilityBonuses(subrace.ability)
   const raceName = subrace.raceName ?? subrace._baseName
   return {
@@ -410,7 +411,7 @@ function normalizeMonster(monster) {
 
 function dedupeByIndex(items) {
   const map = new Map()
-  for (const item of items) {
+  for (const item of items.filter(item => item?.index && item?.name)) {
     if (!map.has(item.index) || item.source === 'PHB') map.set(item.index, item)
   }
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
@@ -419,7 +420,7 @@ function dedupeByIndex(items) {
 export const getRaces = () => memo('races', () => {
   const data = firstModule(raceData)
   const races = dedupeByIndex((data.race ?? []).map(normalizeRace))
-  const subraces = (data.subrace ?? []).map(normalizeSubrace)
+  const subraces = (data.subrace ?? []).map(normalizeSubrace).filter(Boolean)
   return races.map(race => ({
     ...race,
     subraces: subraces.filter(subrace => subrace.race.index === race.index).map(({ index, name }) => ({ index, name })),
@@ -428,7 +429,7 @@ export const getRaces = () => memo('races', () => {
 
 export const getSubraces = () => memo('subraces', () => {
   const data = firstModule(raceData)
-  return dedupeByIndex((data.subrace ?? []).map(normalizeSubrace))
+  return dedupeByIndex((data.subrace ?? []).map(normalizeSubrace).filter(Boolean))
 })
 
 export const getClasses = () => memo('classes', () => {
