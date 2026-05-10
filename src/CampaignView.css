@@ -835,6 +835,31 @@
 }
 .npc-back-btn:hover { color: var(--dm); }
 
+.npc-search-control {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.npc-search-input {
+  padding-right: 40px;
+}
+
+.npc-search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 15px;
+  cursor: pointer;
+}
+
 /* Source filter chips */
 .npc-source-chips {
   display: flex;
@@ -842,12 +867,6 @@
   margin-bottom: 10px;
   flex-wrap: wrap;
 }
-.npc-source-chips--books {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
 .npc-source-chip {
   font-size: 11px;
   font-weight: 700;
@@ -864,6 +883,65 @@
   border-color: var(--dm-border);
   color: var(--dm);
   background: var(--dm-subtle);
+}
+
+.npc-book-filter-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.npc-book-filter {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.npc-book-filter--active {
+  border-color: var(--dm-border);
+  color: var(--dm);
+  background: var(--dm-subtle);
+}
+
+.npc-book-filter-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  width: 180px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 5px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.npc-book-filter-option {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.npc-book-filter-option--active {
+  background: var(--dm-subtle);
+  color: var(--dm);
 }
 
 /* Search results list */

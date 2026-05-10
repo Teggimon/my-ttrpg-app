@@ -533,6 +533,7 @@ function SrdPicker({ onAdd, onClose }) {
   const [tab,      setTab]      = useState('equipment')
   const [search,   setSearch]   = useState('')
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
+  const [sourceOpen, setSourceOpen] = useState(false)
   const [allEquip, setAllEquip] = useState([])
   const [allMagic, setAllMagic] = useState([])
 
@@ -572,22 +573,41 @@ function SrdPicker({ onAdd, onClose }) {
         ))}
         <button className="ip-close" onClick={onClose}>✕</button>
       </div>
-      <input className="ip-search" placeholder="Search…" value={search}
-        onChange={e => setSearch(e.target.value)} autoFocus />
+      <div className="ip-search-row">
+        <div className="ip-search-wrap">
+          <input className="ip-search" placeholder="Search…" value={search}
+            onChange={e => setSearch(e.target.value)} autoFocus />
+          {search && (
+            <button className="ip-search-clear" type="button" onClick={() => setSearch('')} aria-label="Clear search">×</button>
+          )}
+        </div>
       {sources.length > 1 && (
-        <div className="ip-source-chips">
+          <div className="ip-source-menu-wrap">
+            <button
+              className={`ip-source-filter${sourceFilter !== ALL_SOURCES ? ' ip-source-filter--active' : ''}`}
+              type="button"
+              onClick={() => setSourceOpen(open => !open)}
+              aria-label="Filter sources"
+            >
+              {sourceFilter === ALL_SOURCES ? 'Filter' : sourceFilter}
+            </button>
+            {sourceOpen && (
+              <div className="ip-source-menu">
           {[ALL_SOURCES, ...sources].map(source => (
             <button
               key={source}
               type="button"
-              className={`ip-source-chip${sourceFilter === source ? ' ip-source-chip--active' : ''}`}
-              onClick={() => setSourceFilter(source)}
+                    className={`ip-source-option${sourceFilter === source ? ' ip-source-option--active' : ''}`}
+                    onClick={() => { setSourceFilter(source); setSourceOpen(false) }}
             >
               {source === ALL_SOURCES ? 'All sources' : source}
             </button>
           ))}
+              </div>
+            )}
         </div>
       )}
+      </div>
       <div className="ip-list">
         {filtered.length === 0 && <div className="ip-empty">No results</div>}
         {filtered.map(item => (

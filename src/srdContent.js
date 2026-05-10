@@ -262,7 +262,9 @@ function itemRefsFromText(text) {
   const matches = [...String(text).matchAll(/{@item ([^}|]+)(?:\|[^}|]+)?(?:\|([^}]+))?}/g)]
   return matches.map((match, i) => {
     const display = stripTags(match[2] || match[1])
-    const quantity = Number(display.match(/\b(\d+)\b/)?.[1] ?? 1)
+    const prefix = String(text).slice(Math.max(0, match.index - 24), match.index).toLowerCase()
+    const wordCount = Object.entries(COUNT_WORDS).find(([word]) => new RegExp(`\\b${word}\\s*$`).test(prefix))?.[1]
+    const quantity = Number(display.match(/\b(\d+)\b/)?.[1] ?? wordCount ?? 1)
     const name = display.replace(/^\d+\s+/, '').replace(/\s+\(\d+\)$/g, '')
     return {
       option_type: 'counted_reference',
@@ -270,6 +272,37 @@ function itemRefsFromText(text) {
       of: { index: slug(match[1]) || `item-${i}`, name: stripTags(name) },
     }
   })
+}
+
+const EQUIPMENT_FILTER_CATEGORIES = [
+  { pattern: /\bsimple melee weapons?\b/i, index: 'simple-melee-weapons' },
+  { pattern: /\bsimple ranged weapons?\b/i, index: 'simple-ranged-weapons' },
+  { pattern: /\bmartial melee weapons?\b/i, index: 'martial-melee-weapons' },
+  { pattern: /\bmartial ranged weapons?\b/i, index: 'martial-ranged-weapons' },
+  { pattern: /\bsimple weapons?\b/i, index: 'simple-weapons' },
+  { pattern: /\bmartial weapons?\b/i, index: 'martial-weapons' },
+]
+
+const COUNT_WORDS = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+}
+
+function choiceCountFromText(text) {
+  const clean = stripTags(text).toLowerCase()
+  const digit = clean.match(/\b(?:any|choose|a)\s+(\d+)\b/)?.[1]
+  if (digit) return Number(digit)
+  for (const [word, count] of Object.entries(COUNT_WORDS)) {
+    if (new RegExp(`\\b(?:any|choose|a)?\\s*${word}\\b`).test(clean)) return count
+  }
+  return 1
+}
+
+function equipmentCategoryFromText(text) {
+  const clean = stripTags(text)
+  return EQUIPMENT_FILTER_CATEGORIES.find(category => category.pattern.test(clean))?.index ?? null
 }
 
 function normalizeStartingEquipment(lines) {
@@ -282,12 +315,13 @@ function normalizeStartingEquipment(lines) {
       const items = itemRefsFromText(part)
       if (items.length === 1) return items[0]
       if (items.length > 1) return { option_type: 'multiple', items }
+      const categoryIndex = equipmentCategoryFromText(part)
       return {
         option_type: 'choice',
         choice: {
-          choose: 1,
+          choose: choiceCountFromText(part),
           desc: stripTags(part),
-          from: {},
+          from: categoryIndex ? { equipment_category: { index: categoryIndex } } : {},
         },
       }
     })

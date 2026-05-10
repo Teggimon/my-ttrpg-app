@@ -20,6 +20,7 @@ function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
   const [search,      setSearch]      = useState('')
   const [filterLevel, setFilterLevel] = useState('all')
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
+  const [sourceOpen, setSourceOpen] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -36,13 +37,44 @@ function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
   return (
     <div className="spell-picker">
       <div className="spell-picker-head">
-        <input
-          ref={inputRef}
-          className="spell-picker-search"
-          placeholder="Search spells…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+        <div className="spell-picker-search-wrap">
+          <input
+            ref={inputRef}
+            className="spell-picker-search"
+            placeholder="Search spells…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          {search && (
+            <button className="spell-picker-clear" type="button" onClick={() => setSearch('')} aria-label="Clear search">×</button>
+          )}
+        </div>
+        {sources.length > 1 && (
+          <div className="spell-picker-source-wrap">
+            <button
+              type="button"
+              className={`spell-picker-source-filter${sourceFilter !== ALL_SOURCES ? ' spell-picker-source-filter--active' : ''}`}
+              onClick={() => setSourceOpen(open => !open)}
+              aria-label="Filter sources"
+            >
+              {sourceFilter === ALL_SOURCES ? 'Filter' : sourceFilter}
+            </button>
+            {sourceOpen && (
+              <div className="spell-picker-source-menu">
+                {[ALL_SOURCES, ...sources].map(source => (
+                  <button
+                    key={source}
+                    type="button"
+                    className={`spell-picker-source-option${sourceFilter === source ? ' spell-picker-source-option--active' : ''}`}
+                    onClick={() => { setSourceFilter(source); setSourceOpen(false) }}
+                  >
+                    {source === ALL_SOURCES ? 'All sources' : source}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <button className="spell-picker-close" onClick={onClose}>✕</button>
       </div>
       <div className="spell-picker-levels">
@@ -56,20 +88,6 @@ function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
           </button>
         ))}
       </div>
-      {sources.length > 1 && (
-        <div className="spell-picker-sources">
-          {[ALL_SOURCES, ...sources].map(source => (
-            <button
-              key={source}
-              type="button"
-              className={`filter-chip${sourceFilter === source ? ' filter-chip--on' : ''}`}
-              onClick={() => setSourceFilter(source)}
-            >
-              {source === ALL_SOURCES ? 'All sources' : source}
-            </button>
-          ))}
-        </div>
-      )}
       <div className="spell-picker-list">
         {results.length === 0 && <p className="empty-hint">No spells match.</p>}
         {results.map(s => (

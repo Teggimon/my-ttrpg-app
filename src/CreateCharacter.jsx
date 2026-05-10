@@ -179,22 +179,23 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  wrap: { padding: '1.5rem 1.5rem 5rem', maxWidth: '520px', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' },
-  h1: { fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--accent-hover)' },
-  sub: { fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' },
-  label: { display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  input: { width: '100%', padding: '0.55rem 0.75rem', background: 'var(--bg-inset)', border: '1px solid var(--border-strong)', color: 'var(--text-primary)', borderRadius: '6px', fontSize: '0.95rem', boxSizing: 'border-box' },
+  wrap: { padding: '1.25rem 1rem 5rem', maxWidth: '720px', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)' },
+  h1: { fontSize: '1.05rem', fontWeight: 800, marginBottom: '0.25rem', color: 'var(--text-primary)', letterSpacing:'0.01em' },
+  sub: { fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight:1.45 },
+  label: { display: 'block', fontSize: '0.72rem', fontWeight:700, color: 'var(--text-muted)', marginBottom: '0.35rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.08em' },
+  input: { width: '100%', minHeight:44, padding: '0.62rem 0.75rem', background: 'var(--bg-inset)', border: '1px solid var(--border)', color: 'var(--text-primary)', borderRadius: 'var(--radius-md)', fontSize: '0.9rem', boxSizing: 'border-box', outline:'none' },
   card: (selected) => ({
-    padding: '0.75rem 1rem', borderRadius: '8px', cursor: 'pointer', marginBottom: '0.5rem',
+    padding: '0.8rem 0.9rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', marginBottom: '0.45rem',
     background: selected ? 'var(--accent-subtle)' : 'var(--bg-elevated)',
     border: selected ? '1px solid var(--accent)' : '1px solid var(--border)',
-    transition: 'all 0.15s',
+    boxShadow: selected ? 'var(--shadow-sm)' : 'none',
+    transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
   }),
-  cardName: { fontWeight: 600, fontSize: '0.95rem' },
+  cardName: { fontWeight: 800, fontSize: '0.95rem', color:'var(--text-primary)' },
   cardSub: { fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' },
   row: { display: 'flex', gap: '0.75rem', marginTop: '1.5rem' },
   btn: (primary) => ({
-    flex: primary ? 2 : 1, padding: '0.65rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
+    flex: primary ? 2 : 1, minHeight:44, padding: '0.65rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem',
     background: primary ? 'var(--accent)' : 'var(--bg-elevated)',
     color: primary ? 'var(--text-inverse)' : 'var(--text-secondary)',
     border: primary ? 'none' : '1px solid var(--border-strong)',
@@ -205,40 +206,81 @@ const S = {
     background: done ? 'var(--accent)' : active ? 'var(--accent-hover)' : 'var(--border)',
     transition: 'background 0.2s',
   }),
-  checkRow: { display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '6px', cursor: 'pointer', marginBottom: '0.35rem', background: 'var(--bg-elevated)', border: '1px solid var(--border)' },
+  checkRow: { display: 'flex', alignItems: 'center', gap: '0.6rem', minHeight:44, padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', marginBottom: '0.35rem', background: 'var(--bg-elevated)', border: '1px solid var(--border)' },
   tag: { display: 'inline-block', padding: '0.15rem 0.5rem', borderRadius: '4px', background: 'var(--accent-subtle)', border: '1px solid var(--accent-secondary)', fontSize: '0.75rem', color: 'var(--accent-hover)', marginRight: '0.35rem', marginTop: '0.35rem' },
   featureBox: { background: 'var(--bg-inset)', border: '1px solid var(--border)', borderRadius: '8px', padding: '1rem', marginTop: '0.75rem' },
   featureName: { fontWeight: 700, color: 'var(--accent-hover)', marginBottom: '0.5rem' },
   featureDesc: { fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 },
   error: { color: 'var(--danger)', fontSize: '0.85rem', marginTop: '0.75rem' },
   scrollList: { marginTop: '0.5rem' },
-  sourceRow: { display:'flex', gap:'0.4rem', overflowX:'auto', padding:'0.45rem 0 0.2rem', marginBottom:'0.35rem', scrollbarWidth:'thin' },
-  sourceChip: (active) => ({
-    flex:'0 0 auto', minHeight:32, padding:'0.35rem 0.7rem', borderRadius:'9999px', cursor:'pointer',
+  searchWrap: { display:'flex', gap:'0.45rem', alignItems:'stretch', marginBottom:'0.55rem' },
+  searchBox: { position:'relative', flex:1 },
+  inputWithClear: { paddingRight:'2.3rem' },
+  clearBtn: { position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', width:32, height:32, border:'none', borderRadius:'var(--radius-sm)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontSize:'1rem', fontFamily:'var(--font-body)' },
+  sourceWrap: { position:'relative', flex:'0 0 auto' },
+  sourceButton: (active) => ({
+    minHeight:44, minWidth:44, padding:'0 0.7rem', borderRadius:'var(--radius-md)', cursor:'pointer',
     border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
-    background: active ? 'var(--accent-subtle)' : 'transparent',
-    color: active ? 'var(--accent-hover)' : 'var(--text-muted)',
-    fontFamily:'var(--font-body)', fontSize:'0.75rem', fontWeight:700,
+    background: active ? 'var(--accent-subtle)' : 'var(--bg-elevated)',
+    color: active ? 'var(--accent-hover)' : 'var(--text-secondary)',
+    fontFamily:'var(--font-body)', fontSize:'0.78rem', fontWeight:800,
   }),
+  sourceMenu: { position:'absolute', right:0, top:'calc(100% + 6px)', zIndex:40, width:190, maxHeight:260, overflowY:'auto', padding:'0.35rem', border:'1px solid var(--border-strong)', borderRadius:'var(--radius-md)', background:'var(--bg-elevated)', boxShadow:'var(--shadow-lg)' },
+  sourceOption: (active) => ({ width:'100%', minHeight:36, padding:'0.45rem 0.6rem', border:'none', borderRadius:'var(--radius-sm)', background: active ? 'var(--accent-subtle)' : 'transparent', color: active ? 'var(--accent-hover)' : 'var(--text-secondary)', textAlign:'left', cursor:'pointer', fontSize:'0.78rem', fontWeight:700, fontFamily:'var(--font-body)' }),
   sourceBadge: { flex:'0 0 auto', padding:'0.15rem 0.5rem', borderRadius:'9999px', border:'1px solid var(--border-strong)', background:'var(--bg-inset)', color:'var(--text-muted)', fontSize:'0.68rem', fontWeight:800, fontFamily:'var(--font-mono)', letterSpacing:'0.02em' },
   cardTop: { display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'0.65rem' },
 }
 
 function SourceFilter({ items, value, onChange }) {
+  const [open, setOpen] = useState(false)
   const options = sourceOptions(items)
   if (options.length <= 1) return null
+  const active = value !== ALL_SOURCES
   return (
-    <div style={S.sourceRow}>
+    <div style={S.sourceWrap}>
+      <button
+        type="button"
+        aria-label="Filter sources"
+        style={S.sourceButton(active)}
+        onClick={() => setOpen(o => !o)}
+      >
+        {active ? sourceCode({ source: value }) : 'Filter'}
+      </button>
+      {open && (
+        <div style={S.sourceMenu}>
       {[ALL_SOURCES, ...options].map(source => (
         <button
           key={source}
           type="button"
-          style={S.sourceChip(value === source)}
-          onClick={() => onChange(source)}
+              style={S.sourceOption(value === source)}
+              onClick={() => { onChange(source); setOpen(false) }}
         >
           {source === ALL_SOURCES ? 'All sources' : source}
         </button>
       ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SearchInput({ placeholder, value, onChange, items, sourceFilter, onSourceFilter }) {
+  return (
+    <div style={S.searchWrap}>
+      <div style={S.searchBox}>
+        <input
+          style={{ ...S.input, ...S.inputWithClear }}
+          placeholder={placeholder}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+        />
+        {value && (
+          <button type="button" style={S.clearBtn} onClick={() => onChange('')} aria-label="Clear search">
+            ×
+          </button>
+        )}
+      </div>
+      <SourceFilter items={items} value={sourceFilter} onChange={onSourceFilter} />
     </div>
   )
 }
@@ -471,8 +513,14 @@ function StepRace({ races, selected, onSelect, onNext, onBack }) {
     <div style={S.wrap}>
       <div style={S.h1}>Choose a Race</div>
       <div style={S.sub}>Your race shapes your innate abilities and traits.</div>
-      <input style={S.input} placeholder="Search races…" value={search} onChange={e => setSearch(e.target.value)} />
-      <SourceFilter items={races} value={sourceFilter} onChange={setSourceFilter} />
+      <SearchInput
+        placeholder="Search races..."
+        value={search}
+        onChange={setSearch}
+        items={races}
+        sourceFilter={sourceFilter}
+        onSourceFilter={setSourceFilter}
+      />
       <div style={S.scrollList}>
         {filtered.map(r => (
           <div key={r.index} style={S.card(selected?.index === r.index)} onClick={() => onSelect(r)}>
@@ -596,8 +644,14 @@ function SpellPicker({ label, spells, selected, max, onToggle }) {
           {selected.length} / {max}
         </span>
       </div>
-      <input style={{ ...S.input, marginBottom:'0.4rem' }} placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
-      <SourceFilter items={spells} value={sourceFilter} onChange={setSourceFilter} />
+      <SearchInput
+        placeholder="Search..."
+        value={search}
+        onChange={setSearch}
+        items={spells}
+        sourceFilter={sourceFilter}
+        onSourceFilter={setSourceFilter}
+      />
       <div style={{ maxHeight: 200, overflowY:'auto', border:'1px solid var(--border)', borderRadius:6 }}>
         {filtered.map(sp => {
           const sel = selected.some(s => s.index === sp.index)
@@ -726,8 +780,14 @@ function StepClass({ classes, selected, onSelect, onNext, onBack }) {
     <div style={S.wrap}>
       <div style={S.h1}>Choose a Class</div>
       <div style={S.sub}>Your class defines your combat role and abilities.</div>
-      <input style={S.input} placeholder="Search classes…" value={search} onChange={e => setSearch(e.target.value)} />
-      <SourceFilter items={classes} value={sourceFilter} onChange={setSourceFilter} />
+      <SearchInput
+        placeholder="Search classes..."
+        value={search}
+        onChange={setSearch}
+        items={classes}
+        sourceFilter={sourceFilter}
+        onSourceFilter={setSourceFilter}
+      />
       <div style={S.scrollList}>
         {filtered.map(c => (
           <div key={c.index} style={S.card(selected?.index === c.index)} onClick={() => onSelect(c)}>
@@ -1048,8 +1108,14 @@ function StepBackground({ backgrounds, selected, onSelect, onNext, onBack }) {
     <div style={S.wrap}>
       <div style={S.h1}>Choose a Background</div>
       <div style={S.sub}>Your background reflects your life before adventuring.</div>
-      <input style={S.input} placeholder="Search backgrounds…" value={search} onChange={e => setSearch(e.target.value)} />
-      <SourceFilter items={backgrounds} value={sourceFilter} onChange={setSourceFilter} />
+      <SearchInput
+        placeholder="Search backgrounds..."
+        value={search}
+        onChange={setSearch}
+        items={backgrounds}
+        sourceFilter={sourceFilter}
+        onSourceFilter={setSourceFilter}
+      />
       <div style={S.scrollList}>
         {filtered.map(b => (
           <div key={b.index} style={S.card(selected?.index === b.index)} onClick={() => onSelect(b)}>

@@ -479,6 +479,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
   const [query, setQuery]             = useState('')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [bookFilter, setBookFilter]   = useState(ALL_SOURCES)
+  const [bookFilterOpen, setBookFilterOpen] = useState(false)
   const [srdMonsters, setSrdMonsters] = useState([])
   const [loadingSrd, setLoadingSrd]   = useState(false)
 
@@ -632,14 +633,18 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
             <div className="npc-modal-title">Add NPC / Enemy</div>
             <div className="npc-modal-sub">Search the SRD and your campaign library, or create a custom NPC.</div>
 
-            <input
-              className="cv-input"
-              placeholder="Search monsters, NPCs… e.g. Goblin, Veteran…"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              autoFocus
-              style={{ marginBottom: 8 }}
-            />
+            <div className="npc-search-control">
+              <input
+                className="cv-input npc-search-input"
+                placeholder="Search monsters, NPCs… e.g. Goblin, Veteran…"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                autoFocus
+              />
+              {query && (
+                <button className="npc-search-clear" type="button" onClick={() => setQuery('')} aria-label="Clear search">×</button>
+              )}
+            </div>
 
             <div className="npc-source-chips">
               {[['all','All sources'],['srd','SRD only'],['campaign','My campaign']].map(([val, label]) => (
@@ -652,17 +657,29 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
             </div>
 
             {(sourceFilter === 'all' || sourceFilter === 'srd') && srdSources.length > 1 && (
-              <div className="npc-source-chips npc-source-chips--books">
-                {[ALL_SOURCES, ...srdSources].map(source => (
-                  <button
-                    key={source}
-                    type="button"
-                    className={`npc-source-chip${bookFilter === source ? ' npc-source-chip--active' : ''}`}
-                    onClick={() => setBookFilter(source)}
-                  >
-                    {source === ALL_SOURCES ? 'All books' : source}
-                  </button>
-                ))}
+              <div className="npc-book-filter-wrap">
+                <button
+                  type="button"
+                  className={`npc-book-filter${bookFilter !== ALL_SOURCES ? ' npc-book-filter--active' : ''}`}
+                  onClick={() => setBookFilterOpen(open => !open)}
+                  aria-label="Filter monster books"
+                >
+                  {bookFilter === ALL_SOURCES ? 'Filter books' : bookFilter}
+                </button>
+                {bookFilterOpen && (
+                  <div className="npc-book-filter-menu">
+                    {[ALL_SOURCES, ...srdSources].map(source => (
+                      <button
+                        key={source}
+                        type="button"
+                        className={`npc-book-filter-option${bookFilter === source ? ' npc-book-filter-option--active' : ''}`}
+                        onClick={() => { setBookFilter(source); setBookFilterOpen(false) }}
+                      >
+                        {source === ALL_SOURCES ? 'All books' : source}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
