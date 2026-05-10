@@ -210,7 +210,7 @@ const S = {
   }),
   cardName: { fontWeight: 800, fontSize: '0.95rem', color:'var(--text-primary)' },
   cardSub: { fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' },
-  row: { position:'sticky', bottom:0, zIndex:30, display: 'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.75rem', marginTop: '1.5rem', padding:'0.75rem 0', background:'var(--bg-base)' },
+  row: { position:'fixed', left:'50%', bottom:'max(0.75rem, env(safe-area-inset-bottom))', transform:'translateX(-50%)', width:'min(100% - 2rem, 720px)', zIndex:30, display: 'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.75rem', marginTop: '1.5rem', padding:'0.75rem', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', background:'var(--bg-surface)', boxShadow:'var(--shadow-md)', boxSizing:'border-box' },
   btn: (primary) => ({
     width:'100%', minHeight:44, padding: '0.65rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem',
     background: primary ? 'var(--accent)' : 'var(--bg-elevated)',
@@ -1137,7 +1137,6 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                 }}
               >
                 <div style={S.cardName}>{choice.label}</div>
-                {lockedByOtherChoice && <div style={S.cardSub}>Locked by another option in this group</div>}
               </div>
             )
           })}
