@@ -1,21 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
 import { v4 as uuidv4 } from 'uuid'
-import { getClasses, getRaces, getBackgrounds } from './srdContent'
+import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment } from './srdContent'
 import { SUBCLASSES, SUBCLASS_LEVELS, getSlotsForClass, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
 import { getSpells } from './srdContent'
-
-// ─── SRD helpers ─────────────────────────────────────────────────────────────
-
-const BASE = 'https://raw.githubusercontent.com/Teggimon/ttrpg-srd-content/master/5e_PHB_2014'
-
-async function loadSRD(file) {
-  const res = await fetch(`${BASE}/${file}`)
-  if (!res.ok) throw new Error(`Failed to load ${file}`)
-  return res.json()
-}
-
-const getSubraces = () => loadSRD('5e-SRD-Subraces.json')
 
 // Spellcasting ability by class index
 const SPELLCASTING_ABILITY = {
@@ -723,11 +711,8 @@ const WEAPON_CATEGORY_MAP = {
 }
 
 async function fetchCategoryItems(categoryIndex) {
-  const BASE = 'https://raw.githubusercontent.com/Teggimon/ttrpg-srd-content/master/5e_PHB_2014'
   try {
-    const res = await fetch(`${BASE}/5e-SRD-Equipment.json`)
-    if (!res.ok) return []
-    const all = await res.json()
+    const all = await getEquipment()
 
     // Try direct equipment_category.index match first
     let items = all.filter(item => item.equipment_category?.index === categoryIndex)
