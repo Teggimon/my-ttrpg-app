@@ -22,6 +22,7 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     backgroundLanguages = [],
     backgroundEquipment = [],
     backgroundFeature = null,
+    racialOptionChoices = {},
   } = choices
 
   // 1. Base ability scores from creation step (default 10 if not provided)
@@ -98,10 +99,21 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
   }
 
   // 9. Racial traits
+  const draconicAncestry = racialOptionChoices['draconic-ancestry'] ?? null
   const racialTraits = [
-    ...(raceData?.traits ?? []).map(t => ({ index: t.index, name: t.name })),
-    ...(subraceData?.racial_traits ?? []).map(t => ({ index: t.index, name: t.name })),
-  ]
+    ...(raceData?.traits ?? []).map(t => ({ index: t.index, name: t.name, source: raceData.source })),
+    ...(subraceData?.racial_traits ?? []).map(t => ({ index: t.index, name: t.name, source: subraceData.source })),
+  ].map(t => {
+    if (t.index !== 'breath-weapon' || !draconicAncestry) return t
+    return {
+      ...t,
+      ancestry: draconicAncestry.name,
+      damageType: draconicAncestry.damageType,
+      breathWeapon: draconicAncestry.breathWeapon,
+      savingThrow: draconicAncestry.savingThrow,
+    }
+  })
+  const damageResistances = draconicAncestry?.grantsResistance && draconicAncestry?.damageType ? [draconicAncestry.damageType] : []
 
   // 10. Languages
   const languages = [
@@ -133,12 +145,15 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
       portrait: null,
       size,
       languages,
+      racialOptions: racialOptionChoices,
+      racialTraits,
     },
     stats: {
       abilityScores,
       savingThrows,
       skills,
       proficiencies,
+      damageResistances,
     },
     combat: {
       hpMax,
@@ -159,6 +174,7 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
       prepared: (startingSpells ?? []).map(s => s.index),
       concentration: null,
     },
+    customContent: {},
     notes: {
       personalityTraits: '',
       ideals: '',
@@ -625,6 +641,58 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
         <button style={S.btn(true)} onClick={onNext} disabled={!canProceed || !bonusReady}>Next: Class →</button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Step: Racial Options ────────────────────────────────────────────────────
+
+function racialOptionGroups(raceData, subraceData) {
+  const groups = new Map()
+  for (const group of (raceData?.racial_options ?? [])) groups.set(group.id, group)
+  for (const group of (subraceData?.racial_options ?? [])) groups.set(group.id, group)
+  return [...groups.values()]
+}
+
+function StepRacialOptions({ raceData, subraceData, selectedOptions, onOptionsChange, onNext, onBack }) {
+  const groups = racialOptionGroups(raceData, subraceData)
+  const ready = groups.every(group => !!selectedOptions[group.id])
+
+  const chooseOption = (group, option) => {
+    onOptionsChange({ ...selectedOptions, [group.id]: option })
+  }
+
+  return (
+    <div style={S.wrap}>
+      <div style={S.h1}>Racial Options</div>
+      <div style={S.sub}>Choose ancestry options that affect your traits in play.</div>
+
+      {groups.map(group => (
+        <div key={group.id}>
+          <label style={S.label}>{group.name}</label>
+          <div style={S.cardSub}>{group.desc}</div>
+          {group.options.map(option => {
+            const selected = selectedOptions[group.id]?.id === option.id
+            return (
+              <div key={option.id} style={S.card(selected)} onClick={() => chooseOption(group, option)}>
+                <div style={S.cardTop}>
+                  <div style={S.cardName}>{option.name}</div>
+                  {option.damageType && <span style={S.sourceBadge}>{option.damageType}</span>}
+                </div>
+                <div style={S.cardSub}>
+                  {option.breathWeapon}
+                  {option.savingThrow && ` · ${option.savingThrow} save`}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+
+      <div style={S.row}>
+        <button style={S.btn(false)} onClick={onBack}>← Back</button>
+        <button style={S.btn(true)} onClick={onNext} disabled={!ready}>Next: Class →</button>
       </div>
     </div>
   )
@@ -1360,6 +1428,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const [raceData, setRaceData] = useState(null)
   const [subraceData, setSubraceData] = useState(null)
   const [raceBonusOptions, setRaceBonusOptions] = useState([])
+  const [racialOptionChoices, setRacialOptionChoices] = useState({})
   const [classData, setClassData] = useState(null)
   const [subclassChoice, setSubclassChoice] = useState(null)
   const [classSkills, setClassSkills] = useState([])
@@ -1382,6 +1451,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   }, [])
 
   const hasSubrace = raceData?.subraces?.length > 0 || !!raceData?.ability_bonus_options
+  const hasRacialOptions = racialOptionGroups(raceData, subraceData).length > 0
   const hasSubclassAtCreation = !!(classData && (SUBCLASS_LEVELS[classData.index] ?? []).includes(1))
   const isSpellcaster = !!(classData && (CANTRIPS_KNOWN[classData.index] || SPELLS_KNOWN_L1[classData.index]))
 
@@ -1389,7 +1459,8 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const STEP_NAME       = 0
   const STEP_RACE       = 1
   const STEP_SUBRACE    = 2                                        // may be skipped
-  const STEP_CLASS      = hasSubrace ? 3 : 2
+  const STEP_RACE_OPTIONS = hasSubrace ? 3 : 2                      // may be skipped
+  const STEP_CLASS      = STEP_RACE_OPTIONS + (hasRacialOptions ? 1 : 0)
   const STEP_SUBCLASS   = STEP_CLASS + 1                          // may be skipped
   const STEP_CLASS_SETUP    = hasSubclassAtCreation ? STEP_SUBCLASS + 1 : STEP_CLASS + 1
   const STEP_SPELLS         = STEP_CLASS_SETUP + 1                // may be skipped
@@ -1416,6 +1487,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           backgroundLanguages,
           backgroundEquipment: backgroundEquipment.filter(e => !e.index.startsWith('__')),
           backgroundFeature: backgroundData?.feature ?? null,
+          racialOptionChoices,
         },
       })
       const fileName = name.toLowerCase().replace(/\s+/g, '-')
@@ -1440,6 +1512,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
     setRaceData(r)
     setSubraceData(null)
     setRaceBonusOptions([])
+    setRacialOptionChoices({})
   }
 
   // When class changes, reset downstream
@@ -1450,6 +1523,11 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
     setClassEquipment([])
     setStartingCantrips([])
     setStartingSpells([])
+  }
+
+  const selectSubrace = (s) => {
+    setSubraceData(s)
+    setRacialOptionChoices({})
   }
 
   // When background changes, reset downstream
@@ -1472,21 +1550,32 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           races={races}
           selected={raceData}
           onSelect={selectRace}
-          onNext={() => goTo(hasSubrace ? STEP_SUBRACE : STEP_CLASS)}
+          onNext={() => goTo(hasSubrace ? STEP_SUBRACE : hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
           onBack={() => goTo(STEP_NAME)}
         />
       )}
 
-      {step === STEP_SUBRACE && (
+      {step === STEP_SUBRACE && hasSubrace && (
         <StepSubrace
           race={raceData}
           subraces={allSubraces}
           selected={subraceData}
-          onSelect={setSubraceData}
+          onSelect={selectSubrace}
           bonusOptions={raceBonusOptions}
           onBonusOptions={setRaceBonusOptions}
-          onNext={() => goTo(STEP_CLASS)}
+          onNext={() => goTo(hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
           onBack={() => goTo(STEP_RACE)}
+        />
+      )}
+
+      {step === STEP_RACE_OPTIONS && hasRacialOptions && (
+        <StepRacialOptions
+          raceData={raceData}
+          subraceData={subraceData}
+          selectedOptions={racialOptionChoices}
+          onOptionsChange={setRacialOptionChoices}
+          onNext={() => goTo(STEP_CLASS)}
+          onBack={() => goTo(hasSubrace ? STEP_SUBRACE : STEP_RACE)}
         />
       )}
 
@@ -1496,7 +1585,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           selected={classData}
           onSelect={selectClass}
           onNext={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS_SETUP)}
-          onBack={() => goTo(hasSubrace ? STEP_SUBRACE : STEP_RACE)}
+          onBack={() => goTo(hasRacialOptions ? STEP_RACE_OPTIONS : hasSubrace ? STEP_SUBRACE : STEP_RACE)}
         />
       )}
 

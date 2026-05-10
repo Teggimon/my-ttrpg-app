@@ -188,8 +188,46 @@ function normalizeEntriesToTraits(entries = []) {
     .map(entry => ({ index: slug(entry.name), name: entry.name, desc: [stripTags(entry.entries)] }))
 }
 
+function draconicAncestryOptions(entries = []) {
+  const ancestry = entries.find(entry => /(draconic|chromatic|gem|metallic) ancestry/i.test(entry?.name ?? ''))
+  const table = ancestry?.entries?.find(entry => entry?.type === 'table' && Array.isArray(entry.rows))
+  if (!table) return null
+  const labels = table.colLabels ?? []
+  const damageIndex = labels.findIndex(label => /damage/i.test(label))
+  const breathIndex = labels.findIndex(label => /breath/i.test(label))
+  const breathTrait = entries.find(entry => /^breath weapon$/i.test(entry?.name ?? ''))
+  const breathText = stripTags(breathTrait?.entries ?? '')
+  const breathShape = breathText.match(/(\d+)[-\s]foot (cone|line)/i)
+  const fallbackBreathWeapon = breathShape ? `${breathShape[1]} ft. ${breathShape[2].toLowerCase()}` : '15 ft. cone or 30 ft. line'
+  const fallbackSave = /constitution saving throw/i.test(breathText) ? 'Constitution' : 'Dexterity'
+  const grantsResistance = entries.some(entry => /(damage|draconic) resistance/i.test(entry?.name ?? ''))
+  return {
+    id: 'draconic-ancestry',
+    name: ancestry.name ?? 'Draconic Ancestry',
+    desc: 'Choose the dragon ancestry that determines your breath weapon and resistance.',
+    choose: 1,
+    grantsResistance,
+    options: table.rows.map(row => {
+      const name = stripTags(row[0])
+      const damageType = stripTags(row[damageIndex >= 0 ? damageIndex : 1]).toLowerCase()
+      const breathWeapon = breathIndex >= 0 ? stripTags(row[breathIndex]) : fallbackBreathWeapon
+      const saveText = breathWeapon.match(/\(([^)]+)\)/)?.[1] ?? 'Dex. save'
+      const savingThrow = /con/i.test(saveText) ? 'Constitution' : fallbackSave
+      return {
+        id: slug(name),
+        name,
+        damageType,
+        breathWeapon,
+        savingThrow,
+        grantsResistance,
+      }
+    }),
+  }
+}
+
 function normalizeRace(race) {
   const { bonuses, choice } = normalizeAbilityBonuses(race.ability)
+  const racialOptions = [draconicAncestryOptions(race.entries)].filter(Boolean)
   return {
     index: slug(race.name),
     name: race.name,
@@ -201,6 +239,7 @@ function normalizeRace(race) {
     alignment: stripTags(race.entries?.find(e => e?.name === 'Alignment')?.entries),
     languages: Object.keys(race.languageProficiencies?.[0] ?? {}).map(name => ref(name)),
     traits: normalizeEntriesToTraits(race.entries),
+    racial_options: racialOptions,
     subraces: [],
   }
 }
@@ -209,6 +248,7 @@ function normalizeSubrace(subrace) {
   if (!subrace.name) return null
   const { bonuses } = normalizeAbilityBonuses(subrace.ability)
   const raceName = subrace.raceName ?? subrace._baseName
+  const racialOptions = [draconicAncestryOptions(subrace.entries)].filter(Boolean)
   return {
     index: slug(`${raceName ?? ''} ${subrace.name}`),
     name: subrace.name,
@@ -216,6 +256,7 @@ function normalizeSubrace(subrace) {
     race: ref(raceName),
     ability_bonuses: bonuses,
     racial_traits: normalizeEntriesToTraits(subrace.entries),
+    racial_options: racialOptions,
   }
 }
 

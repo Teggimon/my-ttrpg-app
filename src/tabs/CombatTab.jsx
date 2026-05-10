@@ -21,7 +21,13 @@ const COMBAT_TRAIT_INDICES = new Set([
 ])
 
 // Breath weapon damage dice scale by level
-function breathDice(level) {
+function breathDice(level, trait) {
+  if (trait?.source === 'XPHB' || trait?.source === 'FTD') {
+    if (level >= 17) return '4d10'
+    if (level >= 11) return '3d10'
+    if (level >= 5) return '2d10'
+    return '1d10'
+  }
   if (level >= 16) return '5d6'
   if (level >= 11) return '4d6'
   if (level >= 6)  return '3d6'
@@ -138,7 +144,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   )
 
   // Racial combat abilities
-  const racialCombatTraits = (char.identity.racialTraits ?? [])
+  const racialCombatTraits = (char.identity?.racialTraits ?? char.racialTraits ?? [])
     .filter(t => COMBAT_TRAIT_INDICES.has(t.index))
 
   function availableSlotLevels(spellLevel) {
@@ -267,8 +273,9 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
             <div className="atk-line2">
               {isBreath && (
                 <>
-                  <span className="badge">{breathDice(level)} damage</span>
-                  <span className="badge badge--dim">DEX/CON save DC {8 + pb + conMod}</span>
+                  <span className="badge">{breathDice(level, trait)}{trait.damageType ? ` ${trait.damageType}` : ''}</span>
+                  {trait.breathWeapon && <span className="badge badge--dim">{trait.breathWeapon}</span>}
+                  <span className="badge badge--dim">{trait.savingThrow ?? 'DEX/CON'} save DC {8 + pb + conMod}</span>
                 </>
               )}
               <div className="atk-btns">
