@@ -165,6 +165,42 @@
 }
 .lp-hp-btn--plus:hover { background: var(--accent-hover); }
 
+.lp-hp-bulk {
+  display: grid;
+  grid-template-columns: minmax(48px, 0.7fr) 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.lp-hp-bulk-input,
+.lp-hp-bulk-btn {
+  min-height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-inset);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+
+.lp-hp-bulk-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 8px;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.lp-hp-bulk-btn {
+  cursor: pointer;
+}
+
+.lp-hp-bulk-btn--plus {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
 .lp-hp-bar-track {
   height: 4px;
   background: var(--bg-inset);

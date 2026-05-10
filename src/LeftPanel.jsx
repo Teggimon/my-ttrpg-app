@@ -37,6 +37,7 @@ export default function LeftPanel({
   const [xpInput,       setXpInput]       = useState('')
   const [showXpInput,   setShowXpInput]   = useState(false)
   const [showLevelUp,   setShowLevelUp]   = useState(false)
+  const [hpDelta,       setHpDelta]       = useState('5')
 
   if (!char) return null
 
@@ -73,6 +74,8 @@ export default function LeftPanel({
     const max = char.combat.hpMax ?? 0
     updateChar({ combat: { ...char.combat, hpCurrent: Math.max(0, Math.min(max, cur + delta)) } })
   }
+
+  const hpStep = Math.max(1, Math.abs(parseInt(hpDelta, 10) || 1))
 
   const removeCondition = (cond) => {
     updateChar({
@@ -128,6 +131,20 @@ export default function LeftPanel({
               </div>
             )}
           </div>
+          {isOwner && !locked && (
+            <div className="lp-hp-bulk">
+              <input
+                className="lp-hp-bulk-input"
+                type="number"
+                min="1"
+                value={hpDelta}
+                onChange={e => setHpDelta(e.target.value)}
+                aria-label="HP adjustment amount"
+              />
+              <button className="lp-hp-bulk-btn" onClick={() => adjustHP(-hpStep)}>- HP</button>
+              <button className="lp-hp-bulk-btn lp-hp-bulk-btn--plus" onClick={() => adjustHP(hpStep)}>+ HP</button>
+            </div>
+          )}
           <div className="lp-hp-bar-track">
             <div className="lp-hp-bar-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
           </div>

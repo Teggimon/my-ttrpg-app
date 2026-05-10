@@ -200,9 +200,12 @@ function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove
   )
 }
 
-export function AboutTab({ char, locked, isOwner, updateChar }) {
+export function AboutTab({ char, locked, isOwner, updateChar, onUploadImage }) {
   const personality = char.identity.personality ?? {}
   const allies      = char.allies ?? []
+  const images      = char.identity.images ?? []
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [imageError, setImageError] = useState('')
 
   function patchIdentity(patch) {
     updateChar({ identity: { ...char.identity, ...patch } })
@@ -222,6 +225,30 @@ export function AboutTab({ char, locked, isOwner, updateChar }) {
 
   function addAlly() {
     updateChar({ allies: [...allies, { id: Date.now().toString(), name: '', type: 'Ally', description: '' }] })
+  }
+
+  async function uploadImage(file) {
+    if (!file || uploadingImage) return
+    setImageError('')
+    if (!file.type?.startsWith('image/')) {
+      setImageError('Choose an image file.')
+      return
+    }
+
+    try {
+      setUploadingImage(true)
+      const asset = await onUploadImage(char, file)
+      const nextImages = [asset, ...images]
+      patchIdentity({ images: nextImages, portrait: asset.url })
+    } catch {
+      setImageError('Image upload failed. Try again in a moment.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  function setPortrait(image) {
+    patchIdentity({ portrait: image.url })
   }
 
   return (
@@ -257,6 +284,59 @@ export function AboutTab({ char, locked, isOwner, updateChar }) {
             locked={locked}
             onChange={v => patchIdentity({ appearance: v })}
           />
+        </section>
+
+        <section>
+          <div className="sec-head">Images</div>
+          <div className="image-upload-card">
+            <div className="image-upload-main">
+              <div className="image-upload-preview">
+                <img src={char.identity.portrait || '/uploads/placeholders/default-portrait.jpg'} alt="" />
+              </div>
+              <div className="image-upload-copy">
+                <div className="image-upload-title">Character Portrait</div>
+                <div className="image-upload-note">
+                  Uploaded images are saved beside this character in your GitHub character repo.
+                </div>
+                {imageError && <div className="image-upload-error">{imageError}</div>}
+              </div>
+              {isOwner && !locked && onUploadImage && (
+                <label className={`image-upload-btn${uploadingImage ? ' image-upload-btn--busy' : ''}`}>
+                  {uploadingImage ? 'Uploading...' : 'Add Image'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={uploadingImage}
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      e.target.value = ''
+                      uploadImage(file)
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {images.length > 0 && (
+              <div className="image-gallery">
+                {images.map(image => {
+                  const active = char.identity.portrait === image.url
+                  return (
+                    <button
+                      key={image.id ?? image.url}
+                      className={`image-thumb${active ? ' image-thumb--active' : ''}`}
+                      onClick={() => isOwner && !locked && setPortrait(image)}
+                      disabled={!isOwner || locked}
+                      title={active ? 'Current portrait' : 'Use as portrait'}
+                    >
+                      <img src={image.url} alt="" />
+                      <span>{active ? 'Current' : 'Use'}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </section>
 
         <section>

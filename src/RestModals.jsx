@@ -17,33 +17,8 @@ function totalLevel(char) {
   return (char.identity?.class ?? []).reduce((s, c) => s + (c.level ?? 0), 0)
 }
 
-function getConMod(char) {
-  const con = char.stats?.CON ?? char.abilities?.constitution ?? 10
-  return Math.floor((con - 10) / 2)
-}
-
 function getHitDie(char) {
   return HIT_DICE[classKey(char)] ?? 8
-}
-
-// Roll actual Hit Dice and sum results
-function rollHitDice(count, die, conMod, hpCurrent, hpMax) {
-  let total = 0
-  const rolls = []
-  for (let i = 0; i < count; i++) {
-    const roll = Math.floor(Math.random() * die) + 1
-    rolls.push(roll)
-    total += Math.max(1, roll + conMod)
-  }
-  const gained = Math.min(hpMax - hpCurrent, total)
-  return { rolls, total, gained }
-}
-
-// Average HD recovery estimate
-function estimateRecovery(count, die, conMod, hpCurrent, hpMax) {
-  const avg = Math.floor(die / 2) + 1
-  const perDie = Math.max(1, avg + conMod)
-  return Math.min(hpMax - hpCurrent, count * perDie)
 }
 
 // SR abilities from character's class abilities
@@ -82,7 +57,6 @@ function getConcentration(char) {
 // ════════════════════════════════════════════════════════════════
 export function ShortRestModal({ char, onConfirm, onClose }) {
   const die     = getHitDie(char)
-  const conMod  = getConMod(char)
   const hpCur   = char.combat?.hpCurrent ?? 0
   const hpMax   = char.combat?.hpMax     ?? 0
   const hdState = getHitDiceState(char)
@@ -90,15 +64,10 @@ export function ShortRestModal({ char, onConfirm, onClose }) {
 
   const [hdSpend, setHdSpend] = useState(1)
 
-  const alreadyFull  = hpCur >= hpMax
-  const estimate     = estimateRecovery(hdSpend, die, conMod, hpCur, hpMax)
-
   const decHD = () => setHdSpend(v => Math.max(0, v - 1))
   const incHD = () => setHdSpend(v => Math.min(hdState.available, v + 1))
 
   const takeRest = () => {
-    const { gained } = rollHitDice(hdSpend, die, conMod, hpCur, hpMax)
-
     // Reset SR abilities (set used to 0)
     const updatedAbilities = (char.classAbilities ?? char.combat?.classAbilities ?? []).map(a =>
       (a.recharge === 'SR' || a.recharge === 'sr') ? { ...a, used: 0 } : a
@@ -108,7 +77,6 @@ export function ShortRestModal({ char, onConfirm, onClose }) {
       ...char,
       combat: {
         ...char.combat,
-        hpCurrent:        Math.min(hpMax, hpCur + gained),
         hitDiceAvailable: Math.max(0, hdState.available - hdSpend),
         classAbilities:   updatedAbilities,
       },
@@ -119,7 +87,7 @@ export function ShortRestModal({ char, onConfirm, onClose }) {
       updatedChar.classAbilities = updatedAbilities
     }
 
-    onConfirm(updatedChar, { type: 'short', hdSpent: hdSpend, hpGained: gained })
+    onConfirm(updatedChar, { type: 'short', hdSpent: hdSpend })
   }
 
   return (
@@ -129,7 +97,7 @@ export function ShortRestModal({ char, onConfirm, onClose }) {
 
         <div className="rest-title-row">
           <div className="rest-title">Short Rest</div>
-          <div className="rest-sub">Spend Hit Dice to recover HP. A short rest takes 1 hour.</div>
+          <div className="rest-sub">Track spent Hit Dice and restore short-rest abilities. Adjust HP manually on the sheet.</div>
         </div>
 
         <div className="rest-summary">
@@ -149,42 +117,22 @@ export function ShortRestModal({ char, onConfirm, onClose }) {
 
           {/* Hit Dice available */}
           <div className="rest-row">
-            <span className="rest-label">Hit Dice available</span>
+            <span className="rest-label">Hit Dice left</span>
             <span className="rest-val">{hdState.available} / {hdState.max} (d{die})</span>
           </div>
 
           {/* HD stepper */}
           <div className="hd-stepper-row">
-            <span className="hd-label">Spend Hit Dice:</span>
+            <span className="hd-label">Use Hit Dice:</span>
             <div className="hd-stepper">
               <button className="hd-btn" onClick={decHD} disabled={hdSpend <= 0}>−</button>
               <div className="hd-val">{hdSpend}</div>
               <button className="hd-btn" onClick={incHD} disabled={hdSpend >= hdState.available}>+</button>
             </div>
-            <span className="hd-die-label">× d{die}+{conMod >= 0 ? conMod : conMod}</span>
+            <span className="hd-die-label">{Math.max(0, hdState.available - hdSpend)} left after rest</span>
           </div>
 
           <div className="rest-divider" />
-
-          {/* Estimated recovery */}
-          {hdSpend > 0 ? (
-            <div className="rest-row">
-              <span className="rest-label">Estimated recovery</span>
-              <span className="rest-val rest-val--green">~{estimate} HP</span>
-            </div>
-          ) : (
-            <div className="rest-row">
-              <span className="rest-label">Estimated recovery</span>
-              <span className="rest-val rest-val--muted">No dice spent</span>
-            </div>
-          )}
-
-          {alreadyFull && (
-            <div className="rest-row">
-              <span className="rest-label rest-label--muted">HP already full</span>
-              <span className="rest-val rest-val--muted">No recovery needed</span>
-            </div>
-          )}
 
           {/* SR abilities restored */}
           {srAbilities.length > 0 && (

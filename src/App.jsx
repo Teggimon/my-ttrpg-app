@@ -13,6 +13,27 @@ import GMDashboard from './GMDashboard'
 const CLIENT_ID      = import.meta.env.VITE_GITHUB_CLIENT_ID
 const CHARACTERS_REPO = 'ttrpg-characters'
 
+function fileToBase64(file) {
+  return file.arrayBuffer().then(buffer => {
+    let binary = ''
+    const bytes = new Uint8Array(buffer)
+    const chunkSize = 0x8000
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+    }
+    return btoa(binary)
+  })
+}
+
+function safeFilePart(value, fallback = 'image') {
+  return (value || fallback)
+    .toLowerCase()
+    .replace(/\.[^.]+$/, '')
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || fallback
+}
+
 function App() {
   const [token, setToken]                         = useState(localStorage.getItem('gh_token'))
   const [user, setUser]                           = useState(null)
@@ -123,6 +144,36 @@ function App() {
       content,
       ...(sha ? { sha } : {}),
     })
+  }
+
+  const uploadCharacterImage = async (character, file) => {
+    const jsonName = character._fileName
+      ?? character.identity.name.toLowerCase().replace(/\s+/g, '-') + '.json'
+    const baseName = safeFilePart(jsonName, character.meta?.characterId ?? 'character')
+    const imageName = safeFilePart(file.name, 'portrait')
+    const ext = (file.name.match(/\.([a-z0-9]+)$/i)?.[1] ?? 'jpg').toLowerCase()
+    const stamp = Date.now()
+    const path = `characters/${baseName}-images/${stamp}-${imageName}.${ext}`
+    const content = await fileToBase64(file)
+
+    await octokit.repos.createOrUpdateFileContents({
+      owner: user.login,
+      repo: CHARACTERS_REPO,
+      path,
+      message: `Upload character image: ${character.identity.name}`,
+      content,
+    })
+
+    const rawPath = path.split('/').map(encodeURIComponent).join('/')
+    return {
+      id: String(stamp),
+      name: file.name,
+      path,
+      url: `https://raw.githubusercontent.com/${user.login}/${CHARACTERS_REPO}/main/${rawPath}?v=${stamp}`,
+      type: file.type,
+      size: file.size,
+      uploadedAt: new Date(stamp).toISOString(),
+    }
   }
 
   // ── Onboarding complete ─────────────────────────────────────
@@ -254,6 +305,7 @@ function App() {
       onBack={() => setScreen(selectedCampaign ? 'gm-dashboard' : 'home')}
       user={user}
       onUpdateChar={saveCharacter}
+      onUploadImage={uploadCharacterImage}
       syncStatus="saved"
     />
   )
