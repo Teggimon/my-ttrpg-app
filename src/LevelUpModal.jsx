@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { getClasses } from './srdContent'
 import './LevelUpModal.css'
 
 // ── D&D 5e data ───────────────────────────────────────────────
@@ -205,6 +206,21 @@ function hasSubclassChoice(char, classIdx) {
   return subclassLevels.includes(lvl) || subclassLevels.some(sl => sl < lvl)
 }
 
+function featureKey(feature) {
+  return `${feature.classIndex ?? feature.className ?? ''}:${feature.gainedAtLevel ?? feature.level ?? ''}:${feature.index ?? feature.name}`
+}
+
+function classFeaturesForLevel(srdClasses, cls, level) {
+  const classIndex = cls?.index ?? cls?.name?.toLowerCase?.().replace(/\s+/g, '-')
+  const srdClass = srdClasses[classIndex]
+  return (srdClass?.features_by_level?.[String(level)] ?? []).map(feature => ({
+    ...feature,
+    classIndex,
+    className: cls?.name ?? feature.className ?? '',
+    gainedAtLevel: level,
+  }))
+}
+
 // Build step list once class is chosen
 function buildSteps(char, classIdx) {
   const steps = []
@@ -267,13 +283,15 @@ function ClassChoiceStep({ char, onNext, onBack }) {
 }
 
 // ── Step: New Features (simple level) ────────────────────────
-function FeaturesStep({ char, classIdx, hpResult, onNext, isLast }) {
+function FeaturesStep({ char, classIdx, hpResult, srdClasses, onNext, isLast }) {
   const lvl        = nextClassLevel(char, classIdx)
-  const cls        = char.identity?.class?.[classIdx]?.name ?? 'your class'
+  const clsData    = char.identity?.class?.[classIdx]
+  const cls        = clsData?.name ?? 'your class'
   const totalLvl   = assignedLevel(char) + 1
   const oldProf    = PROF_BONUS[totalLvl - 2] ?? 2
   const newProf    = PROF_BONUS[totalLvl - 1] ?? 2
   const profChange = newProf > oldProf
+  const gainedFeatures = classFeaturesForLevel(srdClasses, clsData, lvl)
 
   return (
     <div className="lu-step">
@@ -315,6 +333,17 @@ function FeaturesStep({ char, classIdx, hpResult, onNext, isLast }) {
             Gained 1 Hit Die (1d{hpResult.die}). Now have {lvl}d{hpResult.die} total.
           </div>
         </div>
+
+        {gainedFeatures.map(feature => (
+          <div key={featureKey(feature)} className="lu-feature-row">
+            <div className="lu-feature-name">{feature.name}</div>
+            {feature.desc?.[0] && (
+              <div className="lu-feature-desc">
+                {feature.desc[0].slice(0, 260)}{feature.desc[0].length > 260 ? '…' : ''}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       <div className="lu-actions">
@@ -540,9 +569,16 @@ function SubclassStep({ char, classIdx, onNext, onBack }) {
 export default function LevelUpModal({ char, onConfirm, onClose }) {
   const isMulticlass = (char.identity?.class ?? []).length > 1
   const [chosenClassIdx, setChosenClassIdx] = useState(isMulticlass ? null : 0)
+  const [srdClasses, setSrdClasses] = useState({})
   const steps     = useMemo(() => buildSteps(char, chosenClassIdx), [char, chosenClassIdx])
   const [stepIdx, setStepIdx] = useState(0)
   const [results, setResults] = useState([])
+
+  useEffect(() => {
+    getClasses()
+      .then(classes => setSrdClasses(Object.fromEntries(classes.map(cls => [cls.index, cls]))))
+      .catch(() => setSrdClasses({}))
+  }, [])
 
   // Pre-roll HP increase for the chosen class
   const hpResult = useMemo(() => {
@@ -582,11 +618,24 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
   const applyLevelUp = (allResults) => {
     const classIdx = chosenClassIdx ?? 0
     const cls      = char.identity?.class ?? []
+    const previousCls = cls[classIdx]
+    const nextLevel = (previousCls?.level ?? 0) + 1
     const newCls   = cls.map((c, i) => i === classIdx ? { ...c, level: (c.level ?? 0) + 1 } : c)
+    const existingFeatures = char.customContent?.classFeatures ?? []
+    const gainedFeatures = classFeaturesForLevel(srdClasses, previousCls, nextLevel)
+    const featureKeys = new Set(existingFeatures.map(featureKey))
+    const classFeatures = [
+      ...existingFeatures,
+      ...gainedFeatures.filter(feature => !featureKeys.has(featureKey(feature))),
+    ]
 
     let updatedChar = {
       ...char,
       identity: { ...char.identity, class: newCls },
+      customContent: {
+        ...(char.customContent ?? {}),
+        classFeatures,
+      },
       combat: {
         ...char.combat,
         hpMax:     (char.combat?.hpMax ?? 10) + hpResult.total,
@@ -651,6 +700,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
             char={char}
             classIdx={chosenClassIdx}
             hpResult={hpResult}
+            srdClasses={srdClasses}
             onNext={() => handleNext()}
             onBack={handleBack}
             isLast={isLast}

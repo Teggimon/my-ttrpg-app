@@ -114,6 +114,15 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     }
   })
   const damageResistances = draconicAncestry?.grantsResistance && draconicAncestry?.damageType ? [draconicAncestry.damageType] : []
+  const classFeatures = Object.values(classData?.features_by_level ?? {})
+    .flat()
+    .filter(feature => (feature.level ?? 1) <= 1)
+    .map(feature => ({
+      ...feature,
+      classIndex: classData?.index ?? null,
+      className: classData?.name ?? '',
+      gainedAtLevel: feature.level ?? 1,
+    }))
 
   // 10. Languages
   const languages = [
@@ -174,7 +183,10 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
       prepared: (startingSpells ?? []).map(s => s.index),
       concentration: null,
     },
-    customContent: {},
+    customContent: {
+      classFeatures,
+      backgroundFeature: backgroundFeature ?? null,
+    },
     notes: {
       personalityTraits: '',
       ideals: '',

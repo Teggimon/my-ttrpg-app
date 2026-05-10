@@ -120,13 +120,19 @@ function AllyCard({ ally, isOwner, locked, onUpdate, onRemove }) {
   )
 }
 
-function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, onEdit, onRemove, onSetPrimary, onLevelChange, canLevelUp }) {
+function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, storedFeatures, onEdit, onRemove, onSetPrimary, onLevelChange, canLevelUp }) {
   const [expanded, setExpanded] = useState(isPrimary)
   const [expandedLevels, setExpandedLevels] = useState({})
 
   const toggleLevel = (lvl) => setExpandedLevels(prev => ({ ...prev, [lvl]: !prev[lvl] }))
 
-  const features = srdClass?.features_by_level ?? {}
+  const features = storedFeatures?.length
+    ? storedFeatures.reduce((byLevel, feature) => {
+      const level = String(feature.gainedAtLevel ?? feature.level ?? 1)
+      byLevel[level] = [...(byLevel[level] ?? []), feature]
+      return byLevel
+    }, {})
+    : srdClass?.features_by_level ?? {}
 
   return (
     <div className={`class-card${expanded ? ' class-card--expanded' : ''}`}>
@@ -433,6 +439,8 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
   }
 
   const classSummary = classes.map(c => `${c.name} ${c.level}`).join(' / ')
+  const storedClassFeatures = char.customContent?.classFeatures ?? []
+  const backgroundFeature = char.customContent?.backgroundFeature ?? char.identity?.backgroundFeature ?? srdBackground?.feature ?? null
 
   return (
     <div className="bg-root">
@@ -518,7 +526,11 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
                 isPrimary={idx === primaryIdx}
                 isOwner={isOwner}
                 locked={locked}
-                srdClass={srdClasses[cls.name?.toLowerCase().replace(/\s+/g,'-')] ?? null}
+                srdClass={srdClasses[cls.index ?? cls.name?.toLowerCase().replace(/\s+/g,'-')] ?? null}
+                storedFeatures={storedClassFeatures.filter(feature => (
+                  feature.classIndex === cls.index ||
+                  feature.className?.toLowerCase() === cls.name?.toLowerCase()
+                ))}
                 onEdit={() => {}}
                 onRemove={() => removeClass(idx)}
                 onSetPrimary={() => setPrimary(idx)}
@@ -545,12 +557,12 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
                 </div>
               </div>
             )}
-            {srdBackground?.feature && (
+            {backgroundFeature && (
               <>
                 <div className="bg-feature-label">Background Feature</div>
                 <div className="bg-feature-text">
-                  <strong style={{ color: 'var(--text-primary)' }}>{srdBackground.feature.name}.</strong>{' '}
-                  {srdBackground.feature.desc?.[0]}
+                  <strong style={{ color: 'var(--text-primary)' }}>{backgroundFeature.name}.</strong>{' '}
+                  {backgroundFeature.desc?.[0]}
                 </div>
               </>
             )}

@@ -272,11 +272,30 @@ function proficienciesFromObject(value = {}) {
     .map(([name]) => skillRef(name))
 }
 
-function normalizeClass(cls) {
+function normalizeClassFeature(feature) {
+  return {
+    index: slug(`${feature.className ?? ''} ${feature.level ?? ''} ${feature.name}`),
+    name: feature.name,
+    source: feature.source,
+    className: feature.className,
+    level: feature.level,
+    desc: [stripTags(feature.entries)],
+  }
+}
+
+function normalizeClass(cls, module = {}) {
   const skillChoice = cls.startingProficiencies?.skills?.find(s => s.choose)?.choose
   const skillOptions = (skillChoice?.from ?? []).map(skill => ({ option_type: 'reference', item: skillRef(skill) }))
   const armor = (cls.startingProficiencies?.armor ?? []).map(name => ref(`${name} armor proficiency`))
   const weapons = (cls.startingProficiencies?.weapons ?? []).map(name => ref(`${name} weapon proficiency`))
+  const features = (module.classFeature ?? [])
+    .filter(feature => feature.className === cls.name && (!feature.classSource || feature.classSource === cls.source))
+    .map(normalizeClassFeature)
+  const featuresByLevel = features.reduce((byLevel, feature) => {
+    const level = String(feature.level ?? 1)
+    byLevel[level] = [...(byLevel[level] ?? []), feature]
+    return byLevel
+  }, {})
   return {
     index: slug(cls.name),
     name: cls.name,
@@ -296,6 +315,7 @@ function normalizeClass(cls) {
     }] : [],
     starting_equipment: [],
     starting_equipment_options: normalizeStartingEquipment(cls.startingEquipment?.default ?? []),
+    features_by_level: featuresByLevel,
   }
 }
 
@@ -508,8 +528,12 @@ export const getSubraces = () => memo('subraces', () => {
 })
 
 export const getClasses = () => memo('classes', () => {
-  const classes = fromModules(classData, 'class').filter(cls => !cls.edition || cls.edition === 'classic')
-  return dedupeByIndex(classes.map(normalizeClass))
+  const classes = Object.values(classData).flatMap(module =>
+    (module?.class ?? [])
+      .filter(cls => !cls.edition || cls.edition === 'classic')
+      .map(cls => normalizeClass(cls, module))
+  )
+  return dedupeByIndex(classes)
 })
 
 export const getBackgrounds = () => memo('backgrounds', () => {
