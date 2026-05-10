@@ -28,6 +28,10 @@ function trimClassLevels(classes, targetTotal) {
 
 function HpAdjustModal({ amount, setAmount, hpCur, hpMax, onAdjust, onClose }) {
   const step = Math.max(1, Math.abs(parseInt(amount, 10) || 1))
+  const applyAdjust = (delta) => {
+    onAdjust(delta)
+    onClose()
+  }
 
   return (
     <div className="lp-modal-overlay" onClick={onClose}>
@@ -46,10 +50,9 @@ function HpAdjustModal({ amount, setAmount, hpCur, hpMax, onAdjust, onClose }) {
           />
         </label>
         <div className="lp-hp-modal-actions">
-          <button className="lp-hp-modal-btn" onClick={() => onAdjust(-step)}>- HP</button>
-          <button className="lp-hp-modal-btn lp-hp-modal-btn--plus" onClick={() => onAdjust(step)}>+ HP</button>
+          <button className="lp-hp-modal-btn" onClick={() => applyAdjust(-step)}>- HP</button>
+          <button className="lp-hp-modal-btn lp-hp-modal-btn--plus" onClick={() => applyAdjust(step)}>+ HP</button>
         </div>
-        <button className="lp-hp-modal-close" onClick={onClose}>Done</button>
       </div>
     </div>
   )
@@ -156,7 +159,9 @@ export default function LeftPanel({
               <div className="lp-hp-controls">
                 <button className="lp-hp-btn" onClick={() => adjustHP(-1)}>−</button>
                 <button className="lp-hp-btn lp-hp-btn--plus" onClick={() => adjustHP(+1)}>+</button>
-                <button className="lp-hp-btn lp-hp-btn--more" onClick={() => setShowHpAdjust(true)} title="More HP options">...</button>
+                <button className="lp-hp-btn lp-hp-btn--more" onClick={() => setShowHpAdjust(true)} title="More HP options" aria-label="More HP options">
+                  <span aria-hidden="true">•••</span>
+                </button>
               </div>
             )}
           </div>

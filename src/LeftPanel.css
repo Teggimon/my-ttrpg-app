@@ -167,8 +167,14 @@
 
 .lp-hp-btn--more {
   color: var(--text-secondary);
-  font-family: var(--font-mono);
-  letter-spacing: 0.08em;
+  font-size: 15px;
+  letter-spacing: 0;
+  gap: 0;
+}
+
+.lp-hp-btn--more span {
+  display: block;
+  transform: translateY(-1px);
 }
 
 .lp-hp-bar-track {
@@ -259,8 +265,7 @@
   margin-top: 12px;
 }
 
-.lp-hp-modal-btn,
-.lp-hp-modal-close {
+.lp-hp-modal-btn {
   min-height: 44px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-strong);
@@ -275,12 +280,6 @@
 .lp-hp-modal-btn--plus {
   background: var(--accent);
   border-color: var(--accent);
-}
-
-.lp-hp-modal-close {
-  width: 100%;
-  margin-top: 10px;
-  color: var(--text-secondary);
 }
 
 /* ── Stat tiles ──────────────────────────────────────────────── */
