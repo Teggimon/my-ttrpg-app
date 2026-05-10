@@ -12,6 +12,16 @@ const SPELLCASTING_ABILITY = {
   ranger: 'wis', sorcerer: 'cha', warlock: 'cha', wizard: 'int',
 }
 
+const SKILL_INDEX_TO_STAT_KEY = {
+  'animal-handling': 'animalHandling',
+  'sleight-of-hand': 'sleightOfHand',
+}
+
+function skillKeyFromIndex(index) {
+  const key = String(index ?? '').replace(/^skill-/, '')
+  return SKILL_INDEX_TO_STAT_KEY[key] ?? key
+}
+
 // ─── Character builder ────────────────────────────────────────────────────────
 
 function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores, startingCantrips, startingSpells, equipmentCatalog = [] }) {
@@ -68,13 +78,13 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
   const skills = {}
   // From class choices
   for (const skillIndex of classSkills) {
-    const key = skillIndex.replace('skill-', '')
+    const key = skillKeyFromIndex(skillIndex)
     skills[key] = { proficient: true }
   }
   // From background (fixed)
   for (const prof of (backgroundData?.starting_proficiencies ?? [])) {
     if (prof.index?.startsWith('skill-')) {
-      skills[prof.index.replace('skill-', '')] = { proficient: true }
+      skills[skillKeyFromIndex(prof.index)] = { proficient: true }
     }
   }
 
@@ -101,6 +111,8 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
       source: item.source ?? catalogItem?.source,
       quantity: item.quantity ?? 1,
       equipped: false,
+      ...(item.custom && { custom: true }),
+      ...(item.containsValue && { containsValue: item.containsValue }),
       ...(originPack && { sourcePack: originPack }),
     })
   }
@@ -923,6 +935,10 @@ const WEAPON_CATEGORY_MAP = {
   'martial-ranged-weapons': { weapon_category: 'Martial', weapon_range: 'Ranged' },
 }
 
+const EQUIPMENT_TYPE_MAP = {
+  'musical-instruments': { equipment_category_index: 'instrument' },
+}
+
 async function fetchCategoryItems(categoryIndex) {
   try {
     const all = await getEquipment()
@@ -937,6 +953,14 @@ async function fetchCategoryItems(categoryIndex) {
         items = all.filter(item =>
           item.weapon_category === wc.weapon_category &&
           (!wc.weapon_range || item.weapon_range === wc.weapon_range)
+        )
+      }
+    }
+    if (items.length === 0) {
+      const eq = EQUIPMENT_TYPE_MAP[categoryIndex]
+      if (eq) {
+        items = all.filter(item =>
+          Object.entries(eq).every(([key, value]) => item[key] === value)
         )
       }
     }
@@ -1275,10 +1299,22 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
         if (o.option_type === 'counted_reference') {
           const idx = o.of?.index ?? `__ref__${gi}_${oi}`
           const name = o.of?.name ?? 'Item'
-          return { id: `${gi}_${oi}`, label: o.count > 1 ? `${name} ×${o.count}` : name, items: [{ index: idx, name, quantity: o.count ?? 1 }], isChoice: false }
+          return {
+            id: `${gi}_${oi}`,
+            label: o.count > 1 ? `${name} ×${o.count}` : name,
+            items: [{ index: idx, name, source: o.of?.source, quantity: o.count ?? 1, custom: o.custom, containsValue: o.containsValue }],
+            isChoice: false,
+          }
         }
         if (o.option_type === 'multiple') {
-          const parts = (o.items ?? []).filter(i => i.option_type === 'counted_reference').map(i => ({ index: i.of?.index ?? `__multi__${gi}_${oi}`, name: i.of?.name ?? 'Item', quantity: i.count ?? 1 }))
+          const parts = (o.items ?? []).filter(i => i.option_type === 'counted_reference').map(i => ({
+            index: i.of?.index ?? `__multi__${gi}_${oi}`,
+            name: i.of?.name ?? 'Item',
+            source: i.of?.source,
+            quantity: i.count ?? 1,
+            custom: i.custom,
+            containsValue: i.containsValue,
+          }))
           const label = parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name).join(' + ')
           return { id: `${gi}_${oi}`, label, items: parts, isChoice: false }
         }

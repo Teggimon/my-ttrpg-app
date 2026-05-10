@@ -342,6 +342,7 @@ const EQUIPMENT_FILTER_CATEGORIES = [
   { pattern: /\bmartial ranged weapons?\b/i, index: 'martial-ranged-weapons' },
   { pattern: /\bsimple weapons?\b/i, index: 'simple-weapons' },
   { pattern: /\bmartial weapons?\b/i, index: 'martial-weapons' },
+  { pattern: /\bmusical instruments?\b/i, index: 'musical-instruments' },
 ]
 
 const COUNT_WORDS = {
@@ -410,17 +411,67 @@ function normalizeBackground(background) {
 }
 
 function normalizeBackgroundEquipment(groups) {
+  const equipmentTypeName = (type, fallback) => ({
+    instrumentMusical: 'musical instrument',
+    setGaming: 'gaming set',
+    toolArtisan: "artisan's tools",
+  }[type] ?? fallback ?? 'custom item')
+
+  const normalizeBackgroundItem = (item, i) => {
+    if (typeof item === 'string') {
+      const [name, source] = item.split('|')
+      return {
+        option_type: 'counted_reference',
+        count: 1,
+        of: { index: slug(name) || `item-${i}`, name: stripTags(name), source: source?.toUpperCase() },
+      }
+    }
+    if (item?.item) {
+      const [name, source] = item.item.split('|')
+      return {
+        option_type: 'counted_reference',
+        count: item.quantity ?? 1,
+        of: { index: slug(name) || `item-${i}`, name: stripTags(name), source: source?.toUpperCase() },
+        ...(item.containsValue && { containsValue: item.containsValue }),
+      }
+    }
+    if (item?.special) {
+      return {
+        option_type: 'counted_reference',
+        count: item.quantity ?? 1,
+        custom: true,
+        of: { index: slug(item.special) || `special-${i}`, name: stripTags(item.special) },
+      }
+    }
+    if (item?.equipmentType) {
+      const name = item.displayName ?? equipmentTypeName(item.equipmentType)
+      return {
+        option_type: 'counted_reference',
+        count: item.quantity ?? 1,
+        custom: true,
+        of: { index: slug(name) || `equipment-type-${i}`, name: stripTags(name) },
+      }
+    }
+    if (item?.value || item?.containsValue) {
+      const copperValue = item.value ?? item.containsValue
+      return {
+        option_type: 'counted_reference',
+        count: 1,
+        custom: true,
+        containsValue: copperValue,
+        of: { index: `${copperValue}-cp`, name: `${copperValue / 100} gp` },
+      }
+    }
+    return null
+  }
+
   return groups.map((group, groupIndex) => {
     const options = Object.entries(group)
       .filter(([, value]) => Array.isArray(value))
       .map(([, value]) => {
         const items = value
-          .filter(item => typeof item === 'string')
-          .map((item, i) => ({
-            option_type: 'counted_reference',
-            count: 1,
-            of: { index: slug(item.split('|')[0]) || `item-${i}`, name: stripTags(item.split('|')[0]) },
-          }))
+          .map(normalizeBackgroundItem)
+          .filter(Boolean)
         return items.length > 1 ? { option_type: 'multiple', items } : items[0]
       })
       .filter(Boolean)
