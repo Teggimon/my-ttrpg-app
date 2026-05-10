@@ -226,7 +226,9 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  wrap: { padding: '1.25rem 1rem 6.5rem', width: 'min(100% - 2rem, 720px)', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', boxSizing: 'border-box' },
+  shell: { minHeight: '100dvh', padding: '1rem', boxSizing: 'border-box', display: 'grid', placeItems: 'center', background: 'var(--bg-base)' },
+  panel: { width: 'min(100%, 920px)', height: 'calc(100dvh - 2rem)', display: 'flex', flexDirection: 'column', overflowY: 'auto', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', boxSizing: 'border-box' },
+  wrap: { flex: 1, display: 'flex', flexDirection: 'column', padding: '1.25rem 1rem 0', width: 'min(100%, 720px)', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', boxSizing: 'border-box' },
   h1: { fontSize: '1.05rem', fontWeight: 800, marginBottom: '0.25rem', color: 'var(--text-primary)', letterSpacing:'0.01em' },
   sub: { fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight:1.45 },
   label: { display: 'block', fontSize: '0.72rem', fontWeight:700, color: 'var(--text-muted)', marginBottom: '0.35rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.08em' },
@@ -241,7 +243,7 @@ const S = {
   }),
   cardName: { fontWeight: 800, fontSize: '0.95rem', color:'var(--text-primary)' },
   cardSub: { fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' },
-  row: { position:'fixed', left:'50%', bottom:'max(0.75rem, env(safe-area-inset-bottom))', transform:'translateX(-50%)', width:'min(100% - 2rem, 720px)', zIndex:30, display: 'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.75rem', marginTop: '1.5rem', padding:'0.75rem', border:'1px solid var(--border)', borderRadius:'var(--radius-md)', background:'var(--bg-surface)', boxShadow:'var(--shadow-md)', boxSizing:'border-box' },
+  row: { position:'sticky', bottom:0, zIndex:30, display: 'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.75rem', marginTop: 'auto', padding:'0.75rem 0 1rem', background:'var(--bg-surface)', boxSizing:'border-box' },
   btn: (primary) => ({
     width:'100%', minHeight:44, padding: '0.65rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem',
     background: primary ? 'var(--accent)' : 'var(--bg-elevated)',
@@ -1431,7 +1433,7 @@ function StepAlignment({ raceData, selected, onSelect, onNext, onBack, creating 
 
 function ProgressBar({ step, totalSteps }) {
   return (
-    <div style={{ padding: '1rem 1rem 0', width: 'min(100% - 2rem, 720px)', margin: '0 auto', boxSizing:'border-box' }}>
+    <div style={{ padding: '1rem 1rem 0', width: 'min(100%, 720px)', margin: '0 auto', boxSizing:'border-box' }}>
       <div style={S.progress}>
         {Array.from({ length: totalSteps }).map((_, i) => (
           <div key={i} style={S.dot(i === step, i < step)} />
@@ -1571,141 +1573,143 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   }
 
   return (
-    <>
-      <ProgressBar step={step} totalSteps={TOTAL_STEPS} />
+    <div style={S.shell}>
+      <div style={S.panel}>
+        <ProgressBar step={step} totalSteps={TOTAL_STEPS} />
 
-      {step === STEP_NAME && (
-        <StepName value={name} onChange={setName} onNext={() => goTo(STEP_RACE)} onCancel={onCancel} />
-      )}
+        {step === STEP_NAME && (
+          <StepName value={name} onChange={setName} onNext={() => goTo(STEP_RACE)} onCancel={onCancel} />
+        )}
 
-      {step === STEP_RACE && (
-        <StepRace
-          races={races}
-          selected={raceData}
-          onSelect={selectRace}
-          onNext={() => goTo(hasSubrace ? STEP_SUBRACE : hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
-          onBack={() => goTo(STEP_NAME)}
-        />
-      )}
+        {step === STEP_RACE && (
+          <StepRace
+            races={races}
+            selected={raceData}
+            onSelect={selectRace}
+            onNext={() => goTo(hasSubrace ? STEP_SUBRACE : hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
+            onBack={() => goTo(STEP_NAME)}
+          />
+        )}
 
-      {step === STEP_SUBRACE && hasSubrace && (
-        <StepSubrace
-          race={raceData}
-          subraces={allSubraces}
-          selected={subraceData}
-          onSelect={selectSubrace}
-          bonusOptions={raceBonusOptions}
-          onBonusOptions={setRaceBonusOptions}
-          onNext={() => goTo(hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
-          onBack={() => goTo(STEP_RACE)}
-        />
-      )}
+        {step === STEP_SUBRACE && hasSubrace && (
+          <StepSubrace
+            race={raceData}
+            subraces={allSubraces}
+            selected={subraceData}
+            onSelect={selectSubrace}
+            bonusOptions={raceBonusOptions}
+            onBonusOptions={setRaceBonusOptions}
+            onNext={() => goTo(hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
+            onBack={() => goTo(STEP_RACE)}
+          />
+        )}
 
-      {step === STEP_RACE_OPTIONS && hasRacialOptions && (
-        <StepRacialOptions
-          raceData={raceData}
-          subraceData={subraceData}
-          selectedOptions={racialOptionChoices}
-          onOptionsChange={setRacialOptionChoices}
-          onNext={() => goTo(STEP_CLASS)}
-          onBack={() => goTo(hasSubrace ? STEP_SUBRACE : STEP_RACE)}
-        />
-      )}
+        {step === STEP_RACE_OPTIONS && hasRacialOptions && (
+          <StepRacialOptions
+            raceData={raceData}
+            subraceData={subraceData}
+            selectedOptions={racialOptionChoices}
+            onOptionsChange={setRacialOptionChoices}
+            onNext={() => goTo(STEP_CLASS)}
+            onBack={() => goTo(hasSubrace ? STEP_SUBRACE : STEP_RACE)}
+          />
+        )}
 
-      {step === STEP_CLASS && (
-        <StepClass
-          classes={classes}
-          selected={classData}
-          onSelect={selectClass}
-          onNext={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS_SETUP)}
-          onBack={() => goTo(hasRacialOptions ? STEP_RACE_OPTIONS : hasSubrace ? STEP_SUBRACE : STEP_RACE)}
-        />
-      )}
+        {step === STEP_CLASS && (
+          <StepClass
+            classes={classes}
+            selected={classData}
+            onSelect={selectClass}
+            onNext={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS_SETUP)}
+            onBack={() => goTo(hasRacialOptions ? STEP_RACE_OPTIONS : hasSubrace ? STEP_SUBRACE : STEP_RACE)}
+          />
+        )}
 
-      {step === STEP_SUBCLASS && classData && hasSubclassAtCreation && (
-        <StepSubclass
-          classData={classData}
-          selected={subclassChoice}
-          onSelect={setSubclassChoice}
-          onNext={() => goTo(STEP_CLASS_SETUP)}
-          onBack={() => goTo(STEP_CLASS)}
-        />
-      )}
+        {step === STEP_SUBCLASS && classData && hasSubclassAtCreation && (
+          <StepSubclass
+            classData={classData}
+            selected={subclassChoice}
+            onSelect={setSubclassChoice}
+            onNext={() => goTo(STEP_CLASS_SETUP)}
+            onBack={() => goTo(STEP_CLASS)}
+          />
+        )}
 
-      {step === STEP_CLASS_SETUP && classData && (
-        <StepClassSetup
-          classData={classData}
-          selectedSkills={classSkills}
-          onSkillsChange={setClassSkills}
-          selectedEquipment={classEquipment}
-          onEquipmentChange={setClassEquipment}
-          onNext={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_ABILITY_SCORES)}
-          onBack={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS)}
-        />
-      )}
+        {step === STEP_CLASS_SETUP && classData && (
+          <StepClassSetup
+            classData={classData}
+            selectedSkills={classSkills}
+            onSkillsChange={setClassSkills}
+            selectedEquipment={classEquipment}
+            onEquipmentChange={setClassEquipment}
+            onNext={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_ABILITY_SCORES)}
+            onBack={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS)}
+          />
+        )}
 
-      {step === STEP_SPELLS && classData && isSpellcaster && (
-        <StepSpells
-          classData={classData}
-          selectedCantrips={startingCantrips}
-          onCantrips={setStartingCantrips}
-          selectedSpells={startingSpells}
-          onSpells={setStartingSpells}
-          onNext={() => goTo(STEP_ABILITY_SCORES)}
-          onBack={() => goTo(STEP_CLASS_SETUP)}
-        />
-      )}
+        {step === STEP_SPELLS && classData && isSpellcaster && (
+          <StepSpells
+            classData={classData}
+            selectedCantrips={startingCantrips}
+            onCantrips={setStartingCantrips}
+            selectedSpells={startingSpells}
+            onSpells={setStartingSpells}
+            onNext={() => goTo(STEP_ABILITY_SCORES)}
+            onBack={() => goTo(STEP_CLASS_SETUP)}
+          />
+        )}
 
-      {step === STEP_ABILITY_SCORES && (
-        <StepAbilityScores
-          raceData={raceData}
-          subraceData={subraceData}
-          raceBonusOptions={raceBonusOptions}
-          onChange={setAbilityScores}
-          onNext={() => goTo(STEP_BACKGROUND)}
-          onBack={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_CLASS_SETUP)}
-        />
-      )}
+        {step === STEP_ABILITY_SCORES && (
+          <StepAbilityScores
+            raceData={raceData}
+            subraceData={subraceData}
+            raceBonusOptions={raceBonusOptions}
+            onChange={setAbilityScores}
+            onNext={() => goTo(STEP_BACKGROUND)}
+            onBack={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_CLASS_SETUP)}
+          />
+        )}
 
-      {step === STEP_BACKGROUND && (
-        <StepBackground
-          backgrounds={backgrounds}
-          selected={backgroundData}
-          onSelect={selectBackground}
-          onNext={() => goTo(STEP_BG_SETUP)}
-          onBack={() => goTo(STEP_CLASS_SETUP)}
-        />
-      )}
+        {step === STEP_BACKGROUND && (
+          <StepBackground
+            backgrounds={backgrounds}
+            selected={backgroundData}
+            onSelect={selectBackground}
+            onNext={() => goTo(STEP_BG_SETUP)}
+            onBack={() => goTo(STEP_CLASS_SETUP)}
+          />
+        )}
 
-      {step === STEP_BG_SETUP && backgroundData && (
-        <StepBackgroundSetup
-          backgroundData={backgroundData}
-          selectedLanguages={backgroundLanguages}
-          onLanguagesChange={setBackgroundLanguages}
-          selectedEquipment={backgroundEquipment}
-          onEquipmentChange={setBackgroundEquipment}
-          onNext={() => goTo(STEP_ALIGNMENT)}
-          onBack={() => goTo(STEP_BACKGROUND)}
-        />
-      )}
+        {step === STEP_BG_SETUP && backgroundData && (
+          <StepBackgroundSetup
+            backgroundData={backgroundData}
+            selectedLanguages={backgroundLanguages}
+            onLanguagesChange={setBackgroundLanguages}
+            selectedEquipment={backgroundEquipment}
+            onEquipmentChange={setBackgroundEquipment}
+            onNext={() => goTo(STEP_ALIGNMENT)}
+            onBack={() => goTo(STEP_BACKGROUND)}
+          />
+        )}
 
-      {step === STEP_ALIGNMENT && (
-        <StepAlignment
-          raceData={raceData}
-          selected={alignment}
-          onSelect={setAlignment}
-          onNext={finish}
-          onBack={() => goTo(STEP_BG_SETUP)}
-          creating={creating}
-        />
-      )}
+        {step === STEP_ALIGNMENT && (
+          <StepAlignment
+            raceData={raceData}
+            selected={alignment}
+            onSelect={setAlignment}
+            onNext={finish}
+            onBack={() => goTo(STEP_BG_SETUP)}
+            creating={creating}
+          />
+        )}
 
-      {error && (
-        <div style={{ ...S.wrap, paddingTop: 0 }}>
-          <div style={S.error}>{error}</div>
-        </div>
-      )}
-    </>
+        {error && (
+          <div style={{ ...S.wrap, flex: '0 0 auto', paddingTop: 0 }}>
+            <div style={S.error}>{error}</div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
