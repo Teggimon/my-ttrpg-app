@@ -13,11 +13,59 @@
 /* ── Top actions ── */
 .inv-top-actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 0 12px;
 }
 
+.currency-tracker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(52px, 1fr));
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.coin-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-inset);
+}
+
+.coin-field span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--gold);
+}
+
+.coin-field input {
+  width: 100%;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+  outline: none;
+}
+
+.coin-field input:disabled {
+  color: var(--text-secondary);
+}
+
 .inv-primary-add {
+  flex: 0 0 auto;
   min-height: 44px;
   padding: 0 16px;
   border: none;
@@ -33,6 +81,28 @@
 
 .inv-primary-add:hover {
   background: var(--accent-hover);
+}
+
+@media (max-width: 640px) {
+  .inv-top-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .currency-tracker {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .coin-field {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 5px;
+  }
+
+  .coin-field input {
+    text-align: left;
+    font-size: 12px;
+  }
 }
 
 /* ── Section (EQUIPPED / BAG) ── */

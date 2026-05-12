@@ -18,6 +18,24 @@ const CURRENCY_NAMES = new Set([
   'Gold Pieces','Silver Pieces','Copper Pieces','Electrum Pieces','Platinum Pieces',
 ])
 
+const COINS = [
+  { key: 'pp', label: 'PP', name: 'Platinum Pieces', index: 'platinum-pieces' },
+  { key: 'gp', label: 'GP', name: 'Gold Pieces', index: 'gold-pieces' },
+  { key: 'ep', label: 'EP', name: 'Electrum Pieces', index: 'electrum-pieces' },
+  { key: 'sp', label: 'SP', name: 'Silver Pieces', index: 'silver-pieces' },
+  { key: 'cp', label: 'CP', name: 'Copper Pieces', index: 'copper-pieces' },
+]
+
+function currencyKey(item) {
+  const text = `${item.index ?? ''} ${item.name ?? ''}`.toLowerCase()
+  if (/platinum|^pp\b/.test(text)) return 'pp'
+  if (/gold|^gp\b/.test(text)) return 'gp'
+  if (/electrum|^ep\b/.test(text)) return 'ep'
+  if (/silver|^sp\b/.test(text)) return 'sp'
+  if (/copper|^cp\b/.test(text)) return 'cp'
+  return null
+}
+
 export function isItemEquippable(item, srdMap) {
   if (item.equipped)                      return true  // already marked by user
   if (item.damage)                        return true
@@ -772,6 +790,52 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     save(inventory.map(i => i.itemId === itemId ? { ...i, chargesCurrent: charges } : i))
   }
 
+  function currencyTotals() {
+    return COINS.reduce((totals, coin) => {
+      totals[coin.key] = inventory
+        .filter(item => currencyKey(item) === coin.key)
+        .reduce((sum, item) => sum + (item.quantity ?? 0), 0)
+      return totals
+    }, {})
+  }
+
+  function updateCurrency(coinKey, quantity) {
+    const coin = COINS.find(c => c.key === coinKey)
+    if (!coin) return
+    const nextQuantity = Math.max(0, Number.isFinite(quantity) ? quantity : 0)
+    let found = false
+    const nextInventory = inventory
+      .map(item => {
+        if (currencyKey(item) !== coinKey) return item
+        if (found) return null
+        found = true
+        return {
+          ...item,
+          itemId: item.itemId ?? uuidv4(),
+          index: coin.index,
+          name: coin.name,
+          quantity: nextQuantity,
+          isCurrency: true,
+          equipped: false,
+          attuned: false,
+        }
+      })
+      .filter(Boolean)
+      .filter(item => !item.isCurrency || (item.quantity ?? 0) > 0)
+
+    if (!found && nextQuantity > 0) {
+      nextInventory.push({
+        itemId: uuidv4(),
+        index: coin.index,
+        name: coin.name,
+        quantity: nextQuantity,
+        isCurrency: true,
+        equipped: false,
+      })
+    }
+    save(nextInventory)
+  }
+
   function addItem(item) {
     save([...inventory, item])
     setShowAddModal(false)
@@ -805,6 +869,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
 
   const abilityScores = char.stats?.abilityScores
   const showingCustom = !!editItem
+  const coins = currencyTotals()
 
   function renderRow(item, showQty = false) {
     return (
@@ -847,6 +912,21 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
       )}
 
       <div className="inv-top-actions">
+        <div className="currency-tracker" aria-label="Currency tracker">
+          {COINS.map(coin => (
+            <label key={coin.key} className="coin-field">
+              <span>{coin.label}</span>
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                value={coins[coin.key] ?? 0}
+                disabled={!isOwner || locked}
+                onChange={e => updateCurrency(coin.key, Math.floor(Number(e.target.value) || 0))}
+              />
+            </label>
+          ))}
+        </div>
         {isOwner && !locked && (
           <button className="inv-primary-add" onClick={() => setShowAddModal(true)}>+ Add to Inventory</button>
         )}
