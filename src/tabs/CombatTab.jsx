@@ -37,6 +37,7 @@ function breathDice(level, trait) {
 
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
+function featureKey(name)   { return String(name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-') }
 
 function hasClassFeatureChoice(char, optionName) {
   return (char.customContent?.classFeatureChoices ?? []).some(choice =>
@@ -72,6 +73,11 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const conMod = abilityMod(scores.con ?? 10)
   const hpCur  = char.combat?.hpCurrent ?? 0
   const isDying = hpCur <= 0
+  const actionEconomy = {
+    action: char.combat?.actionEconomy?.action ?? 1,
+    bonusAction: char.combat?.actionEconomy?.bonusAction ?? 1,
+    reaction: char.combat?.actionEconomy?.reaction ?? 1,
+  }
 
   const castAbility = char.spells?.spellcastingAbility
   const castMod     = castAbility ? abilityMod((char.stats?.abilityScores ?? {})[castAbility] ?? 10) : null
@@ -233,16 +239,125 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     updateChar({ combat: { ...char.combat, conditions: (char.combat.conditions ?? []).filter(c => c !== cond) } })
   }
 
-  const hasAnything = equippedWeapons.length > 0 || racialCombatTraits.length > 0 || chargedItems.length > 0
+  function setActionEconomy(patch) {
+    updateChar({ combat: { ...char.combat, actionEconomy: { ...actionEconomy, ...patch } } })
+  }
+
+  function spendAction(kind) {
+    if (!isOwner || locked) return
+    setActionEconomy({ [kind]: Math.max(0, (actionEconomy[kind] ?? 0) - 1) })
+  }
+
+  function resetTurn() {
+    if (!isOwner || locked) return
+    setActionEconomy({ action: 1, bonusAction: 1, reaction: 1 })
+  }
+
+  const fighterLevel = (char.identity?.class ?? [])
+    .filter(cls => /fighter/i.test(cls.name ?? cls.index ?? ''))
+    .reduce((sum, cls) => sum + (cls.level ?? 0), 0)
+
+  const storedAbilities = char.combat?.classAbilities ?? char.classAbilities ?? []
+  const storedAbilityMap = Object.fromEntries(storedAbilities.map(ability => [featureKey(ability.name), ability]))
+  const classFeatures = char.customContent?.classFeatures ?? []
+  const combatFeatures = classFeatures
+    .filter(feature => /^(second wind|action surge)$/i.test(feature.name ?? ''))
+    .filter((feature, index, list) => list.findIndex(other => featureKey(other.name) === featureKey(feature.name)) === index)
+    .map(feature => {
+      const key = featureKey(feature.name)
+      const isActionSurge = key === 'action-surge'
+      const max = isActionSurge
+        ? (fighterLevel >= 17 ? 2 : 1)
+        : (/xphb/i.test(feature.source ?? '') ? 2 : 1)
+      return {
+        ...feature,
+        key,
+        actionType: isActionSurge ? 'Free' : 'Bonus',
+        recharge: 'SR',
+        max,
+        used: storedAbilityMap[key]?.used ?? 0,
+        effect: isActionSurge ? '+1 Action' : `1d10 + ${fighterLevel || 'Fighter level'} HP`,
+      }
+    })
+
+  function handleCombatFeature(feature) {
+    if (!isOwner || locked || feature.used >= feature.max) return
+    const nextAbility = {
+      name: feature.name,
+      key: feature.key,
+      recharge: feature.recharge,
+      max: feature.max,
+      used: feature.used + 1,
+    }
+    const nextAbilities = [
+      ...storedAbilities.filter(ability => featureKey(ability.name) !== feature.key && ability.key !== feature.key),
+      nextAbility,
+    ]
+    const nextEconomy = feature.key === 'action-surge'
+      ? { ...actionEconomy, action: (actionEconomy.action ?? 0) + 1 }
+      : actionEconomy
+    updateChar({
+      combat: {
+        ...char.combat,
+        classAbilities: nextAbilities,
+        actionEconomy: nextEconomy,
+      },
+    })
+  }
+
+  const hasAnything = equippedWeapons.length > 0 || racialCombatTraits.length > 0 || chargedItems.length > 0 || combatFeatures.length > 0
 
   return (
     <div className="tab-combat">
+      <div className="action-economy">
+        {[
+          { key: 'action', label: 'Action' },
+          { key: 'bonusAction', label: 'Bonus' },
+          { key: 'reaction', label: 'Reaction' },
+        ].map(action => (
+          <button
+            key={action.key}
+            className={`action-square${actionEconomy[action.key] <= 0 ? ' action-square--spent' : ''}`}
+            type="button"
+            onClick={() => spendAction(action.key)}
+            disabled={!isOwner || locked}
+          >
+            <span className="action-square-count">{actionEconomy[action.key]}</span>
+            <span className="action-square-label">{action.label}</span>
+          </button>
+        ))}
+        <button className="action-reset-square" type="button" onClick={resetTurn} disabled={!isOwner || locked}>
+          Reset
+        </button>
+      </div>
 
       {/* ── Attacks & Abilities ── */}
       <div className="sec-head">Attacks &amp; Abilities</div>
 
       {!hasAnything && Object.keys(srdMap).length > 0 && (
         <p className="empty-hint">Equip weapons in the Gear tab to show attacks here.</p>
+      )}
+
+      {combatFeatures.length > 0 && (
+        <div className="combat-feature-grid">
+          {combatFeatures.map(feature => {
+            const remaining = Math.max(0, feature.max - feature.used)
+            return (
+              <button
+                key={feature.key}
+                className={`combat-feature-square${remaining <= 0 ? ' combat-feature-square--spent' : ''}`}
+                type="button"
+                onClick={() => handleCombatFeature(feature)}
+                disabled={!isOwner || locked || remaining <= 0}
+                title={(feature.desc ?? []).join(' ')}
+              >
+                <span className="combat-feature-name">{feature.name}</span>
+                <span className="combat-feature-effect">{feature.effect}</span>
+                <span className="combat-feature-meta">{feature.actionType} · {remaining}/{feature.max}</span>
+              </button>
+            )
+          })}
+        </div>
       )}
 
       {/* Weapon attack cards */}
