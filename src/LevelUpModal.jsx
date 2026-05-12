@@ -552,7 +552,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   }
 
   return (
-    <div className="lu-step">
+    <div className={`lu-step${choice === 'feat' ? ' lu-step--feat' : ''}`}>
       <div className="lu-title lu-title--gold">Level {nextClassLevel(char, classIdx)} — Improvement</div>
       <div className="lu-sub">Choose between an Ability Score Improvement or a Feat.</div>
 
