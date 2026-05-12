@@ -37,6 +37,15 @@ function breathDice(level, trait) {
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 
+function ammoKindFromName(value) {
+  const text = String(value ?? '').toLowerCase()
+  if (/\bbolts?\b|crossbow/.test(text)) return 'bolt'
+  if (/\barrows?\b|\bbow\b|shortbow|longbow/.test(text)) return 'arrow'
+  if (/needles?|blowgun/.test(text)) return 'needle'
+  if (/\bbullets?\b|sling|firearm|pistol|musket/.test(text)) return 'bullet'
+  return null
+}
+
 function isMagicItem(item, srdMap) {
   const srd = srdMap[item.index] ?? {}
   return !!(
@@ -83,7 +92,8 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     const propsLower = props.map(p => (typeof p === 'string' ? p : p.name ?? '').toLowerCase())
 
     const isFin    = propsLower.includes('finesse')
-    const isRanged = propsLower.includes('ammunition') || propsLower.includes('thrown')
+    const usesAmmo = propsLower.includes('ammunition')
+    const isRanged = usesAmmo || propsLower.includes('thrown')
     const useAttr  = isRanged || (isFin && dexMod > strMod) ? 'dex' : 'str'
     const attrMod  = useAttr === 'dex' ? dexMod : strMod
     const enh      = item.enhancement ?? 0
@@ -98,7 +108,42 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     const dmgStr = `${damageDice}${dmgMod !== 0 ? fmtB(dmgMod) : ''} ${damageType}`.trim()
     const breakdown = `${useAttr.toUpperCase()} ${fmtB(attrMod)}, Prof ${fmtB(pb)}${enh > 0 ? `, Magic +${enh}` : ''}`
 
-    return { toHit, dmgStr, breakdown }
+    return { toHit, dmgStr, breakdown, usesAmmo }
+  }
+
+  function isAmmoItem(item) {
+    const srd = srdMap[item.index] ?? {}
+    return item.isAmmo || srd.equipment_category?.index === 'ammunition' || item.equipment_category?.index === 'ammunition'
+  }
+
+  function ammoForWeapon(weapon) {
+    const srd = srdMap[weapon.index] ?? {}
+    const wantedKind = ammoKindFromName(`${weapon.name} ${weapon.index} ${srd.name ?? ''}`)
+    const ammo = (char.inventory ?? [])
+      .map((item, inventoryIndex) => ({ item, inventoryIndex }))
+      .filter(({ item }) => isAmmoItem(item) && (item.quantity ?? 0) > 0)
+      .map(({ item, inventoryIndex }) => ({
+        item,
+        inventoryIndex,
+        kind: ammoKindFromName(`${item.name} ${item.index}`),
+      }))
+    return ammo.find(entry => wantedKind && entry.kind === wantedKind)
+      ?? ammo.find(entry => entry.kind)
+      ?? ammo[0]
+      ?? null
+  }
+
+  function spendAmmoForWeapon(weapon) {
+    const ammoEntry = ammoForWeapon(weapon)
+    if (!ammoEntry) return
+    updateChar({
+      inventory: (char.inventory ?? [])
+        .map((item, inventoryIndex) => inventoryIndex === ammoEntry.inventoryIndex
+          ? { ...item, quantity: Math.max(0, (item.quantity ?? 1) - 1) }
+          : item
+        )
+        .filter(item => (item.quantity ?? 1) > 0)
+    })
   }
 
   // Equipped weapons — any equipped/attuned item that has damage dice
@@ -203,7 +248,9 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       {equippedWeapons.map(item => {
         const resolved = resolveWeapon(item)
         if (!resolved) return null
-        const { toHit, dmgStr, breakdown } = resolved
+        const { toHit, dmgStr, breakdown, usesAmmo } = resolved
+        const ammoEntry = usesAmmo ? ammoForWeapon(item) : null
+        const ammo = ammoEntry?.item
         return (
           <div key={item.itemId ?? item.index ?? item.name} className={`attack-card${isMagicItem(item, srdMap) ? ' attack-card--magic' : ''}`}>
             <div className="atk-line1">
@@ -212,8 +259,20 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
             <div className="atk-line2">
               <span className="badge" title={breakdown}>{fmtB(toHit)} to hit</span>
               <span className="badge">{dmgStr}</span>
+              {usesAmmo && (
+                <span className="badge badge--ammo" style={{ color: ammo ? undefined : 'var(--danger)' }}>
+                  {ammo ? `${ammo.quantity ?? 1} ${ammo.name}` : 'No ammo'}
+                </span>
+              )}
               <div className="atk-btns">
-                <button className="atk-btn atk-btn--roll">Roll</button>
+                <button
+                  className="atk-btn atk-btn--roll"
+                  onClick={() => isOwner && !locked && usesAmmo && spendAmmoForWeapon(item)}
+                  disabled={!isOwner || locked || (usesAmmo && !ammo)}
+                  title={usesAmmo ? (ammo ? `Use 1 ${ammo.name}` : 'No matching ammunition in Gear') : 'Roll attack'}
+                >
+                  {usesAmmo ? 'Use' : 'Roll'}
+                </button>
               </div>
             </div>
           </div>

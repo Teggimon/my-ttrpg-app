@@ -47,6 +47,9 @@
 .atk-btns { margin-left: auto; display: flex; gap: 5px; }
 
 .badge--dim { color: var(--text-faint); }
+.badge--ammo {
+  color: var(--text-secondary);
+}
 
 /* ── Prepared spell cards ─────────────────────────────────── */
 .spell-combat-card {
