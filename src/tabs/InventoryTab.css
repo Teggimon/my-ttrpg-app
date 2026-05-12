@@ -699,6 +699,8 @@
   transition: background 0.1s, color 0.1s;
 }
 .inv-action-btn:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.inv-action-btn--accent { border-color: var(--accent-border); color: var(--accent-light); }
+.inv-action-btn--accent:hover { background: var(--accent-subtle); color: var(--accent-light); }
 .inv-action-btn--danger { border-color: var(--danger-border); color: var(--danger); }
 .inv-action-btn--danger:hover { background: var(--danger-subtle); }
 

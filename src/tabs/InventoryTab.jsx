@@ -178,7 +178,7 @@ function rowChips(item, srdMap, abilityScores) {
 
 // ── Item row ──────────────────────────────────────────────────────────────────
 
-function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onCharges, onRemove, onEdit, onLabel, labels, showQty, attunedCount, attunementLimit }) {
+function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onCharges, onRemove, onEdit, onUnpack, onLabel, labels, showQty, attunedCount, attunementLimit }) {
   const chips     = rowChips(item, srdMap, abilityScores)
   const reqAttune = needsAttunement(item, srdMap)
   const canEquip  = isItemEquippable(item, srdMap)
@@ -265,6 +265,7 @@ function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onTog
           onQty={onQty}
           onRemove={onRemove}
           onEdit={onEdit}
+          onUnpack={onUnpack}
           onLabel={onLabel}
           labels={labels}
         />
@@ -275,9 +276,10 @@ function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onTog
 
 // ── Expanded detail panel ─────────────────────────────────────────────────────
 
-function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit, onLabel, labels }) {
+function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit, onUnpack, onLabel, labels }) {
   const srd  = srdMap[item.index] ?? {}
   const desc = item.description ?? srd.desc?.join(' ') ?? null
+  const packContents = item.pack_contents ?? srd.pack_contents ?? []
 
   const dmgDice = item.damage?.dice ?? srd.damage?.damage_dice ?? null
   const dmgType = item.damage?.type ?? srd.damage?.damage_type?.name ?? null
@@ -314,6 +316,7 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit, on
             {typeof p === 'string' ? p : p.name}
           </span>
         ))}
+        {packContents.length > 0 && <span className="inv-detail-tag inv-detail-tag--attune">{packContents.length} pack items</span>}
       </div>
 
       {(item.effects ?? []).length > 0 && (
@@ -348,6 +351,7 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit, on
             </select>
           </div>
           <div className="inv-detail-buttons">
+            {packContents.length > 0 && <button className="inv-action-btn inv-action-btn--accent" onClick={onUnpack}>Unpack</button>}
             <button className="inv-action-btn" onClick={onEdit}>Edit</button>
             <button className="inv-action-btn inv-action-btn--danger" onClick={onRemove}>Remove</button>
           </div>
@@ -777,6 +781,23 @@ function DeleteLabelModal({ label, onCancel, onConfirm }) {
   )
 }
 
+function UnpackItemModal({ item, onCancel, onConfirm }) {
+  return (
+    <div className="inv-modal-overlay" onClick={onCancel}>
+      <div className="inv-confirm-modal" onClick={e => e.stopPropagation()}>
+        <div className="inv-confirm-title">Unpack {item.name}?</div>
+        <p className="inv-confirm-body">
+          This will add the pack contents to inventory and remove the packed bundle.
+        </p>
+        <div className="inv-confirm-actions">
+          <button className="inv-action-btn" type="button" onClick={onCancel}>Cancel</button>
+          <button className="inv-action-btn inv-action-btn--accent" type="button" onClick={onConfirm}>Unpack</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
 export default function InventoryTab({ char, locked, isOwner, updateChar }) {
@@ -786,6 +807,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const [expandedId, setExpandedId] = useState(null)
   const [newLabelName, setNewLabelName] = useState('')
   const [deleteLabel, setDeleteLabel] = useState(null)
+  const [pendingUnpackItem, setPendingUnpackItem] = useState(null)
 
   useEffect(() => {
     Promise.all([getEquipment().catch(() => []), getMagicItems().catch(() => [])])
@@ -906,6 +928,51 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     }))
   }
 
+  function itemsFromPackContents(packItem, packTrail = []) {
+    const catalogItem = srdMap[packItem.index] ?? {}
+    const contents = packItem.pack_contents ?? catalogItem.pack_contents ?? []
+    if (!contents.length) return []
+    if (packTrail.includes(packItem.index)) return []
+
+    return contents.flatMap(content => {
+      const quantity = (content.quantity ?? 1) * (packItem.quantity ?? 1)
+      const catalogContent = srdMap[content.index]
+      const contentItem = catalogContent
+        ? inventoryItemFromCatalogItem(catalogContent, quantity)
+        : normalizeInventoryItem({ ...content, quantity }, srdMap)
+      const nestedContents = contentItem.pack_contents ?? catalogContent?.pack_contents ?? []
+      if (nestedContents.length > 0) {
+        return itemsFromPackContents(
+          { ...contentItem, pack_contents: nestedContents, quantity },
+          [...packTrail, packItem.index],
+        )
+      }
+      return [{
+        itemId: uuidv4(),
+        ...contentItem,
+        quantity: contentItem.quantity ?? quantity,
+        equipped: false,
+        attuned: false,
+        source: content.source ?? contentItem.source ?? catalogContent?.source,
+        sourcePack: packItem.name,
+        ...(packItem.inventoryLabelId && { inventoryLabelId: packItem.inventoryLabelId }),
+      }]
+    })
+  }
+
+  function unpackInventoryItem(itemId) {
+    const packItem = inventory.find(i => i.itemId === itemId)
+    if (!packItem) return
+    const unpackedItems = itemsFromPackContents(packItem)
+    if (!unpackedItems.length) return
+    setExpandedId(null)
+    save([
+      ...inventory.filter(i => i.itemId !== itemId),
+      ...unpackedItems,
+    ])
+    setPendingUnpackItem(null)
+  }
+
   function currencyTotals() {
     return COINS.reduce((totals, coin) => {
       totals[coin.key] = inventory
@@ -1008,6 +1075,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
         onCharges={c => updateCharges(item.itemId, c)}
         onRemove={() => removeItem(item.itemId)}
         onEdit={() => { setEditItem(item); setExpandedId(null) }}
+        onUnpack={() => setPendingUnpackItem(item)}
         onLabel={labelId => updateItemLabel(item.itemId, labelId)}
         labels={inventoryLabels}
         showQty={showQty}
@@ -1199,6 +1267,14 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
           label={deleteLabel}
           onCancel={() => setDeleteLabel(null)}
           onConfirm={() => removeInventoryLabel(deleteLabel.id)}
+        />
+      )}
+
+      {pendingUnpackItem && (
+        <UnpackItemModal
+          item={pendingUnpackItem}
+          onCancel={() => setPendingUnpackItem(null)}
+          onConfirm={() => unpackInventoryItem(pendingUnpackItem.itemId)}
         />
       )}
     </div>
