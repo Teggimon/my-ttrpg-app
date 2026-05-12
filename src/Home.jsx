@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
+import { CHARACTERS_PATH, DATA_REPO } from './githubStorage'
 import './Home.css'
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -164,7 +165,7 @@ export default function Home({
   const [gmMode, setGmMode]               = useState(isGM)
 
   const octokit  = new Octokit({ auth: token })
-  const repoName = 'ttrpg-characters'
+  const repoName = DATA_REPO
 
   useEffect(() => { loadCharacters() }, [])
 
@@ -172,7 +173,7 @@ export default function Home({
     setLoading(true)
     try {
       const { data: files } = await octokit.repos.getContent({
-        owner: user.login, repo: repoName, path: 'characters',
+        owner: user.login, repo: repoName, path: CHARACTERS_PATH,
       })
       const loaded = await Promise.all(
         files
@@ -203,12 +204,12 @@ export default function Home({
       try {
         const response = await octokit.repos.getContent({
           owner: user.login, repo: repoName,
-          path: `characters/${fileName}`,
+          path: `${CHARACTERS_PATH}/${fileName}`,
         })
         fd = response.data
       } catch {
         const { data: files } = await octokit.repos.getContent({
-          owner: user.login, repo: repoName, path: 'characters',
+          owner: user.login, repo: repoName, path: CHARACTERS_PATH,
         })
         const jsonFiles = files.filter(f => f.name.endsWith('.json'))
         for (const file of jsonFiles) {
@@ -230,7 +231,7 @@ export default function Home({
 
       await octokit.repos.deleteFile({
         owner: user.login, repo: repoName,
-        path: `characters/${fileName}`,
+        path: `${CHARACTERS_PATH}/${fileName}`,
         message: `Delete character: ${confirmDelete.identity.name}`,
         sha: fd.sha,
       })

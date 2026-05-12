@@ -1,26 +1,24 @@
 import { useState } from 'react'
 import { Octokit } from '@octokit/rest'
+import { APP_META_PATH, DATA_REPO, repoDescription } from './githubStorage'
 import './onboarding.css'
 
-const CHARACTERS_REPO = 'ttrpg-characters'
-const CAMPAIGNS_REPO  = 'ttrpg-campaigns'
-
 export default function Onboarding({ token, user, onComplete }) {
-  const [step, setStep]       = useState(1)    // 1 char repo | 2 GM question | 3 campaigns repo | 4 done
+  const [step, setStep]       = useState(1)    // 1 data repo | 2 GM question | 4 done
   const [isGM, setIsGM]       = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState(null)
 
   const octokit = new Octokit({ auth: token })
 
-  // ── Step 1: Create ttrpg-characters ──
-  const createCharacterRepo = async () => {
+  // ── Step 1: Create ttrpg-app-data ──
+  const createDataRepo = async () => {
     setLoading(true)
     setError(null)
     try {
       await octokit.repos.createForAuthenticatedUser({
-        name:        CHARACTERS_REPO,
-        description: 'My TTRPG characters — managed by TTRPG Sheet',
+        name:        DATA_REPO,
+        description: repoDescription(),
         auto_init:   true,
         private:     false,
       })
@@ -36,30 +34,36 @@ export default function Onboarding({ token, user, onComplete }) {
     setLoading(false)
   }
 
-  // ── Step 3: Create ttrpg-campaigns ──
-  const createCampaignsRepo = async () => {
+  const saveAppMeta = async (gmStatus) => {
     setLoading(true)
     setError(null)
     try {
-      await octokit.repos.createForAuthenticatedUser({
-        name:        CAMPAIGNS_REPO,
-        description: 'TTRPG campaign data — managed by TTRPG Sheet',
-        auto_init:   true,
-        private:     false,
+      let sha
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: user.login,
+          repo: DATA_REPO,
+          path: APP_META_PATH,
+        })
+        sha = data.sha
+      } catch { /* first metadata write */ }
+
+      await octokit.repos.createOrUpdateFileContents({
+        owner: user.login,
+        repo: DATA_REPO,
+        path: APP_META_PATH,
+        message: gmStatus ? 'Enable GM tools' : 'Finish app setup',
+        content: btoa(unescape(encodeURIComponent(JSON.stringify({
+          isGM: gmStatus,
+          updatedAt: new Date().toISOString(),
+        }, null, 2)))),
+        ...(sha ? { sha } : {}),
       })
       setStep(4)
     } catch (err) {
-      if (err.status === 422) {
-        setStep(4)
-      } else {
-        setError(err.message)
-      }
+      setError(err.message)
     }
     setLoading(false)
-  }
-
-  const skipCampaigns = () => {
-    setStep(4)
   }
 
   const finish = () => {
@@ -75,20 +79,20 @@ export default function Onboarding({ token, user, onComplete }) {
         <div className="ob-logo"><img src="/uploads/placeholders/default-portrait.jpg" alt="" /></div>
         <h1 className="ob-title">Welcome, {user.login}!</h1>
         <p className="ob-body-text">
-          First, let's create your character repository. This is where all your characters
-          will be stored — in your own GitHub account. Always yours.
+          First, let's create your app data repository. This is where your characters
+          and campaigns will be stored — in your own GitHub account. Always yours.
         </p>
 
         <div className="ob-repo-pill">
           <span className="ob-repo-icon">Repo</span>
-          <span className="ob-repo-name">{CHARACTERS_REPO}</span>
+          <span className="ob-repo-name">{DATA_REPO}</span>
         </div>
 
         {error && <p className="ob-error">{error}</p>}
 
         <button
           className="ob-btn ob-btn--accent"
-          onClick={createCharacterRepo}
+          onClick={createDataRepo}
           disabled={loading}
         >
           {loading ? 'Creating…' : 'Create My Repository'}
@@ -113,58 +117,21 @@ export default function Onboarding({ token, user, onComplete }) {
         <div className="ob-choice-grid">
           <button
             className="ob-choice-btn"
-            onClick={() => { setIsGM(true); setStep(3) }}
+            onClick={() => { setIsGM(true); saveAppMeta(true) }}
+            disabled={loading}
           >
             <span className="ob-choice-emoji">GM</span>
             <span className="ob-choice-label">Yes, I'm a GM</span>
           </button>
           <button
             className="ob-choice-btn"
-            onClick={() => { setIsGM(false); setStep(4) }}
+            onClick={() => { setIsGM(false); saveAppMeta(false) }}
+            disabled={loading}
           >
             <span className="ob-choice-emoji">PC</span>
             <span className="ob-choice-label">No, just a player</span>
           </button>
         </div>
-      </div>
-    </div>
-  )
-
-  // ════════════════════════════════════════
-  //  Step 3 — Create campaigns repo (GM only)
-  // ════════════════════════════════════════
-  if (step === 3) return (
-    <div className="ob-body ob-body--dm">
-      <div className="ob-panel ob-panel--dm">
-        <div className="ob-logo"><img src="/uploads/placeholders/default-portrait.jpg" alt="" /></div>
-        <h1 className="ob-title">Set up your Campaign Repository</h1>
-        <p className="ob-body-text">
-          A dedicated space for your campaigns, sessions, party data, and notes.
-          Stored in your own GitHub account.
-        </p>
-
-        <div className="ob-repo-pill ob-repo-pill--dm">
-          <span className="ob-repo-icon">Repo</span>
-          <span className="ob-repo-name">{CAMPAIGNS_REPO}</span>
-        </div>
-
-        {error && <p className="ob-error">{error}</p>}
-
-        <button
-          className="ob-btn ob-btn--dm"
-          onClick={createCampaignsRepo}
-          disabled={loading}
-        >
-          {loading ? 'Creating…' : 'Create Campaign Repository'}
-        </button>
-
-        <button
-          className="ob-btn ob-btn--ghost"
-          onClick={skipCampaigns}
-          disabled={loading}
-        >
-          Skip for now
-        </button>
       </div>
     </div>
   )
@@ -180,14 +147,14 @@ export default function Onboarding({ token, user, onComplete }) {
         <p className="ob-body-text">
           {isGM
             ? 'Your character and campaign repositories are ready. Time to start your adventure.'
-            : 'Your character repository is ready. Time to create your first character!'
+            : 'Your app data repository is ready. Time to create your first character!'
           }
         </p>
 
         {isGM && (
           <div className="ob-share-box">
-            <div className="ob-share-label">Share your campaigns repo with players:</div>
-            <div className="ob-share-url">github.com/{user.login}/{CAMPAIGNS_REPO}</div>
+            <div className="ob-share-label">Your app data repo:</div>
+            <div className="ob-share-url">github.com/{user.login}/{DATA_REPO}</div>
           </div>
         )}
 

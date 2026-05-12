@@ -9,9 +9,9 @@ import EncounterView from './EncounterView'
 import CreateCharacter from './CreateCharacter'
 import CharacterLayout from './CharacterLayout'
 import GMDashboard from './GMDashboard'
+import { APP_META_PATH, CHARACTERS_PATH, DATA_REPO } from './githubStorage'
 
 const CLIENT_ID      = import.meta.env.VITE_GITHUB_CLIENT_ID
-const CHARACTERS_REPO = 'ttrpg-characters'
 
 function fileToBase64(file) {
   return file.arrayBuffer().then(buffer => {
@@ -102,18 +102,18 @@ function App() {
       .catch(() => setCheckingOnboard(false))
   }, [token])
 
-  // ── Check onboard: does ttrpg-characters exist on GitHub? ──
+  // ── Check onboard: does ttrpg-app-data exist on GitHub? ──
   const checkOnboardStatus = async (login) => {
     if (!token) { setCheckingOnboard(false); return }
     const ok = new Octokit({ auth: token })
     try {
-      await ok.repos.get({ owner: login, repo: CHARACTERS_REPO })
+      await ok.repos.get({ owner: login, repo: DATA_REPO })
       setOnboarded(true)
 
-      // Detect GM status: check if ttrpg-campaigns repo exists
       try {
-        await ok.repos.get({ owner: login, repo: 'ttrpg-campaigns' })
-        setIsGM(true)
+        const { data } = await ok.repos.getContent({ owner: login, repo: DATA_REPO, path: APP_META_PATH })
+        const meta = JSON.parse(atob(data.content.replace(/\s/g, '')))
+        setIsGM(!!meta.isGM)
       } catch {
         setIsGM(false)
       }
@@ -145,7 +145,7 @@ function App() {
     setSelectedCharacter(character)
 
     const fileName = safeCharacterFileName(character)
-    const path    = `characters/${fileName}`
+    const path    = `${CHARACTERS_PATH}/${fileName}`
     const { _fileName, ...persistedCharacter } = character
     void _fileName
     const content = stringToBase64(JSON.stringify(persistedCharacter, null, 2))
@@ -153,14 +153,14 @@ function App() {
     let sha
     try {
       const { data } = await octokit.repos.getContent({
-        owner: user.login, repo: CHARACTERS_REPO, path,
+        owner: user.login, repo: DATA_REPO, path,
       })
       sha = Array.isArray(data) ? undefined : data.sha
     } catch { /* new file */ }
 
     await octokit.repos.createOrUpdateFileContents({
       owner:   user.login,
-      repo:    CHARACTERS_REPO,
+      repo:    DATA_REPO,
       path,
       message: `Update character: ${persistedCharacter.identity.name}`,
       content,
@@ -175,12 +175,12 @@ function App() {
     const imageName = safeFilePart(file.name, 'portrait')
     const ext = (file.name.match(/\.([a-z0-9]+)$/i)?.[1] ?? 'jpg').toLowerCase()
     const stamp = Date.now()
-    const path = `characters/${baseName}-images/${stamp}-${imageName}.${ext}`
+    const path = `${CHARACTERS_PATH}/${baseName}-images/${stamp}-${imageName}.${ext}`
     const content = await fileToBase64(file)
 
     await octokit.repos.createOrUpdateFileContents({
       owner: user.login,
-      repo: CHARACTERS_REPO,
+      repo: DATA_REPO,
       path,
       message: `Upload character image: ${character.identity.name}`,
       content,
@@ -191,7 +191,7 @@ function App() {
       id: String(stamp),
       name: file.name,
       path,
-      url: `https://raw.githubusercontent.com/${user.login}/${CHARACTERS_REPO}/main/${rawPath}?v=${stamp}`,
+      url: `https://raw.githubusercontent.com/${user.login}/${DATA_REPO}/main/${rawPath}?v=${stamp}`,
       type: file.type,
       size: file.size,
       uploadedAt: new Date(stamp).toISOString(),
@@ -205,8 +205,30 @@ function App() {
   }
 
   // ── DM mode toggled from Home ───────────────────────────────
-  const handleGMToggle = (newIsGM) => {
+  const handleGMToggle = async (newIsGM) => {
     setIsGM(newIsGM)
+    try {
+      let sha
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: user.login,
+          repo: DATA_REPO,
+          path: APP_META_PATH,
+        })
+        sha = data.sha
+      } catch { /* first metadata write */ }
+
+      await octokit.repos.createOrUpdateFileContents({
+        owner: user.login,
+        repo: DATA_REPO,
+        path: APP_META_PATH,
+        message: newIsGM ? 'Enable GM tools' : 'Disable GM tools',
+        content: stringToBase64(JSON.stringify({ isGM: newIsGM, updatedAt: new Date().toISOString() }, null, 2)),
+        ...(sha ? { sha } : {}),
+      })
+    } catch (err) {
+      console.error('Failed to save GM preference:', err)
+    }
   }
 
   // ═══════════════════════════════════════════════════════════

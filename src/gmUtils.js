@@ -1,7 +1,7 @@
-const CHAR_REPO = 'ttrpg-characters'
+import { CHARACTERS_PATH, DATA_REPO } from './githubStorage'
 
 export async function fetchPlayerCharacters(username) {
-  const url = `https://api.github.com/repos/${username}/${CHAR_REPO}/contents/characters`
+  const url = `https://api.github.com/repos/${username}/${DATA_REPO}/contents/${CHARACTERS_PATH}`
   const res = await fetch(url, { headers: { Accept: 'application/vnd.github.v3+json' } })
 
   if (!res.ok) {
@@ -25,7 +25,7 @@ export async function fetchPlayerCharacters(username) {
 }
 
 export async function fetchSingleCharacter(username, fileName) {
-  const url = `https://raw.githubusercontent.com/${username}/${CHAR_REPO}/main/characters/${fileName}?_=${Date.now()}`
+  const url = `https://raw.githubusercontent.com/${username}/${DATA_REPO}/main/${CHARACTERS_PATH}/${fileName}?_=${Date.now()}`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Could not load ${fileName} for @${username}`)
   return res.json()

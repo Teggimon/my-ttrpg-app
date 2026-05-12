@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Octokit } from '@octokit/rest'
 import { getMonsters } from './srdContent'
+import { DATA_REPO } from './githubStorage'
 import './EncounterView.css'
-
-const CAMPAIGNS_REPO = 'ttrpg-campaigns'
 
 function genId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
@@ -491,7 +490,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
     try {
       const { data } = await octokit.repos.getContent({
         owner: user.login,
-        repo: CAMPAIGNS_REPO,
+        repo: DATA_REPO,
         path: `${basePath}/sessions.json`,
       })
       const sessions = decode(data.content).sessions ?? []
@@ -508,7 +507,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
 
       await octokit.repos.createOrUpdateFileContents({
         owner: user.login,
-        repo: CAMPAIGNS_REPO,
+        repo: DATA_REPO,
         path: `${basePath}/sessions.json`,
         message: 'Update encounter result',
         content: encode({ sessions: updatedSessions }),
@@ -519,7 +518,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
         try {
           const { data: encData } = await octokit.repos.getContent({
             owner: user.login,
-            repo: CAMPAIGNS_REPO,
+            repo: DATA_REPO,
             path: `${basePath}/encounters.json`,
           })
           const prepared = decode(encData.content).encounters ?? []
@@ -536,7 +535,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
           )
           await octokit.repos.createOrUpdateFileContents({
             owner: user.login,
-            repo: CAMPAIGNS_REPO,
+            repo: DATA_REPO,
             path: `${basePath}/encounters.json`,
             message: 'Update prepared encounter status',
             content: encode({ encounters: updatedPrepared }),

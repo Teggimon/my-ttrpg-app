@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
+import { CAMPAIGNS_PATH, DATA_REPO, repoDescription } from './githubStorage'
 import './DMHome.css'
-
-// ── Constants ─────────────────────────────────────────────────
-const CAMPAIGNS_REPO = 'ttrpg-campaigns'
-const CAMPAIGNS_PATH = 'campaigns'
 
 // ── Helpers ───────────────────────────────────────────────────
 function generateId() {
@@ -213,11 +210,11 @@ function NoRepoState({ onSetup, loading }) {
       <img src="/uploads/placeholders/default-portrait.jpg" alt="" className="no-repo-img" />
       <div className="no-repo-title">No campaign repository found</div>
       <div className="no-repo-body">
-        Your campaigns live in a GitHub repository called{' '}
-        <code>ttrpg-campaigns</code>. It doesn't exist yet — create it to get started.
+        Your campaigns live in your app data repository,{' '}
+        <code>{DATA_REPO}</code>. It doesn't exist yet — create it to get started.
       </div>
       <button className="dm-btn dm-btn--accent no-repo-btn" onClick={onSetup} disabled={loading}>
-        {loading ? 'Creating…' : 'Create ttrpg-campaigns'}
+        {loading ? 'Creating…' : `Create ${DATA_REPO}`}
       </button>
     </div>
   )
@@ -241,7 +238,7 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
   const init = async () => {
     setLoading(true)
     try {
-      await octokit.repos.get({ owner: user.login, repo: CAMPAIGNS_REPO })
+      await octokit.repos.get({ owner: user.login, repo: DATA_REPO })
       setRepoExists(true)
       await loadCampaigns()
     } catch (err) {
@@ -256,7 +253,7 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
     try {
       const { data: files } = await octokit.repos.getContent({
         owner: user.login,
-        repo:  CAMPAIGNS_REPO,
+        repo:  DATA_REPO,
         path:  CAMPAIGNS_PATH,
       })
       const loaded = await Promise.all(
@@ -265,7 +262,7 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
           .map(async f => {
             const { data: fd } = await octokit.repos.getContent({
               owner: user.login,
-              repo:  CAMPAIGNS_REPO,
+              repo:  DATA_REPO,
               path:  f.path,
             })
             return {
@@ -284,13 +281,13 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
     }
   }
 
-  // ── Create the ttrpg-campaigns repo ──
+  // ── Create the app data repo if DM mode was opened before setup finished ──
   const setupRepo = async () => {
     setCreatingRepo(true)
     try {
       await octokit.repos.createForAuthenticatedUser({
-        name:        CAMPAIGNS_REPO,
-        description: 'TTRPG campaign data',
+        name:        DATA_REPO,
+        description: repoDescription(),
         auto_init:   true,
         private:     false,
       })
@@ -319,7 +316,7 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
 
     await octokit.repos.createOrUpdateFileContents({
       owner:   user.login,
-      repo:    CAMPAIGNS_REPO,
+      repo:    DATA_REPO,
       path,
       message: `Create campaign: ${name}`,
       content: encodeContent(campaign),
@@ -335,7 +332,7 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
     try {
       await octokit.repos.deleteFile({
         owner:   user.login,
-        repo:    CAMPAIGNS_REPO,
+        repo:    DATA_REPO,
         path:    `${CAMPAIGNS_PATH}/${confirmDelete._fileName}`,
         message: `Delete campaign: ${confirmDelete.name}`,
         sha:     confirmDelete._sha,

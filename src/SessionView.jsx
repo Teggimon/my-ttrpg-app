@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Octokit } from '@octokit/rest'
+import { DATA_REPO } from './githubStorage'
 import './SessionView.css'
-
-const CAMPAIGNS_REPO = 'ttrpg-campaigns'
 
 function genId() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
@@ -315,7 +314,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
       let sessionsSha
       try {
         const { data } = await octokit.repos.getContent({
-          owner: user.login, repo: CAMPAIGNS_REPO,
+          owner: user.login, repo: DATA_REPO,
           path: `${basePath}/sessions.json`,
         })
         sessions = decode(data.content).sessions ?? []
@@ -336,7 +335,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
 
       await octokit.repos.createOrUpdateFileContents({
         owner:   user.login,
-        repo:    CAMPAIGNS_REPO,
+        repo:    DATA_REPO,
         path:    `${basePath}/sessions.json`,
         message,
         content: encode({ sessions: updatedSessions }),
@@ -374,7 +373,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
       try {
         const { data } = await octokit.repos.getContent({
           owner: user.login,
-          repo: CAMPAIGNS_REPO,
+          repo: DATA_REPO,
           path: `${basePath}/encounters.json`,
         })
         setPreparedEncounters(decode(data.content).encounters ?? [])

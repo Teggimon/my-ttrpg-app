@@ -3,10 +3,8 @@ import { createPortal } from 'react-dom'
 import { Octokit } from '@octokit/rest'
 import { getMonsters } from './srdContent'
 import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
+import { CHARACTERS_PATH, DATA_REPO } from './githubStorage'
 import './CampaignView.css'
-
-const CAMPAIGNS_REPO  = 'ttrpg-campaigns'
-const CHARACTERS_REPO = 'ttrpg-characters'
 
 // ── GitHub helpers ────────────────────────────────────────────
 function encode(obj) {
@@ -248,8 +246,8 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
     try {
       const { data: files } = await octokit.repos.getContent({
         owner: username.trim(),
-        repo:  CHARACTERS_REPO,
-        path:  'characters',
+        repo:  DATA_REPO,
+        path:  CHARACTERS_PATH,
       })
       const chars = await Promise.all(
         files
@@ -257,7 +255,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
           .map(async f => {
             const { data: fd } = await octokit.repos.getContent({
               owner: username.trim(),
-              repo:  CHARACTERS_REPO,
+              repo:  DATA_REPO,
               path:  f.path,
             })
             const char = decode(fd.content)
@@ -1217,7 +1215,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
   const loadFile = async (filename) => {
     try {
       const { data } = await octokit.repos.getContent({
-        owner: user.login, repo: CAMPAIGNS_REPO,
+        owner: user.login, repo: DATA_REPO,
         path: `${basePath}/${filename}`,
       })
       return { data: decode(data.content), sha: data.sha }
@@ -1255,7 +1253,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
       let sha
       try {
         const { data: existing } = await octokit.repos.getContent({
-          owner: user.login, repo: CAMPAIGNS_REPO,
+          owner: user.login, repo: DATA_REPO,
           path: `${basePath}/${filename}`,
         })
         sha = existing.sha
@@ -1263,7 +1261,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
 
       await octokit.repos.createOrUpdateFileContents({
         owner:   user.login,
-        repo:    CAMPAIGNS_REPO,
+        repo:    DATA_REPO,
         path:    `${basePath}/${filename}`,
         message: `Update ${filename}`,
         content: encode(data),
