@@ -8,6 +8,11 @@ import './InventoryTab.css'
 
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function labelName(value) { return String(value ?? '').trim().replace(/\s+/g, ' ') }
+function quantityStep(item) { return Math.max(1, Number(item.quantityStep ?? 1)) }
+function quantityLabel(item) {
+  const quantity = item.quantity ?? 1
+  return item.quantityUnit ? `${quantity} ${item.quantityUnit}` : quantity
+}
 
 const MAGIC_AC_BONUS = {
   'ring-of-protection':    1,
@@ -171,7 +176,10 @@ function rowChips(item, srdMap, abilityScores) {
   }
 
   // Weight
-  if (item.weight != null) chips.push({ label: `${item.weight} lb`, cls: 'dim' })
+  if (item.weight != null) {
+    const shownWeight = item.quantityUnit ? item.weight * (item.quantity ?? 1) : item.weight
+    chips.push({ label: `${Number(shownWeight.toFixed(2))} lb`, cls: 'dim' })
+  }
 
   return chips
 }
@@ -242,9 +250,9 @@ function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onTog
         {/* Qty stepper — bag items without charges */}
         {showQty && !item.chargesMax && isOwner && !locked && (
           <div className="inv-qty-inline" onClick={e => e.stopPropagation()}>
-            <button className="inv-qty-inline-btn" onClick={() => onQty((item.quantity ?? 1) - 1)}>−</button>
-            <span className="inv-qty-inline-val">{item.quantity ?? 1}</span>
-            <button className="inv-qty-inline-btn" onClick={() => onQty((item.quantity ?? 1) + 1)}>+</button>
+            <button className="inv-qty-inline-btn" onClick={() => onQty((item.quantity ?? 1) - quantityStep(item))}>−</button>
+            <span className={`inv-qty-inline-val${item.quantityUnit ? ' inv-qty-inline-val--unit' : ''}`}>{quantityLabel(item)}</span>
+            <button className="inv-qty-inline-btn" onClick={() => onQty((item.quantity ?? 1) + quantityStep(item))}>+</button>
           </div>
         )}
 
@@ -333,9 +341,9 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit, on
       {isOwner && !locked && (
         <div className="inv-detail-actions">
           <div className="inv-qty-stepper">
-            <button className="inv-qty-btn" onClick={() => onQty(Math.max(0, (item.quantity ?? 1) - 1))} disabled={(item.quantity ?? 1) <= 1}>−</button>
-            <span className="inv-qty-val">{item.quantity ?? 1}</span>
-            <button className="inv-qty-btn" onClick={() => onQty((item.quantity ?? 1) + 1)}>+</button>
+            <button className="inv-qty-btn" onClick={() => onQty(Math.max(0, (item.quantity ?? 1) - quantityStep(item)))} disabled={(item.quantity ?? 1) <= quantityStep(item)}>−</button>
+            <span className={`inv-qty-val${item.quantityUnit ? ' inv-qty-val--unit' : ''}`}>{quantityLabel(item)}</span>
+            <button className="inv-qty-btn" onClick={() => onQty((item.quantity ?? 1) + quantityStep(item))}>+</button>
           </div>
           <div className="inv-detail-sort">
             <span className="inv-detail-sort-label">Sort</span>
@@ -396,7 +404,8 @@ function EffectRow({ effect, onChange, onRemove }) {
 
 function CustomItemForm({ initial, onSave, onCancel, embedded = false }) {
   const [name,     setName]     = useState(initial?.name ?? '')
-  const [type,     setType]     = useState(initial?.type ?? 'Gear')
+  const initialType = initial?.type ?? (initial?.damage ? 'Weapon' : initial?.armor_category === 'Shield' ? 'Shield' : initial?.armor_class ? 'Armour' : 'Gear')
+  const [type,     setType]     = useState(initialType)
   const [weight,   setWeight]   = useState(initial?.weight ?? '')
   const [desc,     setDesc]     = useState(initial?.description ?? '')
   const [enh,      setEnh]      = useState(initial?.enhancement ?? 0)
@@ -423,6 +432,9 @@ function CustomItemForm({ initial, onSave, onCancel, embedded = false }) {
       name: name.trim(),
       type,
       quantity: qty,
+      ...(initial?.quantityUnit && { quantityUnit: initial.quantityUnit }),
+      ...(initial?.quantityStep && { quantityStep: initial.quantityStep }),
+      ...(initial?.originalBundleName && { originalBundleName: initial.originalBundleName }),
       weight:   weight !== '' ? Number(weight) : undefined,
       description: desc.trim() || undefined,
       enhancement: enh || undefined,

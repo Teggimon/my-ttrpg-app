@@ -528,6 +528,9 @@
   min-width: 48px;
   color: var(--gold);
 }
+.inv-qty-inline-val--unit {
+  min-width: 54px;
+}
 .inv-qty-inline--charges {
   border-color: var(--gold-border);
 }
@@ -675,7 +678,8 @@
 .inv-qty-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .inv-qty-val {
-  width: 36px;
+  min-width: 36px;
+  padding: 0 8px;
   text-align: center;
   font-family: var(--font-mono);
   font-size: 13px;
@@ -684,6 +688,9 @@
   border-left: 0.5px solid var(--border-strong);
   border-right: 0.5px solid var(--border-strong);
   line-height: 30px;
+}
+.inv-qty-val--unit {
+  min-width: 58px;
 }
 
 .inv-action-btn {

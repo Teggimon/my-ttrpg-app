@@ -665,7 +665,7 @@ function normalizeItem(item, isMagic = false) {
     weapon_range: item.type === 'R' ? 'Ranged' : item.type === 'M' || item.type === 'MELEE' ? 'Melee' : undefined,
     armor_category: ['LA', 'MA', 'HA', 'S'].includes(item.type) ? typeName.replace(' Armor', '') : undefined,
     ...(armorBase && { armor_class: { base: armorBase, dex_bonus: item.type !== 'HA' } }),
-    ...(damageDice && { damage: { damage_dice: damageDice, damage_type: { name: DAMAGE_TYPES[item.dmgType] ?? item.dmgType ?? '' } } }),
+    ...(damageDice && { damage: { damage_dice: damageDice, damage_type: { name: DAMAGE_TYPES[item.dmgType] ?? item.dmgType ?? '' }, ...(item.dmg2 && { versatile: item.dmg2 }) } }),
     properties: (item.property ?? []).map(prop => ({ index: slug(ITEM_PROPERTIES[prop] ?? prop), name: ITEM_PROPERTIES[prop] ?? prop })),
     weight: item.weight,
     rarity: item.rarity && item.rarity !== 'none' ? item.rarity : undefined,

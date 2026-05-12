@@ -101,13 +101,17 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
 
     // Damage: prefer stored item.damage, fallback to SRD
     const damageDice = item.damage?.dice ?? srd.damage?.damage_dice ?? null
+    const versatileDice = item.damage?.versatile ?? srd.damage?.versatile ?? null
     const damageType = item.damage?.type ?? srd.damage?.damage_type?.name ?? ''
     if (!damageDice) return null
 
     const dmgStr = `${damageDice}${dmgMod !== 0 ? fmtB(dmgMod) : ''} ${damageType}`.trim()
+    const versatileStr = versatileDice
+      ? `${versatileDice}${dmgMod !== 0 ? fmtB(dmgMod) : ''} ${damageType} versatile`.trim()
+      : null
     const breakdown = `${useAttr.toUpperCase()} ${fmtB(attrMod)}, Prof ${fmtB(pb)}${enh > 0 ? `, Magic +${enh}` : ''}${archeryBonus ? ', Archery +2' : ''}`
 
-    return { toHit, dmgStr, breakdown, usesAmmo }
+    return { toHit, dmgStr, versatileStr, breakdown, usesAmmo }
   }
 
   function isAmmoItem(item) {
@@ -245,7 +249,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       {equippedWeapons.map(item => {
         const resolved = resolveWeapon(item)
         if (!resolved) return null
-        const { toHit, dmgStr, breakdown, usesAmmo } = resolved
+        const { toHit, dmgStr, versatileStr, breakdown, usesAmmo } = resolved
         const ammoEntry = usesAmmo ? ammoForWeapon(item) : null
         const ammo = ammoEntry?.item
         return (
@@ -256,6 +260,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
             <div className="atk-line2">
               <span className="badge" title={breakdown}>{fmtB(toHit)} to hit</span>
               <span className="badge">{dmgStr}</span>
+              {versatileStr && <span className="badge badge--dim">{versatileStr}</span>}
               {usesAmmo && (
                 <span className="badge badge--ammo" style={{ color: ammo ? undefined : 'var(--danger)' }}>
                   {ammo ? `${ammo.quantity ?? 1} ${ammo.name}` : 'No ammo'}
