@@ -1,3 +1,5 @@
+import { canonicalizeAmmoItem } from './itemRules'
+
 const cache = {}
 
 const raceData = import.meta.glob('../ttrpg_resource/5etools_data/races.json', { eager: true, import: 'default' })
@@ -763,7 +765,7 @@ export const getBackgrounds = () => memo('backgrounds', () => {
 })
 
 export const getEquipment = () => memo('equipment', () => {
-  const mundane = fromModules(itemData, 'baseitem').map(item => normalizeItem(item, false))
+  const mundane = fromModules(itemData, 'baseitem').map(item => canonicalizeAmmoItem(normalizeItem(item, false)))
   return dedupeByIndex(mundane)
 })
 

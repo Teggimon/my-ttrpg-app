@@ -5,6 +5,7 @@ import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment } from 
 import { SUBCLASSES, SUBCLASS_LEVELS, getSlotsForClass, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
 import { getSpells } from './srdContent'
 import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
+import { inventoryItemFromCatalogItem, normalizeInventoryItem } from './itemRules'
 
 // Spellcasting ability by class index
 const SPELLCASTING_ABILITY = {
@@ -106,20 +107,21 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
   const inventory = []
   const equipmentByIndex = Object.fromEntries(equipmentCatalog.map(item => [item.index, item]))
   const addInventoryItem = (item, originPack = null) => {
-    const catalogItem = equipmentByIndex[item.index]
+    const catalogItem = equipmentByIndex[item.index] ?? equipmentByIndex[normalizeInventoryItem(item).index]
     if (catalogItem?.pack_contents?.length) {
       for (const packItem of catalogItem.pack_contents) {
         addInventoryItem({ ...packItem, quantity: (packItem.quantity ?? 1) * (item.quantity ?? 1) }, catalogItem.name)
       }
       return
     }
+    const baseItem = catalogItem
+      ? inventoryItemFromCatalogItem(catalogItem, item.quantity ?? 1)
+      : normalizeInventoryItem({ index: item.index, name: item.name, quantity: item.quantity ?? 1, source: item.source })
     inventory.push({
       itemId: uuidv4(),
-      index: item.index,
-      name: item.name,
-      source: item.source ?? catalogItem?.source,
-      quantity: item.quantity ?? 1,
       equipped: false,
+      ...baseItem,
+      source: item.source ?? baseItem.source ?? catalogItem?.source,
       ...(item.custom && { custom: true }),
       ...(item.containsValue && { containsValue: item.containsValue }),
       ...(originPack && { sourcePack: originPack }),

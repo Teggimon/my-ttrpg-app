@@ -1,5 +1,14 @@
 /* ── Carry bar ── */
-.carry-bar-wrap { margin-bottom: 12px; }
+.carry-bar-wrap {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+.carry-bar-wrap--off {
+  opacity: 0.72;
+}
 .carry-meta {
   display: flex;
   justify-content: space-between;
@@ -9,6 +18,25 @@
 }
 .carry-track { background: var(--bg-surface); border-radius: 3px; height: 4px; overflow: hidden; }
 .carry-fill  { height: 100%; border-radius: 3px; transition: width 0.3s ease, background 0.3s ease; }
+.carry-bar-wrap--off .carry-track {
+  background: var(--bg-inset);
+}
+.carry-toggle {
+  margin-top: 8px;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 800;
+}
+.carry-toggle:hover {
+  border-color: var(--accent-border);
+  color: var(--accent-light);
+}
 
 /* ── Top actions ── */
 .inv-top-actions {
@@ -506,6 +534,7 @@
 .inv-modal {
   width: min(760px, calc(100vw - 32px));
   height: min(760px, calc(100dvh - 32px));
+  min-height: 0;
   max-height: min(760px, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
@@ -725,6 +754,7 @@
   max-height: none;
   flex: 1;
   min-height: 0;
+  height: 100%;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }

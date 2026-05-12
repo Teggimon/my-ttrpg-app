@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getEquipment, getMagicItems, getSpells } from '../srdContent'
 import { xpToLevel } from '../LevelUpModal'
+import { ammoKindForItem, ammoKindForWeapon } from '../itemRules'
 import '../TabShared.css'
 import './CombatTab.css'
 
@@ -36,15 +37,6 @@ function breathDice(level, trait) {
 
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
-
-function ammoKindFromName(value) {
-  const text = String(value ?? '').toLowerCase()
-  if (/\bbolts?\b|crossbow/.test(text)) return 'bolt'
-  if (/\barrows?\b|\bbow\b|shortbow|longbow/.test(text)) return 'arrow'
-  if (/needles?|blowgun/.test(text)) return 'needle'
-  if (/\bbullets?\b|sling|firearm|pistol|musket/.test(text)) return 'bullet'
-  return null
-}
 
 function hasClassFeatureChoice(char, optionName) {
   return (char.customContent?.classFeatureChoices ?? []).some(choice =>
@@ -125,19 +117,17 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
 
   function ammoForWeapon(weapon) {
     const srd = srdMap[weapon.index] ?? {}
-    const wantedKind = ammoKindFromName(`${weapon.name} ${weapon.index} ${srd.name ?? ''}`)
+    const wantedKind = ammoKindForWeapon(weapon, srd)
     const ammo = (char.inventory ?? [])
       .map((item, inventoryIndex) => ({ item, inventoryIndex }))
       .filter(({ item }) => isAmmoItem(item) && (item.quantity ?? 0) > 0)
       .map(({ item, inventoryIndex }) => ({
         item,
         inventoryIndex,
-        kind: ammoKindFromName(`${item.name} ${item.index}`),
+        kind: ammoKindForItem(item),
       }))
-    return ammo.find(entry => wantedKind && entry.kind === wantedKind)
-      ?? ammo.find(entry => entry.kind)
-      ?? ammo[0]
-      ?? null
+    if (wantedKind) return ammo.find(entry => entry.kind === wantedKind) ?? null
+    return ammo[0] ?? null
   }
 
   function spendAmmoForWeapon(weapon) {

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { getEquipment, getMagicItems } from '../srdContent'
 import { ALL_SOURCES, sourceCode, sourceOptions } from '../sourceFilters'
+import { inventoryItemFromCatalogItem, normalizeInventoryItem } from '../itemRules'
 import '../TabShared.css'
 import './InventoryTab.css'
 
@@ -550,18 +551,7 @@ function CustomItemForm({ initial, onSave, onCancel, embedded = false }) {
 function catalogItemToInventoryItem(srdItem) {
   return {
     itemId:   uuidv4(),
-    index:    srdItem.index,
-    name:     srdItem.name,
-    source:   srdItem.source,
-    quantity: 1,
-    equipped: false,
-    ...(srdItem.armor_class         && { armor_class:        srdItem.armor_class }),
-    ...(srdItem.armor_category      && { armor_category:     srdItem.armor_category }),
-    ...(srdItem.weight              && { weight:              srdItem.weight }),
-    ...(srdItem.damage              && { damage: { dice: srdItem.damage.damage_dice, type: srdItem.damage.damage_type?.name } }),
-    ...(srdItem.rarity              && { rarity:              typeof srdItem.rarity === 'string' ? srdItem.rarity : srdItem.rarity.name }),
-    ...(srdItem.requires_attunement && { requiresAttunement:  true }),
-    ...(srdItem.desc?.length        && { description:         srdItem.desc.join(' ') }),
+    ...inventoryItemFromCatalogItem(srdItem),
   }
 }
 
@@ -734,24 +724,27 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const rawInventory = char.inventory ?? []
   const tempIds = useRef({})
   const inventory = rawInventory.map((item, idx) => {
-    if (item.itemId) return item
-    if (!tempIds.current[idx]) tempIds.current[idx] = uuidv4()
-    return { ...item, itemId: tempIds.current[idx] }
+    const itemWithId = item.itemId ? item : { ...item, itemId: tempIds.current[idx] ?? (tempIds.current[idx] = uuidv4()) }
+    return normalizeInventoryItem(itemWithId, srdMap)
   })
   useEffect(() => {
-    if (rawInventory.every(i => i.itemId)) return
+    if (JSON.stringify(rawInventory) === JSON.stringify(inventory)) return
     updateChar({ inventory })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [Object.keys(srdMap).length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Weight tracking
   const tracking    = char.settings?.encumbranceTracking
   const strScore    = char.stats?.abilityScores?.str ?? 10
   const capacity    = strScore * 15
-  const totalWeight = inventory.reduce((s, i) => s + (i.weight ?? 0) * (i.quantity ?? 1), 0)
-  const pct         = tracking ? Math.min(100, Math.round((totalWeight / capacity) * 100)) : 0
+  const totalWeight = inventory.reduce((s, i) => s + (i.weight ?? srdMap[i.index]?.weight ?? 0) * (i.quantity ?? 1), 0)
+  const pct         = Math.min(100, Math.round((totalWeight / capacity) * 100))
 
   function save(newInv) {
     updateChar({ inventory: newInv, combat: { ...char.combat, ac: computeAC(newInv, char.stats?.abilityScores, srdMap) } })
+  }
+
+  function setEncumbranceTracking(enabled) {
+    updateChar({ settings: { ...char.settings, encumbranceTracking: enabled } })
   }
 
   function toggleEquip(itemId) {
@@ -899,17 +892,20 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   return (
     <div>
       {/* Carry bar */}
-      {tracking && (
-        <div className="carry-bar-wrap">
+      <div className={`carry-bar-wrap${tracking ? '' : ' carry-bar-wrap--off'}`}>
           <div className="carry-meta">
             <span>Carrying {totalWeight.toFixed(1)} / {capacity} lbs</span>
-            <span>{pct}%</span>
+            <span>{tracking ? `${pct}%` : 'Tracking off'}</span>
           </div>
           <div className="carry-track">
             <div className="carry-fill" style={{ width:`${pct}%`, background: pct>90?'var(--danger)':pct>66?'var(--warning)':'var(--accent)' }} />
           </div>
+          {isOwner && !locked && (
+            <button className="carry-toggle" onClick={() => setEncumbranceTracking(!tracking)}>
+              {tracking ? 'Disable encumbrance' : 'Enable encumbrance'}
+            </button>
+          )}
         </div>
-      )}
 
       <div className="inv-top-actions">
         <div className="currency-tracker" aria-label="Currency tracker">
