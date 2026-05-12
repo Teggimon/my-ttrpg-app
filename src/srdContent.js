@@ -171,6 +171,10 @@ function normalizeAbilityBonuses(ability = []) {
   return { bonuses, choice: choices[0] }
 }
 
+function totalAbilityBonus(bonuses = []) {
+  return bonuses.reduce((sum, bonus) => sum + Math.abs(bonus.bonus ?? 0), 0)
+}
+
 function normalizeSpeed(speed) {
   if (typeof speed === 'number') return speed
   if (typeof speed?.walk === 'number') return speed.walk
@@ -246,19 +250,35 @@ function normalizeRace(race) {
 }
 
 function normalizeSubrace(subrace) {
-  if (!subrace.name) return null
-  const { bonuses } = normalizeAbilityBonuses(subrace.ability)
   const raceName = subrace.raceName ?? subrace._baseName
+  if (!raceName) return null
+  const { bonuses } = normalizeAbilityBonuses(subrace.ability)
+  const isBaseRaceOption = !subrace.name
   const racialOptions = [draconicAncestryOptions(subrace.entries)].filter(Boolean)
   return {
-    index: slug(`${raceName ?? ''} ${subrace.name}`),
-    name: subrace.name,
+    index: isBaseRaceOption ? `${slug(raceName)}-base-${slug(subrace.source)}` : slug(`${raceName ?? ''} ${subrace.name}`),
+    name: isBaseRaceOption ? `${subrace.source ?? 'Base'} / Base-Only` : subrace.name,
     source: subrace.source,
     race: ref(raceName),
+    isBaseRaceOption,
     ability_bonuses: bonuses,
     racial_traits: normalizeEntriesToTraits(subrace.entries),
     racial_options: racialOptions,
   }
+}
+
+function markSubraceAbilityModes(subraces = [], races = []) {
+  const raceByIndex = Object.fromEntries(races.map(race => [race.index, race]))
+  return subraces.map(subrace => {
+    const race = raceByIndex[subrace.race?.index]
+    const baseTotal = totalAbilityBonus(race?.ability_bonuses)
+    const subraceTotal = totalAbilityBonus(subrace.ability_bonuses)
+    const abilityOverridesRace = !subrace.isBaseRaceOption
+      && subrace.source !== race?.source
+      && baseTotal > 0
+      && subraceTotal >= baseTotal
+    return { ...subrace, abilityOverridesRace }
+  })
 }
 
 function skillRef(skill) {
@@ -715,16 +735,17 @@ function dedupeByIndex(items) {
 export const getRaces = () => memo('races', () => {
   const data = firstModule(raceData)
   const races = dedupeByIndex((data.race ?? []).map(normalizeRace))
-  const subraces = (data.subrace ?? []).map(normalizeSubrace).filter(Boolean)
+  const subraces = markSubraceAbilityModes((data.subrace ?? []).map(normalizeSubrace).filter(Boolean), races)
   return races.map(race => ({
     ...race,
-    subraces: subraces.filter(subrace => subrace.race.index === race.index).map(({ index, name }) => ({ index, name })),
+    subraces: subraces.filter(subrace => subrace.race.index === race.index).map(({ index, name, source, isBaseRaceOption, abilityOverridesRace }) => ({ index, name, source, isBaseRaceOption, abilityOverridesRace })),
   }))
 })
 
 export const getSubraces = () => memo('subraces', () => {
   const data = firstModule(raceData)
-  return dedupeByIndex((data.subrace ?? []).map(normalizeSubrace).filter(Boolean))
+  const races = dedupeByIndex((data.race ?? []).map(normalizeRace))
+  return dedupeByIndex(markSubraceAbilityModes((data.subrace ?? []).map(normalizeSubrace).filter(Boolean), races))
 })
 
 export const getClasses = () => memo('classes', () => {

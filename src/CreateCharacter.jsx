@@ -22,6 +22,14 @@ function skillKeyFromIndex(index) {
   return SKILL_INDEX_TO_STAT_KEY[key] ?? key
 }
 
+function effectiveRaceAbilityBonuses(raceData, subraceData) {
+  return subraceData?.abilityOverridesRace ? [] : (raceData?.ability_bonuses ?? [])
+}
+
+function effectiveRaceAbilityChoice(raceData, subraceData) {
+  return subraceData?.abilityOverridesRace ? null : raceData?.ability_bonus_options
+}
+
 // ─── Character builder ────────────────────────────────────────────────────────
 
 function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores, startingCantrips, startingSpells, equipmentCatalog = [] }) {
@@ -48,7 +56,7 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
 
   // 2. Race ability bonuses (fixed) — StepAbilityScores shows these as preview but does NOT apply them;
   //    buildCharacter applies them so the stored value is final.
-  for (const bonus of (raceData?.ability_bonuses ?? [])) {
+  for (const bonus of effectiveRaceAbilityBonuses(raceData, subraceData)) {
     abilityScores[bonus.ability_score.index] += bonus.bonus
   }
   // 2b. Subrace ability bonuses
@@ -175,8 +183,8 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
       name,
       race: raceData?.name ?? name,
       raceIndex: raceData?.index ?? null,
-      subrace: subraceData?.name ?? null,
-      subraceIndex: subraceData?.index ?? null,
+      subrace: subraceData?.isBaseRaceOption ? null : subraceData?.name ?? null,
+      subraceIndex: subraceData?.isBaseRaceOption ? null : subraceData?.index ?? null,
       class: [{ name: classData?.name ?? '', index: classData?.index ?? null, level: 1, subclass: subclassChoice ?? null }],
       background: backgroundData?.name ?? '',
       backgroundIndex: backgroundData?.index ?? null,
@@ -386,7 +394,7 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
 
   // Racial bonuses (including chosen half-elf style options)
   const racialBonus = {}
-  for (const b of (raceData?.ability_bonuses ?? []))
+  for (const b of effectiveRaceAbilityBonuses(raceData, subraceData))
     racialBonus[b.ability_score.index] = (racialBonus[b.ability_score.index] ?? 0) + b.bonus
   for (const b of (subraceData?.ability_bonuses ?? []))
     racialBonus[b.ability_score.index] = (racialBonus[b.ability_score.index] ?? 0) + b.bonus
@@ -627,9 +635,10 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
   const available = allAvailable.filter(s => sourceFilter === ALL_SOURCES || sourceCode(s) === sourceFilter)
 
   // Half-Elf style: ability_bonus_options on the race itself
-  const hasBonusOptions = !!race.ability_bonus_options
-  const bonusCount = race.ability_bonus_options?.choose ?? 0
-  const bonusPool = race.ability_bonus_options?.from?.options ?? []
+  const abilityChoice = effectiveRaceAbilityChoice(race, selected)
+  const hasBonusOptions = !!abilityChoice
+  const bonusCount = abilityChoice?.choose ?? 0
+  const bonusPool = abilityChoice?.from?.options ?? []
 
   const toggleBonus = (opt) => {
     const key = opt.ability_score.index
@@ -660,7 +669,10 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
                 <SourceBadge item={s} />
               </div>
               <div style={S.cardSub}>
-                {s.ability_bonuses?.map(b => `+${b.bonus} ${b.ability_score.name}`).join(' · ')}
+                {s.isBaseRaceOption
+                  ? `Use the original ${s.source ?? race.source} ${race.name} without a later subrace.`
+                  : s.ability_bonuses?.map(b => `+${b.bonus} ${b.ability_score.name}`).join(' · ')}
+                {s.abilityOverridesRace && ' · replaces base race ability bonuses'}
               </div>
             </div>
           ))}
@@ -1689,6 +1701,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const selectSubrace = (s) => {
     setSubraceData(s)
     setRacialOptionChoices({})
+    if (s?.abilityOverridesRace) setRaceBonusOptions([])
   }
 
   // When background changes, reset downstream
