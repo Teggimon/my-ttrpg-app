@@ -435,6 +435,7 @@
 
 .inv-modal {
   width: min(760px, calc(100vw - 32px));
+  height: min(760px, calc(100dvh - 32px));
   max-height: min(760px, calc(100dvh - 32px));
   display: flex;
   flex-direction: column;
@@ -654,6 +655,8 @@
   max-height: none;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ip-empty {

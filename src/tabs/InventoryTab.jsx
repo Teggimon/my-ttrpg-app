@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { getEquipment, getMagicItems } from '../srdContent'
-import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from '../sourceFilters'
+import { ALL_SOURCES, sourceCode, sourceOptions } from '../sourceFilters'
 import '../TabShared.css'
 import './InventoryTab.css'
 
@@ -566,8 +566,14 @@ function isCustomInventoryItem(item, srdMap) {
   )
 }
 
+function sourceMatches(item, sourceFilter) {
+  if (sourceFilter === ALL_SOURCES) return true
+  if (sourceFilter === 'Custom') return item.source === 'Custom'
+  return sourceCode(item) === sourceFilter
+}
+
 function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
-  const [tab,      setTab]      = useState('database')
+  const [tab,      setTab]      = useState('search')
   const [search,   setSearch]   = useState('')
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
   const [sourceOpen, setSourceOpen] = useState(false)
@@ -580,19 +586,20 @@ function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
     getMagicItems().then(setAllMagic).catch(() => {})
   }, [])
 
-  const databaseItems = [...allEquip, ...allMagic]
   const customItems = inventory
     .filter(item => isCustomInventoryItem(item, srdMap))
     .filter((item, index, list) => list.findIndex(other => other.index === item.index && other.name === item.name) === index)
-
-  const pool     = tab === 'database' ? databaseItems : customItems
+    .map(item => ({ ...item, source: item.source ?? 'Custom' }))
+  const pool = [...customItems, ...allEquip, ...allMagic]
   const sources  = sourceOptions(pool)
-  const filtered = tab === 'custom'
-    ? pool.filter(item => {
-        const text = `${item.name ?? ''} ${item.description ?? ''} ${item.type ?? ''}`.toLowerCase()
-        return !search || text.includes(search.toLowerCase())
-      }).slice(0, 80)
-    : filterBySearchAndSource(pool, search, sourceFilter).slice(0, 100)
+  const sourceList = customItems.length ? ['Custom', ...sources.filter(source => source !== 'Custom')] : sources
+  const filtered = pool
+    .filter(item => {
+      const text = `${item.name ?? ''} ${item.description ?? ''} ${item.type ?? ''} ${item.desc?.join(' ') ?? ''}`.toLowerCase()
+      return !search || text.includes(search.toLowerCase())
+    })
+    .filter(item => sourceMatches(item, sourceFilter))
+    .slice(0, 160)
 
   function addItem(item) {
     onAdd(addEquipped ? { ...item, equipped: true } : item)
@@ -610,7 +617,7 @@ function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
         </div>
 
         <div className="ip-tabs">
-          {[{ key:'database', label:'Database' }, { key:'custom', label:'Custom' }, { key:'new', label:'New Item' }].map(t => (
+          {[{ key:'search', label:'Search' }, { key:'new', label:'New Item' }].map(t => (
             <button key={t.key} className={`ip-tab${tab === t.key ? ' ip-tab--active' : ''}`}
               onClick={() => { setTab(t.key); setSearch(''); setSourceFilter(ALL_SOURCES); setSourceOpen(false) }}>{t.label}</button>
           ))}
@@ -621,7 +628,7 @@ function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
           <span>Add as equipped</span>
         </label>
 
-        {tab !== 'new' && (
+        {tab === 'search' && (
           <>
             <div className="ip-search-row">
               <div className="ip-search-wrap">
@@ -631,7 +638,7 @@ function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
                   <button className="ip-search-clear" type="button" onClick={() => setSearch('')} aria-label="Clear search">×</button>
                 )}
               </div>
-              {tab === 'database' && sources.length > 1 && (
+              {sourceList.length > 1 && (
                 <div className="ip-source-menu-wrap">
                   <button
                     className={`ip-source-filter${sourceFilter !== ALL_SOURCES ? ' ip-source-filter--active' : ''}`}
@@ -643,7 +650,7 @@ function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
                   </button>
                   {sourceOpen && (
                     <div className="ip-source-menu">
-                      {[ALL_SOURCES, ...sources].map(source => (
+                      {[ALL_SOURCES, ...sourceList].map(source => (
                         <button
                           key={source}
                           type="button"
@@ -659,17 +666,14 @@ function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
               )}
             </div>
             <div className="ip-list ip-list--modal">
-              {filtered.length === 0 && (
-                <div className="ip-empty">
-                  {tab === 'custom' ? 'No saved custom items on this character yet.' : 'No results'}
-                </div>
-              )}
+              {filtered.length === 0 && <div className="ip-empty">No results</div>}
               {filtered.map(item => {
-                const invItem = tab === 'custom' ? cloneInventoryItem(item) : catalogItemToInventoryItem(item)
+                const isCustom = isCustomInventoryItem(item, srdMap)
+                const invItem = isCustom ? cloneInventoryItem(item) : catalogItemToInventoryItem(item)
                 return (
                   <button key={`${item.index}-${item.name}-${item.source ?? ''}`} className="ip-row" onClick={() => addItem(invItem)}>
                     <span className="ip-row-name">{item.name}</span>
-                    {item.source && <span className="ip-row-tag ip-row-tag--source">{sourceCode(item)}</span>}
+                    <span className="ip-row-tag ip-row-tag--source">{isCustom ? 'Custom' : sourceCode(item)}</span>
                     {item.armor_class && <span className="ip-row-tag">AC {item.armor_class.base}</span>}
                     {item.damage && <span className="ip-row-tag">{item.damage.damage_dice ?? item.damage.dice}</span>}
                     {item.weight && <span className="ip-row-tag ip-row-tag--dim">{item.weight} lb</span>}
