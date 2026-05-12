@@ -351,6 +351,22 @@ function skillChoiceForFeatures(features) {
   return { feature: match, choose, mode: 'proficiency' }
 }
 
+function optionChoicesForFeatures(features) {
+  return features.flatMap(feature =>
+    (feature.choices ?? []).map(choice => ({
+      ...choice,
+      choiceKey: `${feature.index}:${choice.choiceIndex ?? 0}`,
+      feature: {
+        index: feature.index,
+        name: feature.name,
+        className: feature.className,
+        classIndex: feature.classIndex,
+        level: feature.gainedAtLevel ?? feature.level,
+      },
+    }))
+  )
+}
+
 function subclassSkillChoice(cls, subclass, level) {
   const classIndex = cls?.index ?? cls?.name?.toLowerCase?.().replace(/\s+/g, '-')
   const subclassIndex = String(subclass ?? '').toLowerCase().replace(/\s+/g, ' ')
@@ -374,6 +390,7 @@ function buildSteps(char, classIdx, selectedSubclass, srdClasses) {
   if (hasSubclassChoice(char, idx)) steps.push({ type: 'subclass' })
   const subclass = selectedSubclass ?? cls?.subclass
   if (subclass && needsSubclassSpellChoice(char, idx, subclass)) steps.push({ type: 'spells' })
+  optionChoicesForFeatures(gainedFeatures).forEach(choice => steps.push({ type: 'featureOption', choice }))
   const skillChoices = [
     subclassSkillChoice(cls, subclass, lvl),
     skillChoiceForFeatures(gainedFeatures),
@@ -870,6 +887,58 @@ function toKnownSpell(spell) {
   }
 }
 
+// ── Step: Generic feature option choice ─────────────────────────────────────
+function FeatureOptionStep({ choice, onNext, onBack }) {
+  const [selected, setSelected] = useState([])
+  const choose = choice?.choose ?? 1
+
+  const toggle = (option) => {
+    setSelected(prev => {
+      if (prev.some(item => item.id === option.id)) return prev.filter(item => item.id !== option.id)
+      if (prev.length >= choose) return prev
+      return [...prev, option]
+    })
+  }
+
+  return (
+    <div className="lu-step">
+      <div className="lu-title lu-title--gold">{choice?.feature?.name ?? 'Feature Choice'}</div>
+      <div className="lu-sub">Choose {choose} {choose === 1 ? 'option' : 'options'} for this feature.</div>
+
+      <div className="lu-feature-option-list">
+        {(choice?.options ?? []).map(option => {
+          const active = selected.some(item => item.id === option.id)
+          return (
+            <button
+              key={option.id}
+              className={`lu-feature-option-card${active ? ' lu-feature-option-card--selected' : ''}`}
+              onClick={() => toggle(option)}
+            >
+              <span className="lu-feature-option-radio">{active ? '●' : '○'}</span>
+              <span className="lu-feature-option-body">
+                <span className="lu-feature-option-name">{option.name}</span>
+                {option.desc?.[0] && <span className="lu-feature-option-desc">{option.desc[0].slice(0, 220)}{option.desc[0].length > 220 ? '…' : ''}</span>}
+              </span>
+              {option.source && <span className="lu-feature-option-source">{option.source}</span>}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="lu-actions">
+        <button className="lu-btn lu-btn--ghost" onClick={onBack}>← Back</button>
+        <button
+          className="lu-btn lu-btn--gold"
+          onClick={() => onNext({ type: 'featureOption', choiceKey: choice.choiceKey, feature: choice.feature, options: selected })}
+          disabled={selected.length !== choose}
+        >
+          Confirm Choice →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Step: Skill proficiency choice ──────────────────────────────────────────
 function SkillChoiceStep({ char, skillChoice, onNext, onBack }) {
   const [selected, setSelected] = useState([])
@@ -1085,6 +1154,34 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
           stats: { ...(updatedChar.stats ?? {}), skills: nextSkills },
         }
       }
+      if (r.type === 'featureOption') {
+        const currentChoices = updatedChar.customContent?.classFeatureChoices ?? []
+        const nextChoices = [
+          ...currentChoices.filter(choice => (choice.choiceKey ?? choice.featureIndex) !== (r.choiceKey ?? r.feature?.index)),
+          {
+            choiceKey: r.choiceKey,
+            featureIndex: r.feature?.index,
+            featureName: r.feature?.name,
+            className: r.feature?.className,
+            classIndex: r.feature?.classIndex,
+            gainedAtLevel: r.feature?.level,
+            options: (r.options ?? []).map(option => ({
+              id: option.id,
+              name: option.name,
+              source: option.source,
+              desc: option.desc,
+              featureType: option.featureType,
+            })),
+          },
+        ]
+        updatedChar = {
+          ...updatedChar,
+          customContent: {
+            ...(updatedChar.customContent ?? {}),
+            classFeatureChoices: nextChoices,
+          },
+        }
+      }
     })
 
     // Recalculate spell slots based on new class level
@@ -1149,6 +1246,14 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
             char={char}
             classIdx={chosenClassIdx}
             subclass={selectedSubclass ?? char.identity?.class?.[chosenClassIdx]?.subclass}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+
+        {currentStep?.type === 'featureOption' && chosenClassIdx != null && (
+          <FeatureOptionStep
+            choice={currentStep.choice}
             onNext={handleNext}
             onBack={handleBack}
           />

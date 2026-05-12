@@ -7,6 +7,7 @@ const classData = import.meta.glob('../ttrpg_resource/5etools_data/class/class-*
 const spellData = import.meta.glob('../ttrpg_resource/5etools_data/spells/spells-*.json', { eager: true, import: 'default' })
 const monsterData = import.meta.glob('../ttrpg_resource/5etools_data/bestiary/bestiary-*.json', { eager: true, import: 'default' })
 const spellLookupData = import.meta.glob('../ttrpg_resource/5etools_data/generated/gendata-spell-source-lookup.json', { eager: true, import: 'default' })
+const optionalFeatureData = import.meta.glob('../ttrpg_resource/5etools_data/optionalfeatures.json', { eager: true, import: 'default' })
 
 const ABILITY_NAMES = {
   str: 'Strength',
@@ -272,7 +273,138 @@ function proficienciesFromObject(value = {}) {
     .map(([name]) => skillRef(name))
 }
 
-function normalizeClassFeature(feature) {
+function optionalFeatureLookup() {
+  const lookup = {}
+  for (const feature of fromModules(optionalFeatureData, 'optionalfeature')) {
+    lookup[slug(feature.name)] ??= feature
+    lookup[slug(`${feature.name} ${feature.source ?? ''}`)] = feature
+  }
+  return lookup
+}
+
+function parseFeatureRef(refValue = '') {
+  const [name, source] = String(refValue).split('|')
+  return { name: stripTags(name), source }
+}
+
+function inferChoiceCount(entries = []) {
+  const text = stripTags(entries).toLowerCase()
+  if (/\b(two|2)\b/.test(text) && /\b(choice|choose|options?|invocations?|metamagic|enemy|enemies|terrain)\b/.test(text)) return 2
+  if (/\b(one|1|an additional|additional)\b/.test(text) && /\b(choice|choose|options?|invocation|metamagic|enemy|terrain)\b/.test(text)) return 1
+  return null
+}
+
+function optionFeatureArray(optionalFeatures = {}) {
+  return Object.values(optionalFeatures)
+    .filter(Boolean)
+    .filter((feature, index, arr) => arr.findIndex(other => other.name === feature.name && other.source === feature.source) === index)
+}
+
+function meetsOptionalFeatureLevel(feature, level) {
+  if (!level) return true
+  return (feature.prerequisite ?? []).every(prereq => {
+    const requiredLevel = prereq?.level?.level
+    return !requiredLevel || requiredLevel <= level
+  })
+}
+
+function optionalFeaturesForType(optionalFeatures, type, level) {
+  return optionFeatureArray(optionalFeatures)
+    .filter(feature => (feature.featureType ?? []).includes(type))
+    .filter(feature => meetsOptionalFeatureLevel(feature, level))
+    .map(feature => ({
+      id: slug(`${feature.name} ${feature.source ?? ''}`),
+      name: feature.name,
+      source: feature.source,
+      optionType: 'optionalFeature',
+      desc: [stripTags(feature.entries)].filter(Boolean),
+      featureType: feature.featureType,
+    }))
+}
+
+function manualFeatureChoices(feature, optionalFeatures = {}) {
+  const name = feature.name ?? ''
+  const lowerName = name.toLowerCase()
+  const choices = []
+
+  if (/^favored enemy/i.test(name)) {
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 100,
+      options: [
+        'Aberrations', 'Beasts', 'Celestials', 'Constructs', 'Dragons', 'Elementals',
+        'Fey', 'Fiends', 'Giants', 'Monstrosities', 'Oozes', 'Plants', 'Undead',
+        'Two humanoid races',
+      ].map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [] })),
+    })
+  }
+
+  if (/natural explorer/i.test(lowerName)) {
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 101,
+      options: ['Arctic', 'Coast', 'Desert', 'Forest', 'Grassland', 'Mountain', 'Swamp', 'Underdark']
+        .map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [] })),
+    })
+  }
+
+  if (/eldritch invocations/i.test(lowerName)) {
+    choices.push({
+      type: 'option',
+      choose: feature.level <= 2 ? 2 : 1,
+      choiceIndex: 102,
+      options: optionalFeaturesForType(optionalFeatures, 'EI', feature.level),
+    })
+  }
+
+  if (/^metamagic$/i.test(name) && !feature.entries?.some(entry => entry?.type === 'options')) {
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 103,
+      options: optionalFeaturesForType(optionalFeatures, 'MM', feature.level),
+    })
+  }
+
+  return choices.filter(choice => choice.options.length > 0)
+}
+
+function normalizeFeatureChoices(entries = [], optionalFeatures = {}) {
+  return entries
+    .filter(entry => entry?.type === 'options' && Array.isArray(entry.entries))
+    .map((entry, choiceIndex) => {
+      const choose = entry.count ?? inferChoiceCount(entries)
+      if (!choose) return null
+      return {
+        type: 'option',
+        choose,
+        choiceIndex,
+        options: entry.entries.map((option, optionIndex) => {
+        const refValue = option.optionalfeature ?? option.classFeature ?? option.subclassFeature ?? option.name
+        const { name, source } = parseFeatureRef(refValue)
+        const optional = optionalFeatures[slug(`${name} ${source ?? ''}`)] ?? optionalFeatures[slug(name)]
+        return {
+          id: slug(`${name} ${source ?? ''}`) || `option-${optionIndex}`,
+          name,
+          source: source ?? optional?.source,
+          optionType: option.type,
+          desc: [stripTags(optional?.entries ?? option.entries ?? option.entry ?? '')].filter(Boolean),
+          featureType: optional?.featureType,
+        }
+        }).filter(option => option.name),
+      }
+    })
+    .filter(Boolean)
+    .filter(choice => choice.options.length > 0)
+}
+
+function normalizeClassFeature(feature, optionalFeatures = {}) {
+  const choices = [
+    ...normalizeFeatureChoices(feature.entries, optionalFeatures),
+    ...manualFeatureChoices(feature, optionalFeatures),
+  ]
   return {
     index: slug(`${feature.className ?? ''} ${feature.level ?? ''} ${feature.name}`),
     name: feature.name,
@@ -280,17 +412,19 @@ function normalizeClassFeature(feature) {
     className: feature.className,
     level: feature.level,
     desc: [stripTags(feature.entries)],
+    choices,
   }
 }
 
 function normalizeClass(cls, module = {}) {
+  const optionalFeatures = optionalFeatureLookup()
   const skillChoice = cls.startingProficiencies?.skills?.find(s => s.choose)?.choose
   const skillOptions = (skillChoice?.from ?? []).map(skill => ({ option_type: 'reference', item: skillRef(skill) }))
   const armor = (cls.startingProficiencies?.armor ?? []).map(name => ref(`${name} armor proficiency`))
   const weapons = (cls.startingProficiencies?.weapons ?? []).map(name => ref(`${name} weapon proficiency`))
   const features = (module.classFeature ?? [])
     .filter(feature => feature.className === cls.name && (!feature.classSource || feature.classSource === cls.source))
-    .map(normalizeClassFeature)
+    .map(feature => normalizeClassFeature(feature, optionalFeatures))
   const featuresByLevel = features.reduce((byLevel, feature) => {
     const level = String(feature.level ?? 1)
     byLevel[level] = [...(byLevel[level] ?? []), feature]

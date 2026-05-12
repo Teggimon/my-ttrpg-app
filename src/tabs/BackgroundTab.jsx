@@ -120,7 +120,7 @@ function AllyCard({ ally, isOwner, locked, onUpdate, onRemove }) {
   )
 }
 
-function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, storedFeatures, onEdit, onRemove, onSetPrimary, onLevelChange, canLevelUp }) {
+function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, storedFeatures, storedChoices, onEdit, onRemove, onSetPrimary, onLevelChange, canLevelUp }) {
   const [expanded, setExpanded] = useState(isPrimary)
   const [expandedLevels, setExpandedLevels] = useState({})
 
@@ -177,6 +177,14 @@ function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, storedFeatures, 
                         {feats.map(f => (
                           <div key={f.index} className="ability-entry">
                             <div className="ability-name">{f.name}</div>
+                            {storedChoices
+                              ?.filter(choice => choice.featureIndex === f.index)
+                              .map(choice => (
+                                <div key={choice.choiceKey ?? choice.featureIndex} className="ability-desc">
+                                  Chosen: {(choice.options ?? []).map(option => option.name).join(', ')}
+                                </div>
+                              ))
+                            }
                             {f.desc?.[0] && <div className="ability-desc">{f.desc.slice(0,2).join(' ').slice(0, 300)}{(f.desc.join(' ')).length > 300 ? '…' : ''}</div>}
                           </div>
                         ))}
@@ -440,6 +448,7 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
 
   const classSummary = classes.map(c => `${c.name} ${c.level}`).join(' / ')
   const storedClassFeatures = char.customContent?.classFeatures ?? []
+  const storedClassFeatureChoices = char.customContent?.classFeatureChoices ?? []
   const backgroundFeature = char.customContent?.backgroundFeature ?? char.identity?.backgroundFeature ?? srdBackground?.feature ?? null
 
   return (
@@ -530,6 +539,10 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
                 storedFeatures={storedClassFeatures.filter(feature => (
                   feature.classIndex === cls.index ||
                   feature.className?.toLowerCase() === cls.name?.toLowerCase()
+                ))}
+                storedChoices={storedClassFeatureChoices.filter(choice => (
+                  choice.classIndex === cls.index ||
+                  choice.className?.toLowerCase() === cls.name?.toLowerCase()
                 ))}
                 onEdit={() => {}}
                 onRemove={() => removeClass(idx)}

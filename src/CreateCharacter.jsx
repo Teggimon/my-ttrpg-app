@@ -29,6 +29,7 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     raceBonusOptions = [],   // [{ability_score:{index}, bonus}]
     classSkills = [],        // ['skill-perception', ...]
     classEquipment = [],     // [{index, name, quantity}]
+    classFeatureChoices = [],
     backgroundLanguages = [],
     backgroundEquipment = [],
     backgroundFeature = null,
@@ -216,6 +217,7 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     },
     customContent: {
       classFeatures,
+      classFeatureChoices,
       backgroundFeature: backgroundFeature ?? null,
     },
     notes: {
@@ -969,13 +971,31 @@ async function fetchCategoryItems(categoryIndex) {
   } catch { return [] }
 }
 
-function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEquipment, onEquipmentChange, onNext, onBack }) {
+function classFeatureChoiceGroups(classData) {
+  return Object.values(classData?.features_by_level ?? {})
+    .flat()
+    .filter(feature => (feature.level ?? 1) <= 1)
+    .flatMap(feature => (feature.choices ?? []).map(choice => ({
+      ...choice,
+      choiceKey: `${feature.index}:${choice.choiceIndex ?? 0}`,
+      feature: {
+        index: feature.index,
+        name: feature.name,
+        className: classData?.name,
+        classIndex: classData?.index,
+        level: feature.level ?? 1,
+      },
+    })))
+}
+
+function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEquipment, onEquipmentChange, selectedFeatureChoices, onFeatureChoicesChange, onNext, onBack }) {
   const [categoryItems, setCategoryItems] = useState({}) // { choiceId: [items] }
   const [categorySourceFilters, setCategorySourceFilters] = useState({})
   const [expandedChoice, setExpandedChoice] = useState(null) // choiceId being expanded
 
   const profChoices = classData.proficiency_choices?.filter(pc => pc.type === 'proficiencies') ?? []
   const equipOptions = classData.starting_equipment_options ?? []
+  const featureChoiceGroups = classFeatureChoiceGroups(classData)
 
   // Collect all skill choices across all proficiency_choices groups
   const allSkillGroups = profChoices.map((pc, gi) => ({
@@ -1062,6 +1082,41 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
       return have >= need
     })
   })
+  const allFeatureChoicesSelected = featureChoiceGroups.every(choice => {
+    const selected = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
+    return (selected?.options?.length ?? 0) >= (choice.choose ?? 1)
+  })
+
+  const toggleFeatureOption = (choice, option) => {
+    const existing = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
+    const currentOptions = existing?.options ?? []
+    const checked = currentOptions.some(item => item.id === option.id)
+    const choose = choice.choose ?? 1
+    const nextOptions = checked
+      ? currentOptions.filter(item => item.id !== option.id)
+      : currentOptions.length >= choose
+      ? currentOptions
+      : [...currentOptions, {
+        id: option.id,
+        name: option.name,
+        source: option.source,
+        desc: option.desc,
+        featureType: option.featureType,
+      }]
+    const nextChoice = {
+      choiceKey: choice.choiceKey,
+      featureIndex: choice.feature.index,
+      featureName: choice.feature.name,
+      className: choice.feature.className,
+      classIndex: choice.feature.classIndex,
+      gainedAtLevel: choice.feature.level,
+      options: nextOptions,
+    }
+    onFeatureChoicesChange([
+      ...selectedFeatureChoices.filter(item => item.choiceKey !== choice.choiceKey),
+      nextChoice,
+    ])
+  }
 
   return (
     <div style={S.wrap}>
@@ -1104,6 +1159,37 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
     })}
   </div>
 ))}
+
+      {/* Feature choices */}
+      {featureChoiceGroups.map(choice => {
+        const selected = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
+        const selectedOptions = selected?.options ?? []
+        const choose = choice.choose ?? 1
+        return (
+          <div key={choice.choiceKey}>
+            <label style={S.label}>{choice.feature.name}</label>
+            <div style={S.cardSub}>Choose {choose} {choose === 1 ? 'option' : 'options'}.</div>
+            {choice.options.map(option => {
+              const checked = selectedOptions.some(item => item.id === option.id)
+              const disabled = !checked && selectedOptions.length >= choose
+              return (
+                <div
+                  key={option.id}
+                  style={{ ...S.checkRow, alignItems:'flex-start', opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                  onClick={() => !disabled && toggleFeatureOption(choice, option)}
+                >
+                  <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem', lineHeight:1.2 }}>{checked ? '◉' : '○'}</span>
+                  <span style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                    <span>{option.name}</span>
+                    {option.desc?.[0] && <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)', lineHeight:1.35 }}>{option.desc[0].slice(0, 180)}{option.desc[0].length > 180 ? '…' : ''}</span>}
+                  </span>
+                  {option.source && <span style={{ marginLeft:'auto' }}><SourceBadge item={option} /></span>}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
 
       {/* Equipment choices */}
       {equipGroups.map((group) => (
@@ -1214,13 +1300,14 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
 
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
-        <button style={S.btn(true)} onClick={onNext} disabled={!allSkillsSelected || !allEquipSelected}>
+        <button style={S.btn(true)} onClick={onNext} disabled={!allSkillsSelected || !allEquipSelected || !allFeatureChoicesSelected}>
           Next: Background →
         </button>
       </div>
-      {(!allSkillsSelected || !allEquipSelected) && (
+      {(!allSkillsSelected || !allEquipSelected || !allFeatureChoicesSelected) && (
         <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
           {!allSkillsSelected && <div>Skills not complete ({allSkillGroups.map(g => `${selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length}/${g.choose}`).join(', ')})</div>}
+          {!allFeatureChoicesSelected && <div>Feature choices not complete.</div>}
           {!allEquipSelected && <div>Equipment not complete — groups: {equipGroups.length}, selected groupIndexes: [{selectedEquipment.map(e => e.groupIndex).join(', ')}]</div>}
         </div>
       )}
@@ -1503,6 +1590,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const [subclassChoice, setSubclassChoice] = useState(null)
   const [classSkills, setClassSkills] = useState([])
   const [classEquipment, setClassEquipment] = useState([])
+  const [classFeatureChoices, setClassFeatureChoices] = useState([])
   const [abilityScores, setAbilityScores] = useState({ str:10, dex:10, con:10, int:10, wis:10, cha:10 })
   const [startingCantrips, setStartingCantrips] = useState([])
   const [startingSpells,   setStartingSpells]   = useState([])
@@ -1555,6 +1643,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           raceBonusOptions,
           classSkills,
           classEquipment: classEquipment.filter(e => !e.index.startsWith('__')),
+          classFeatureChoices,
           backgroundLanguages,
           backgroundEquipment: backgroundEquipment.filter(e => !e.index.startsWith('__')),
           backgroundFeature: backgroundData?.feature ?? null,
@@ -1592,6 +1681,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
     setSubclassChoice(null)
     setClassSkills([])
     setClassEquipment([])
+    setClassFeatureChoices([])
     setStartingCantrips([])
     setStartingSpells([])
   }
@@ -1678,6 +1768,8 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
             onSkillsChange={setClassSkills}
             selectedEquipment={classEquipment}
             onEquipmentChange={setClassEquipment}
+            selectedFeatureChoices={classFeatureChoices}
+            onFeatureChoicesChange={setClassFeatureChoices}
             onNext={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_ABILITY_SCORES)}
             onBack={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS)}
           />

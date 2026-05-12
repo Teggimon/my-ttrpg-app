@@ -46,6 +46,12 @@ function ammoKindFromName(value) {
   return null
 }
 
+function hasClassFeatureChoice(char, optionName) {
+  return (char.customContent?.classFeatureChoices ?? []).some(choice =>
+    (choice.options ?? []).some(option => option.name === optionName)
+  )
+}
+
 function isMagicItem(item, srdMap) {
   const srd = srdMap[item.index] ?? {}
   return !!(
@@ -97,7 +103,8 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     const useAttr  = isRanged || (isFin && dexMod > strMod) ? 'dex' : 'str'
     const attrMod  = useAttr === 'dex' ? dexMod : strMod
     const enh      = item.enhancement ?? 0
-    const toHit    = attrMod + pb + enh
+    const archeryBonus = usesAmmo && hasClassFeatureChoice(char, 'Archery') ? 2 : 0
+    const toHit    = attrMod + pb + enh + archeryBonus
     const dmgMod   = attrMod + enh
 
     // Damage: prefer stored item.damage, fallback to SRD
@@ -106,7 +113,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     if (!damageDice) return null
 
     const dmgStr = `${damageDice}${dmgMod !== 0 ? fmtB(dmgMod) : ''} ${damageType}`.trim()
-    const breakdown = `${useAttr.toUpperCase()} ${fmtB(attrMod)}, Prof ${fmtB(pb)}${enh > 0 ? `, Magic +${enh}` : ''}`
+    const breakdown = `${useAttr.toUpperCase()} ${fmtB(attrMod)}, Prof ${fmtB(pb)}${enh > 0 ? `, Magic +${enh}` : ''}${archeryBonus ? ', Archery +2' : ''}`
 
     return { toHit, dmgStr, breakdown, usesAmmo }
   }
