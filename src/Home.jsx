@@ -20,6 +20,13 @@ function classLine(char) {
   return (char.identity?.class ?? []).map(c => `${c.name} ${c.level}`).join(' / ')
 }
 
+function characterFileName(char) {
+  const explicit = char?._fileName
+  if (explicit) return explicit.endsWith('.json') ? explicit : `${explicit}.json`
+  const name = char?.identity?.name ?? 'character'
+  return `${name.toLowerCase().replace(/\s+/g, '-')}.json`
+}
+
 // ── Character Card ────────────────────────────────────────────
 
 function CharCard({ char, onClick, onDelete }) {
@@ -30,8 +37,8 @@ function CharCard({ char, onClick, onDelete }) {
   useEffect(() => {
     if (!menuOpen) return
     const close = () => setMenuOpen(false)
-    window.addEventListener('pointerdown', close)
-    return () => window.removeEventListener('pointerdown', close)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
   }, [menuOpen])
 
   return (
@@ -191,22 +198,53 @@ export default function Home({
     if (!confirmDelete) return
     setDeleteLoading(true)
     try {
-      const { data: fd } = await octokit.repos.getContent({
-        owner: user.login, repo: repoName,
-        path: `characters/${confirmDelete._fileName}`,
-      })
+      let fileName = characterFileName(confirmDelete)
+      let fd
+      try {
+        const response = await octokit.repos.getContent({
+          owner: user.login, repo: repoName,
+          path: `characters/${fileName}`,
+        })
+        fd = response.data
+      } catch {
+        const { data: files } = await octokit.repos.getContent({
+          owner: user.login, repo: repoName, path: 'characters',
+        })
+        const jsonFiles = files.filter(f => f.name.endsWith('.json'))
+        for (const file of jsonFiles) {
+          const { data } = await octokit.repos.getContent({
+            owner: user.login, repo: repoName, path: file.path,
+          })
+          const parsed = JSON.parse(atob(data.content.replace(/\s/g, '')))
+          if (
+            parsed.meta?.characterId === confirmDelete.meta?.characterId ||
+            parsed.identity?.name === confirmDelete.identity?.name
+          ) {
+            fileName = file.name
+            fd = data
+            break
+          }
+        }
+      }
+      if (!fd?.sha) throw new Error('Could not resolve character file.')
+
       await octokit.repos.deleteFile({
         owner: user.login, repo: repoName,
-        path: `characters/${confirmDelete._fileName}`,
+        path: `characters/${fileName}`,
         message: `Delete character: ${confirmDelete.identity.name}`,
         sha: fd.sha,
       })
       setCharacters(prev =>
-        prev.filter(c => c.meta?.characterId !== confirmDelete.meta?.characterId)
+        prev.filter(c => {
+          const selectedId = confirmDelete.meta?.characterId
+          const sameId = selectedId && c.meta?.characterId === selectedId
+          const sameFile = characterFileName(c) === fileName
+          return !sameId && !sameFile
+        })
       )
       setConfirmDelete(null)
-    } catch {
-      alert('Failed to delete character.')
+    } catch (err) {
+      alert(`Failed to delete character: ${err.message}`)
     }
     setDeleteLoading(false)
   }

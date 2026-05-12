@@ -505,19 +505,17 @@
   justify-content: center;
   cursor: pointer;
   z-index: 2;
-  opacity: 0;
+  opacity: 1;
   backdrop-filter: blur(4px);
-  transition: opacity 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
   line-height: 1;
   padding-bottom: 2px;
 }
 
-/* Always visible on touch, hover-only on pointer devices */
-@media (hover: hover) {
-  .char-card:hover .char-card-menu-btn { opacity: 1; }
-}
-@media (hover: none) {
-  .char-card-menu-btn { opacity: 1; }
+.char-card-menu-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+  color: var(--text-primary);
 }
 
 .char-card-menu {
@@ -611,26 +609,23 @@
   inset: 0;
   background: var(--overlay-bg);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
+  padding: 20px;
   z-index: 100;
 }
 
 .modal-sheet {
   background: var(--bg-elevated);
   border: 0.5px solid var(--border-strong);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-lg);
   width: 100%;
   max-width: 480px;
-  padding: 0 20px 32px;
+  padding: 24px;
 }
 
 .modal-handle {
-  width: 36px;
-  height: 4px;
-  background: var(--border-strong);
-  border-radius: var(--radius-full);
-  margin: 12px auto 20px;
+  display: none;
 }
 
 .modal-title {
