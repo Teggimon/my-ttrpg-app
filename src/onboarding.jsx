@@ -71,7 +71,7 @@ export default function Onboarding({ token, user, onComplete }) {
   }
 
   // ════════════════════════════════════════
-  //  Step 1 — Create character repo
+  //  Step 1 — Create app data repo
   // ════════════════════════════════════════
   if (step === 1) return (
     <div className="ob-body">
@@ -146,7 +146,7 @@ export default function Onboarding({ token, user, onComplete }) {
         <h1 className="ob-title">{isGM ? 'GM All Set!' : 'All set!'}</h1>
         <p className="ob-body-text">
           {isGM
-            ? 'Your character and campaign repositories are ready. Time to start your adventure.'
+            ? 'Your app data repository is ready for characters and campaigns. Time to start your adventure.'
             : 'Your app data repository is ready. Time to create your first character!'
           }
         </p>

@@ -5,7 +5,7 @@ export async function fetchPlayerCharacters(username) {
   const res = await fetch(url, { headers: { Accept: 'application/vnd.github.v3+json' } })
 
   if (!res.ok) {
-    if (res.status === 404) throw new Error(`No character repo found for @${username}. Have they set up the app yet?`)
+    if (res.status === 404) throw new Error(`No app data repo found for @${username}. Have they set up the app yet?`)
     if (res.status === 403) throw new Error('GitHub rate limit hit — wait a moment and try again.')
     throw new Error(`Could not reach @${username}'s repo (HTTP ${res.status})`)
   }

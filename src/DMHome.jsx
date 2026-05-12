@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
-import { CAMPAIGNS_PATH, DATA_REPO, repoDescription } from './githubStorage'
+import { APP_META_PATH, CAMPAIGNS_PATH, DATA_REPO, repoDescription } from './githubStorage'
 import './DMHome.css'
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -208,7 +208,7 @@ function NoRepoState({ onSetup, loading }) {
   return (
     <div className="no-repo-state">
       <img src="/uploads/placeholders/default-portrait.jpg" alt="" className="no-repo-img" />
-      <div className="no-repo-title">No campaign repository found</div>
+      <div className="no-repo-title">No app data repository found</div>
       <div className="no-repo-body">
         Your campaigns live in your app data repository,{' '}
         <code>{DATA_REPO}</code>. It doesn't exist yet — create it to get started.
@@ -290,6 +290,13 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
         description: repoDescription(),
         auto_init:   true,
         private:     false,
+      })
+      await octokit.repos.createOrUpdateFileContents({
+        owner: user.login,
+        repo: DATA_REPO,
+        path: APP_META_PATH,
+        message: 'Enable GM tools',
+        content: encodeContent({ isGM: true, updatedAt: new Date().toISOString() }),
       })
       setRepoExists(true)
       setCampaigns([])

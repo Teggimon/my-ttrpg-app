@@ -58,8 +58,8 @@ TTRPG App Design Brief.md  — feature and data spec. Read before any logic work
 ## 4. Data Layer — Non-Negotiable Rules
 
 ### GitHub as Database
-- Characters live at: `github.com/{user}/ttrpg-characters/characters/{filename}.json`
-- Campaigns live at: `github.com/{user}/ttrpg-campaigns/`
+- Characters live at: `github.com/{user}/ttrpg-app-data/characters/{filename}.json`
+- Campaigns live at: `github.com/{user}/ttrpg-app-data/campaigns/`
 - `saveCharacter()` in `App.jsx` fetches the existing SHA before writing — never skip the SHA fetch or you'll get a 409 conflict
 - Files are base64-encoded before commit: `btoa(unescape(encodeURIComponent(JSON.stringify(char, null, 2))))`
 
@@ -179,10 +179,10 @@ Temp HP renders as a separate segment in `--hp-temp`, extending right beyond the
 
 ## 9. Auth & Onboarding Flow
 1. GitHub OAuth → token stored as `gh_token` in localStorage
-2. Check if `ttrpg-characters` repo exists → `onboarded: true/false`
-3. Check if `ttrpg-campaigns` repo exists → `isGM: true/false`
-4. Onboarding creates the character repo and optionally the campaigns repo
-5. GM status is detected, not self-declared — repo existence = GM
+2. Check if `ttrpg-app-data` repo exists → `onboarded: true/false`
+3. Check `app-meta.json` in `ttrpg-app-data` → `isGM: true/false`
+4. Onboarding creates the app data repo and writes app metadata
+5. GM status is stored in app metadata, not inferred from a separate repo
 
 ---
 
