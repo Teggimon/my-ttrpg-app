@@ -111,68 +111,10 @@
   background: var(--accent-hover);
 }
 
-.inv-label-form {
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  margin: 0 0 12px;
-}
-
-.inv-label-input {
-  flex: 1;
-  min-width: 0;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-inset);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-size: 13px;
-  outline: none;
-}
-
-.inv-label-input::placeholder {
-  color: var(--text-muted);
-}
-
-.inv-label-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-subtle);
-}
-
-.inv-label-add {
-  flex: 0 0 auto;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--border-strong);
-  background: transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.inv-label-add:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent-light);
-}
-
-.inv-label-add:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
 @media (max-width: 640px) {
   .inv-top-actions {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .inv-label-form {
-    flex-direction: column;
   }
 
   .currency-tracker {
@@ -232,6 +174,135 @@
   color: var(--accent-light);
   border-color: var(--accent-border);
   border-style: solid;
+}
+
+/* ── Inventory labels ── */
+.inv-label-manager {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.inv-label-manager-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 8px;
+}
+
+.inv-label-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.inv-label-box {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+}
+
+.inv-label-box-name {
+  max-width: 180px;
+  padding: 0 0 0 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inv-label-delete {
+  width: 44px;
+  min-height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.inv-label-delete:hover {
+  color: var(--danger);
+  background: var(--danger-subtle);
+}
+
+.inv-label-add-box {
+  display: inline-flex;
+  align-items: stretch;
+  min-height: 44px;
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+}
+
+.inv-label-add-input {
+  width: 132px;
+  min-width: 0;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+}
+
+.inv-label-add-input::placeholder {
+  color: var(--text-muted);
+}
+
+.inv-label-add-button {
+  min-width: 72px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-left: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.inv-label-add-box:focus-within,
+.inv-label-add-box:hover {
+  border-color: var(--accent);
+}
+
+.inv-label-add-button:hover:not(:disabled) {
+  color: var(--accent-light);
+}
+
+.inv-label-add-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+@media (max-width: 640px) {
+  .inv-label-boxes,
+  .inv-label-box,
+  .inv-label-add-box {
+    width: 100%;
+  }
+
+  .inv-label-box {
+    justify-content: space-between;
+  }
+
+  .inv-label-box-name {
+    max-width: none;
+  }
+
+  .inv-label-add-input {
+    flex: 1;
+    width: auto;
+  }
 }
 
 /* ── Subsection (Weapons / Attuned / etc.) ── */
@@ -630,6 +701,35 @@
 .inv-action-btn:hover { background: var(--bg-elevated); color: var(--text-primary); }
 .inv-action-btn--danger { border-color: var(--danger-border); color: var(--danger); }
 .inv-action-btn--danger:hover { background: var(--danger-subtle); }
+
+.inv-confirm-modal {
+  width: min(360px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.inv-confirm-title {
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.inv-confirm-body {
+  margin: 8px 0 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.inv-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
 /* ── Inventory add modal / picker ── */
 .inv-modal-overlay {

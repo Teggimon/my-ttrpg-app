@@ -722,6 +722,61 @@ function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
   )
 }
 
+function InventoryLabelManager({ labels, value, onValueChange, onAdd, onRequestDelete }) {
+  return (
+    <div className="inv-label-manager">
+      <div className="inv-label-manager-head">
+        <span className="inv-section-label">Inventory Labels</span>
+      </div>
+      <div className="inv-label-boxes">
+        {labels.map(label => (
+          <div key={label.id} className="inv-label-box">
+            <span className="inv-label-box-name">{label.name}</span>
+            <button
+              className="inv-label-delete"
+              type="button"
+              onClick={() => onRequestDelete(label)}
+              aria-label={`Delete ${label.name} label`}
+              title={`Delete ${label.name}`}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        <form className="inv-label-add-box" onSubmit={e => { e.preventDefault(); onAdd() }}>
+          <input
+            className="inv-label-add-input"
+            value={value}
+            onChange={e => onValueChange(e.target.value)}
+            placeholder="Label name"
+            aria-label="New inventory label"
+          />
+          <button className="inv-label-add-button" type="submit" disabled={!labelName(value)}>
+            + Add
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function DeleteLabelModal({ label, onCancel, onConfirm }) {
+  return (
+    <div className="inv-modal-overlay" onClick={onCancel}>
+      <div className="inv-confirm-modal" onClick={e => e.stopPropagation()}>
+        <div className="inv-confirm-title">Delete {label.name}?</div>
+        <p className="inv-confirm-body">
+          Items in this label will move back to Main inventory.
+        </p>
+        <div className="inv-confirm-actions">
+          <button className="inv-action-btn" type="button" onClick={onCancel}>Cancel</button>
+          <button className="inv-action-btn inv-action-btn--danger" type="button" onClick={onConfirm}>Delete</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
 export default function InventoryTab({ char, locked, isOwner, updateChar }) {
@@ -730,6 +785,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const [editItem,   setEditItem]   = useState(null)
   const [expandedId, setExpandedId] = useState(null)
   const [newLabelName, setNewLabelName] = useState('')
+  const [deleteLabel, setDeleteLabel] = useState(null)
 
   useEffect(() => {
     Promise.all([getEquipment().catch(() => []), getMagicItems().catch(() => [])])
@@ -784,6 +840,22 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     }
     saveInventoryLabels([...inventoryLabels, { id: uuidv4(), name }])
     setNewLabelName('')
+  }
+
+  function removeInventoryLabel(labelId) {
+    const nextLabels = inventoryLabels.filter(label => label.id !== labelId)
+    const nextInventory = inventory.map(item => {
+      if (item.inventoryLabelId !== labelId) return item
+      const next = { ...item }
+      delete next.inventoryLabelId
+      return next
+    })
+    updateChar({
+      inventory: nextInventory,
+      settings: { ...char.settings, inventoryLabels: nextLabels },
+      combat: { ...char.combat, ac: computeAC(nextInventory, char.stats?.abilityScores, srdMap) },
+    })
+    setDeleteLabel(null)
   }
 
   function toggleEquip(itemId) {
@@ -986,19 +1058,6 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
         )}
       </div>
 
-      {isOwner && !locked && (
-        <form className="inv-label-form" onSubmit={e => { e.preventDefault(); addInventoryLabel() }}>
-          <input
-            className="inv-label-input"
-            value={newLabelName}
-            onChange={e => setNewLabelName(e.target.value)}
-            placeholder="New inventory label…"
-            aria-label="New inventory label"
-          />
-          <button className="inv-label-add" type="submit" disabled={!labelName(newLabelName)}>+ Add Label</button>
-        </form>
-      )}
-
       {showAddModal && (
         <AddInventoryModal
           inventory={inventory}
@@ -1122,7 +1181,25 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
               <p className="empty-hint">Bag is empty.</p>
             )}
           </div>
+
+          {isOwner && !locked && (
+            <InventoryLabelManager
+              labels={inventoryLabels}
+              value={newLabelName}
+              onValueChange={setNewLabelName}
+              onAdd={addInventoryLabel}
+              onRequestDelete={setDeleteLabel}
+            />
+          )}
         </>
+      )}
+
+      {deleteLabel && (
+        <DeleteLabelModal
+          label={deleteLabel}
+          onCancel={() => setDeleteLabel(null)}
+          onConfirm={() => removeInventoryLabel(deleteLabel.id)}
+        />
       )}
     </div>
   )
