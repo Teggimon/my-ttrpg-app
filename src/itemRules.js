@@ -69,7 +69,7 @@ export function canonicalizeAmmoItem(item) {
   const def = AMMO_DEFS[kind]
   const count = bundleCount(item.name)
   const quantityMultiplier = count && count > 1 ? count : item.quantityMultiplier
-  return {
+  const canonical = {
     ...item,
     index: def.index,
     name: def.name,
@@ -80,6 +80,8 @@ export function canonicalizeAmmoItem(item) {
     equipment_category_index: 'ammunition',
     ...(quantityMultiplier ? { quantityMultiplier } : {}),
   }
+  delete canonical.pack_contents
+  return canonical
 }
 
 export function inventoryItemFromCatalogItem(catalogItem, quantity = 1) {

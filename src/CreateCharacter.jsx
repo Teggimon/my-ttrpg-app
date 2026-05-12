@@ -41,7 +41,7 @@ function effectiveRaceAbilityChoice(raceData, subraceData) {
 
 // ─── Character builder ────────────────────────────────────────────────────────
 
-function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores, startingCantrips, startingSpells, equipmentCatalog = [] }) {
+export function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores, startingCantrips, startingSpells, equipmentCatalog = [] }) {
   const {
     raceBonusOptions = [],   // [{ability_score:{index}, bonus}]
     classSkills = [],        // ['skill-perception', ...]
@@ -114,17 +114,33 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
   // 8. Inventory: class starting_equipment + chosen class equipment + background equipment
   const inventory = []
   const equipmentByIndex = Object.fromEntries(equipmentCatalog.map(item => [item.index, item]))
-  const addInventoryItem = (item, originPack = null) => {
-    const catalogItem = equipmentByIndex[item.index] ?? equipmentByIndex[normalizeInventoryItem(item).index]
+  const addInventoryItem = (item, originPack = null, packTrail = []) => {
+    const normalizedInput = normalizeInventoryItem(item)
+    const catalogItem = equipmentByIndex[item.index] ?? equipmentByIndex[normalizedInput.index]
     if (catalogItem?.pack_contents?.length) {
+      if (packTrail.includes(catalogItem.index)) {
+        inventory.push({
+          itemId: uuidv4(),
+          equipped: false,
+          ...inventoryItemFromCatalogItem(catalogItem, item.quantity ?? 1),
+          ...(originPack && { sourcePack: originPack }),
+        })
+        return
+      }
       for (const packItem of catalogItem.pack_contents) {
-        addInventoryItem({ ...packItem, quantity: (packItem.quantity ?? 1) * (item.quantity ?? 1) }, catalogItem.name)
+        addInventoryItem(
+          { ...packItem, quantity: (packItem.quantity ?? 1) * (item.quantity ?? 1) },
+          catalogItem.name,
+          [...packTrail, catalogItem.index],
+        )
       }
       return
     }
+    const quantityIsIndividualAmmoCount = normalizedInput.isAmmo && (item.quantity ?? 1) > 1
     const baseItem = catalogItem
-      ? inventoryItemFromCatalogItem(catalogItem, item.quantity ?? 1)
-      : normalizeInventoryItem({ index: item.index, name: item.name, quantity: item.quantity ?? 1, source: item.source })
+      ? inventoryItemFromCatalogItem(catalogItem, quantityIsIndividualAmmoCount ? 1 : item.quantity ?? 1)
+      : normalizedInput
+    if (quantityIsIndividualAmmoCount) baseItem.quantity = item.quantity
     inventory.push({
       itemId: uuidv4(),
       equipped: false,
