@@ -142,6 +142,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
   function skillLevel(key) {
     const v = skills[key]
     if (typeof v === 'number') return v
+    if (v?.expertise) return 2
     return v?.proficient ? 1 : 0
   }
 

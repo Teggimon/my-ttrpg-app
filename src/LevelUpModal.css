@@ -460,6 +460,144 @@
   color: var(--text-primary);
 }
 
+/* ── Level-up pickers ── */
+.lu-choice-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lu-choice-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lu-choice-hint {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.lu-search-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 9px 12px;
+  background: var(--bg-inset);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+}
+.lu-search-input:focus { border-color: var(--gold); }
+.lu-search-input::placeholder { color: var(--text-muted); }
+
+.lu-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.lu-picker-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+.lu-picker-row:hover:not(:disabled) {
+  border-color: var(--gold-border);
+  background: var(--gold-subtle);
+}
+.lu-picker-row:disabled { cursor: default; }
+.lu-picker-row--selected {
+  border-color: var(--gold);
+  background: var(--gold-subtle);
+  color: var(--text-primary);
+}
+
+.lu-picker-radio {
+  color: var(--gold);
+  font-size: 12px;
+}
+
+.lu-picker-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.lu-picker-meta {
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.lu-picker-badge {
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: var(--gold-subtle);
+  border: 0.5px solid var(--gold-border);
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.lu-skill-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lu-skill-chip {
+  min-height: 44px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.lu-skill-chip:hover {
+  border-color: var(--gold-border);
+  background: var(--gold-subtle);
+  color: var(--text-primary);
+}
+.lu-skill-chip--selected {
+  border-color: var(--gold);
+  background: var(--gold-subtle);
+  color: var(--text-primary);
+}
+
 /* ── Warning ── */
 .lu-warning {
   font-size: 11px;
