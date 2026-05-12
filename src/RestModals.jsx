@@ -45,6 +45,12 @@ function getHitDiceState(char) {
   return { available, max }
 }
 
+function hitDiceRecoveryAmount(mode, hdState) {
+  if (mode === 'none') return 0
+  if (mode === 'half') return Math.max(1, Math.floor(hdState.max / 2))
+  return hdState.max
+}
+
 // Concentration spell
 function getConcentration(char) {
   const concIdx = char.spells?.concentration
@@ -182,10 +188,14 @@ export function LongRestModal({ char, onConfirm, onClose }) {
   const concentration = getConcentration(char)
   const deathSaves = char.combat?.deathSaves ?? { successes: 0, failures: 0 }
 
-  const hdRestored  = Math.max(0, hdState.max - hdState.available)
-  const newHdTotal  = hdState.max
+  const hitDiceMode = char.settings?.hitDiceRecovery ?? 'all'
+  const hpMode      = char.settings?.longRestHpRecovery ?? 'full'
+  const hdRecover   = hitDiceRecoveryAmount(hitDiceMode, hdState)
+  const newHdTotal  = Math.min(hdState.max, hdState.available + hdRecover)
+  const hdRestored  = Math.max(0, newHdTotal - hdState.available)
+  const newHpTotal  = hpMode === 'hit-dice' ? hpCur : hpMax
 
-  const hpGain     = hpMax - hpCur
+  const hpGain     = newHpTotal - hpCur
   const hasSlots   = Object.values(slots).some(s => s?.max > 0)
   const hasDeaths  = deathSaves.successes > 0 || deathSaves.failures > 0
 
@@ -205,7 +215,7 @@ export function LongRestModal({ char, onConfirm, onClose }) {
       ...char,
       combat: {
         ...char.combat,
-        hpCurrent:        hpMax,
+        hpCurrent:        newHpTotal,
         hitDiceAvailable: newHdTotal,
         classAbilities:   updatedAbilities,
         deathSaves:       { successes: 0, failures: 0 },
@@ -231,7 +241,7 @@ export function LongRestModal({ char, onConfirm, onClose }) {
 
         <div className="rest-title-row">
           <div className="rest-title">Long Rest</div>
-          <div className="rest-sub">A long rest of at least 8 hours fully restores HP, spell slots, and most abilities.</div>
+          <div className="rest-sub">A long rest restores spell slots and abilities. HP and Hit Dice follow your Options settings.</div>
         </div>
 
         <div className="rest-summary">
@@ -241,6 +251,7 @@ export function LongRestModal({ char, onConfirm, onClose }) {
             <span className="rest-label">HP restored</span>
             <span className="rest-val rest-val--green">
               {hpCur} → {hpMax} HP
+              {hpMode === 'hit-dice' && <span className="rest-val--muted"> (manual HD spend)</span>}
               {hpGain > 0 && <span className="rest-delta"> (+{hpGain})</span>}
               {hpGain === 0 && <span className="rest-val--muted"> (already full)</span>}
             </span>
@@ -260,7 +271,7 @@ export function LongRestModal({ char, onConfirm, onClose }) {
           <div className="rest-row">
             <span className="rest-label">Hit Dice restored</span>
             <span className="rest-val rest-val--green">
-              +{Math.min(hdRestored, hdState.max - hdState.available)} d{die}
+              +{hdRestored} d{die}
               <span className="rest-val--muted"> ({newHdTotal}/{hdState.max} total)</span>
             </span>
           </div>

@@ -177,7 +177,7 @@ function rowChips(item, srdMap, abilityScores) {
 
 // ── Item row ──────────────────────────────────────────────────────────────────
 
-function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onCharges, onRemove, onEdit, showQty, attunedCount }) {
+function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onCharges, onRemove, onEdit, showQty, attunedCount, attunementLimit }) {
   const chips     = rowChips(item, srdMap, abilityScores)
   const reqAttune = needsAttunement(item, srdMap)
   const canEquip  = isItemEquippable(item, srdMap)
@@ -201,8 +201,8 @@ function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onTog
           <button
             className={`inv-attune-dot${item.attuned ? ' inv-attune-dot--on' : ''}`}
             onClick={e => { e.stopPropagation(); if (isOwner && !locked) onAttune() }}
-            disabled={!isOwner || locked || (!item.attuned && attunedCount >= 3)}
-            title={item.attuned ? 'Unattune' : attunedCount >= 3 ? 'Max 3 items attuned' : 'Attune'}
+            disabled={!isOwner || locked || (!item.attuned && attunedCount >= attunementLimit)}
+            title={item.attuned ? 'Unattune' : attunedCount >= attunementLimit ? `Max ${attunementLimit} items attuned` : 'Attune'}
             aria-label={item.attuned ? 'Unattune' : 'Attune'}
           />
         ) : (
@@ -734,6 +734,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
 
   // Weight tracking
   const tracking    = char.settings?.encumbranceTracking
+  const attunementLimit = Math.max(0, Number(char.settings?.attunementLimit ?? 3))
   const strScore    = char.stats?.abilityScores?.str ?? 10
   const capacity    = strScore * 15
   const totalWeight = inventory.reduce((s, i) => s + (i.weight ?? srdMap[i.index]?.weight ?? 0) * (i.quantity ?? 1), 0)
@@ -761,7 +762,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     const item     = inventory.find(i => i.itemId === itemId)
     const attuning = !item?.attuned
     const count    = inventory.filter(i => i.attuned && i.itemId !== itemId).length
-    if (attuning && count >= 3) return
+    if (attuning && count >= attunementLimit) return
     // Attuning auto-equips; unattuning leaves equipped state alone
     save(inventory.map(i => i.itemId === itemId
       ? { ...i, attuned: attuning, equipped: attuning ? true : i.equipped }
@@ -883,6 +884,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
         onEdit={() => { setEditItem(item); setExpandedId(null) }}
         showQty={showQty}
         attunedCount={attunedCount}
+        attunementLimit={attunementLimit}
       />
     )
   }
@@ -960,8 +962,8 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
                 <div className="inv-sub-head">
                   <span>Attuned</span>
                   <div className="inv-attune-pips">
-                    {[0,1,2].map(i => <span key={i} className={`inv-pip${i < attunedCount ? ' inv-pip--on' : ''}`} />)}
-                    <span className="inv-pip-count">{attunedCount} / 3</span>
+                    {Array.from({ length: Math.min(attunementLimit, 6) }, (_, i) => <span key={i} className={`inv-pip${i < attunedCount ? ' inv-pip--on' : ''}`} />)}
+                    <span className="inv-pip-count">{attunedCount} / {attunementLimit}</span>
                   </div>
                 </div>
                 {attunedItems.map(item => renderRow(item))}

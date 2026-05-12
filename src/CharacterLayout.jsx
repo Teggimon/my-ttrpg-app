@@ -7,6 +7,7 @@ import SpellsTab from './tabs/SpellsTab'
 import InventoryTab from './tabs/InventoryTab'
 import NotesTab from './tabs/NotesTab'
 import BackgroundTab, { AboutTab } from './tabs/BackgroundTab'
+import OptionsTab from './tabs/OptionsTab'
 import './CharacterLayout.css'
 
 const TABS = [
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'about',      label: 'About',      icon: 'AB' },
   { id: 'background', label: 'Background', icon: 'BG' },
   { id: 'notes',      label: 'Notes',      icon: 'NT' },
+  { id: 'options',    label: 'Options',    icon: 'OP' },
 ]
 
 function useIsLandscape() {
@@ -66,6 +68,7 @@ export default function CharacterLayout({
       {activeTab === 'about'      && <AboutTab {...tabProps} />}
       {activeTab === 'background' && <BackgroundTab {...tabProps} />}
       {activeTab === 'notes'      && <NotesTab      {...tabProps} />}
+      {activeTab === 'options'    && <OptionsTab    {...tabProps} />}
     </div>
   )
 

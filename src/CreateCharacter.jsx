@@ -281,7 +281,19 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     },
     settings: {
       encumbranceTracking: false,
+      encumbranceMode: 'disabled',
+      attunementLimit: 3,
+      spellComponents: 'all',
+      concentrationMode: 'raw',
+      cantripScaling: 'character',
+      hitDiceRecovery: 'all',
+      longRestHpRecovery: 'full',
+      longRestDuration: '8h',
+      shortRestDuration: '1h',
+      shortRestsPerLongRest: 2,
+      levellingSystem: 'xp',
       milestoneMode: false,
+      multiclassing: 'enabled',
     },
   }
 }

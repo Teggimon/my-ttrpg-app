@@ -1,0 +1,140 @@
+.opt-root {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+.opt-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.opt-group-title {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.opt-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opt-rule {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.opt-rule-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.opt-rule-label {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.opt-rule-note {
+  max-width: 360px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.opt-choice-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.opt-choice {
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.opt-choice small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.opt-choice--active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent-light);
+}
+
+.opt-choice:disabled,
+.opt-number:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.opt-rule--number {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  align-items: center;
+  gap: 12px;
+}
+
+.opt-rule--number .opt-rule-head {
+  margin-bottom: 0;
+}
+
+.opt-number {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+}
+
+@media (max-width: 700px) {
+  .opt-root {
+    padding: 14px;
+  }
+
+  .opt-rule-head {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .opt-rule-note {
+    max-width: none;
+    text-align: left;
+  }
+
+  .opt-rule--number {
+    grid-template-columns: 1fr;
+  }
+}
