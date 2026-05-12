@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Octokit } from '@octokit/rest'
 import { v4 as uuidv4 } from 'uuid'
 import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment } from './srdContent'
 import { SUBCLASSES, SUBCLASS_LEVELS, getSlotsForClass, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
@@ -16,18 +15,6 @@ const SPELLCASTING_ABILITY = {
 const SKILL_INDEX_TO_STAT_KEY = {
   'animal-handling': 'animalHandling',
   'sleight-of-hand': 'sleightOfHand',
-}
-
-const CHARACTERS_REPO = 'ttrpg-characters'
-
-function stringToBase64(value) {
-  const bytes = new TextEncoder().encode(value)
-  let binary = ''
-  const chunkSize = 0x8000
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
-  }
-  return btoa(binary)
 }
 
 function characterFileName(name) {
@@ -1633,7 +1620,7 @@ function ProgressBar({ step, totalSteps }) {
 
 // ─── Main wizard ──────────────────────────────────────────────────────────────
 
-function CreateCharacter({ token, user, onComplete, onCancel }) {
+function CreateCharacter({ user, onComplete, onCancel }) {
   const [step, setStep] = useState(0)
   const [error, setError] = useState(null)
   const [creating, setCreating] = useState(false)
@@ -1663,9 +1650,6 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const [backgroundLanguages, setBackgroundLanguages] = useState([])
   const [backgroundEquipment, setBackgroundEquipment] = useState([])
   const [alignment, setAlignment] = useState('')
-
-  const octokit = new Octokit({ auth: token })
-  const repoName = localStorage.getItem('character_repo') || CHARACTERS_REPO
 
   useEffect(() => {
     Promise.all([getRaces(), getSubraces(), getClasses(), getBackgrounds(), getEquipment()])
@@ -1716,25 +1700,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
         },
       })
       const fileName = characterFileName(name)
-      const path = `characters/${fileName}`
-      let sha
-      try {
-        const { data } = await octokit.repos.getContent({
-          owner: user.login,
-          repo: repoName,
-          path,
-        })
-        sha = Array.isArray(data) ? undefined : data.sha
-      } catch { /* new character file */ }
-      await octokit.repos.createOrUpdateFileContents({
-        owner: user.login,
-        repo: repoName,
-        path,
-        message: `Add character: ${name}`,
-        content: stringToBase64(JSON.stringify(character, null, 2)),
-        ...(sha ? { sha } : {}),
-      })
-      onComplete(character)
+      await onComplete({ ...character, _fileName: fileName })
     } catch (err) {
       setError(err.message)
       setCreating(false)

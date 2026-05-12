@@ -25,6 +25,27 @@ function fileToBase64(file) {
   })
 }
 
+function stringToBase64(value) {
+  const bytes = new TextEncoder().encode(value)
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
+
+function safeCharacterFileName(character) {
+  const existing = character._fileName
+  if (existing) return existing.endsWith('.json') ? existing : `${existing}.json`
+  const slug = String(character.identity?.name ?? 'character')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${slug || 'character'}.json`
+}
+
 function safeFilePart(value, fallback = 'image') {
   return (value || fallback)
     .toLowerCase()
@@ -123,24 +144,25 @@ function App() {
     // Update local state immediately so controlled inputs reflect changes
     setSelectedCharacter(character)
 
-    const fileName = character._fileName
-      ?? character.identity.name.toLowerCase().replace(/\s+/g, '-') + '.json'
+    const fileName = safeCharacterFileName(character)
     const path    = `characters/${fileName}`
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(character, null, 2))))
+    const { _fileName, ...persistedCharacter } = character
+    void _fileName
+    const content = stringToBase64(JSON.stringify(persistedCharacter, null, 2))
 
     let sha
     try {
       const { data } = await octokit.repos.getContent({
         owner: user.login, repo: CHARACTERS_REPO, path,
       })
-      sha = data.sha
+      sha = Array.isArray(data) ? undefined : data.sha
     } catch { /* new file */ }
 
     await octokit.repos.createOrUpdateFileContents({
       owner:   user.login,
       repo:    CHARACTERS_REPO,
       path,
-      message: `Update character: ${character.identity.name}`,
+      message: `Update character: ${persistedCharacter.identity.name}`,
       content,
       ...(sha ? { sha } : {}),
     })
@@ -287,9 +309,11 @@ function App() {
   if (screen === 'create') return (
     <div className="screen-scroll">
       <CreateCharacter
-        token={token}
         user={user}
-        onComplete={() => setScreen('home')}
+        onComplete={async (character) => {
+          await saveCharacter(character)
+          setScreen('home')
+        }}
         onCancel={() => setScreen('home')}
       />
     </div>
