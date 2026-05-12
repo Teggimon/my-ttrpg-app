@@ -355,7 +355,7 @@ function EffectRow({ effect, onChange, onRemove }) {
   )
 }
 
-function CustomItemForm({ initial, onSave, onCancel }) {
+function CustomItemForm({ initial, onSave, onCancel, embedded = false }) {
   const [name,     setName]     = useState(initial?.name ?? '')
   const [type,     setType]     = useState(initial?.type ?? 'Gear')
   const [weight,   setWeight]   = useState(initial?.weight ?? '')
@@ -408,13 +408,13 @@ function CustomItemForm({ initial, onSave, onCancel }) {
   const tog = (on) => ({ display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, color: on ? 'var(--accent-light)' : 'var(--text-muted)', userSelect:'none' })
 
   return (
-    <div className="item-picker card" style={{ padding:'12px 14px' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+    <div className={embedded ? 'custom-item-form custom-item-form--embedded' : 'item-picker card'} style={{ padding:'12px 14px' }}>
+      {!embedded && <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
         <span style={{ fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>
           {initial ? 'Edit Item' : 'New Item'}
         </span>
         <button className="ip-close" onClick={onCancel}>✕</button>
-      </div>
+      </div>}
 
       <label style={lbl}>Name</label>
       <input style={inp} value={name} onChange={e => setName(e.target.value)} placeholder="Item name…" autoFocus />
@@ -527,99 +527,167 @@ function CustomItemForm({ initial, onSave, onCancel }) {
   )
 }
 
-// ── SRD picker ────────────────────────────────────────────────────────────────
+// ── Universal inventory modal ────────────────────────────────────────────────
 
-function SrdPicker({ onAdd, onClose }) {
-  const [tab,      setTab]      = useState('equipment')
+function catalogItemToInventoryItem(srdItem) {
+  return {
+    itemId:   uuidv4(),
+    index:    srdItem.index,
+    name:     srdItem.name,
+    source:   srdItem.source,
+    quantity: 1,
+    equipped: false,
+    ...(srdItem.armor_class         && { armor_class:        srdItem.armor_class }),
+    ...(srdItem.armor_category      && { armor_category:     srdItem.armor_category }),
+    ...(srdItem.weight              && { weight:              srdItem.weight }),
+    ...(srdItem.damage              && { damage: { dice: srdItem.damage.damage_dice, type: srdItem.damage.damage_type?.name } }),
+    ...(srdItem.rarity              && { rarity:              typeof srdItem.rarity === 'string' ? srdItem.rarity : srdItem.rarity.name }),
+    ...(srdItem.requires_attunement && { requiresAttunement:  true }),
+    ...(srdItem.desc?.length        && { description:         srdItem.desc.join(' ') }),
+  }
+}
+
+function cloneInventoryItem(item) {
+  return {
+    ...item,
+    itemId: uuidv4(),
+    quantity: item.quantity ?? 1,
+    equipped: false,
+    attuned: false,
+    chargesCurrent: item.chargesMax ? (item.chargesCurrent ?? item.chargesMax) : item.chargesCurrent,
+  }
+}
+
+function isCustomInventoryItem(item, srdMap) {
+  return !!(
+    item.custom ||
+    String(item.index ?? '').startsWith('custom-') ||
+    (item.index && item.name && !srdMap[item.index])
+  )
+}
+
+function AddInventoryModal({ inventory, srdMap, onAdd, onClose }) {
+  const [tab,      setTab]      = useState('database')
   const [search,   setSearch]   = useState('')
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
   const [sourceOpen, setSourceOpen] = useState(false)
   const [allEquip, setAllEquip] = useState([])
   const [allMagic, setAllMagic] = useState([])
+  const [addEquipped, setAddEquipped] = useState(false)
 
   useEffect(() => {
     getEquipment().then(setAllEquip).catch(() => {})
     getMagicItems().then(setAllMagic).catch(() => {})
   }, [])
 
-  const pool     = tab === 'equipment' ? allEquip : allMagic
-  const sources  = sourceOptions(pool)
-  const filtered = filterBySearchAndSource(pool, search, sourceFilter).slice(0, 60)
+  const databaseItems = [...allEquip, ...allMagic]
+  const customItems = inventory
+    .filter(item => isCustomInventoryItem(item, srdMap))
+    .filter((item, index, list) => list.findIndex(other => other.index === item.index && other.name === item.name) === index)
 
-  function addSrd(srdItem) {
-    onAdd({
-      itemId:   uuidv4(),
-      index:    srdItem.index,
-      name:     srdItem.name,
-      source:   srdItem.source,
-      quantity: 1,
-      equipped: false,
-      ...(srdItem.armor_class         && { armor_class:        srdItem.armor_class }),
-      ...(srdItem.armor_category      && { armor_category:     srdItem.armor_category }),
-      ...(srdItem.weight              && { weight:              srdItem.weight }),
-      ...(srdItem.damage              && { damage: { dice: srdItem.damage.damage_dice, type: srdItem.damage.damage_type?.name } }),
-      ...(srdItem.rarity              && { rarity:              typeof srdItem.rarity === 'string' ? srdItem.rarity : srdItem.rarity.name }),
-      ...(srdItem.requires_attunement && { requiresAttunement:  true }),
-      ...(srdItem.desc?.length        && { description:         srdItem.desc.join(' ') }),
-    })
+  const pool     = tab === 'database' ? databaseItems : customItems
+  const sources  = sourceOptions(pool)
+  const filtered = tab === 'custom'
+    ? pool.filter(item => {
+        const text = `${item.name ?? ''} ${item.description ?? ''} ${item.type ?? ''}`.toLowerCase()
+        return !search || text.includes(search.toLowerCase())
+      }).slice(0, 80)
+    : filterBySearchAndSource(pool, search, sourceFilter).slice(0, 100)
+
+  function addItem(item) {
+    onAdd(addEquipped ? { ...item, equipped: true } : item)
   }
 
   return (
-    <div className="item-picker card">
-      <div className="ip-tabs">
-        {[{ key:'equipment', label:'Equipment' }, { key:'magic', label:'Magic Items' }].map(t => (
-          <button key={t.key} className={`ip-tab${tab === t.key ? ' ip-tab--active' : ''}`}
-            onClick={() => { setTab(t.key); setSearch(''); setSourceFilter(ALL_SOURCES) }}>{t.label}</button>
-        ))}
-        <button className="ip-close" onClick={onClose}>✕</button>
-      </div>
-      <div className="ip-search-row">
-        <div className="ip-search-wrap">
-          <input className="ip-search" placeholder="Search…" value={search}
-            onChange={e => setSearch(e.target.value)} autoFocus />
-          {search && (
-            <button className="ip-search-clear" type="button" onClick={() => setSearch('')} aria-label="Clear search">×</button>
-          )}
+    <div className="inv-modal-overlay" onClick={onClose}>
+      <div className="inv-modal" onClick={e => e.stopPropagation()}>
+        <div className="inv-modal-head">
+          <div>
+            <div className="inv-modal-title">Add to Inventory</div>
+            <div className="inv-modal-sub">Search repository gear, magic items, and saved custom items.</div>
+          </div>
+          <button className="ip-close" onClick={onClose}>✕</button>
         </div>
-      {sources.length > 1 && (
-          <div className="ip-source-menu-wrap">
-            <button
-              className={`ip-source-filter${sourceFilter !== ALL_SOURCES ? ' ip-source-filter--active' : ''}`}
-              type="button"
-              onClick={() => setSourceOpen(open => !open)}
-              aria-label="Filter sources"
-            >
-              {sourceFilter === ALL_SOURCES ? 'Filter' : sourceFilter}
-            </button>
-            {sourceOpen && (
-              <div className="ip-source-menu">
-          {[ALL_SOURCES, ...sources].map(source => (
-            <button
-              key={source}
-              type="button"
-                    className={`ip-source-option${sourceFilter === source ? ' ip-source-option--active' : ''}`}
-                    onClick={() => { setSourceFilter(source); setSourceOpen(false) }}
-            >
-              {source === ALL_SOURCES ? 'All sources' : source}
-            </button>
+
+        <div className="ip-tabs">
+          {[{ key:'database', label:'Database' }, { key:'custom', label:'Custom' }, { key:'new', label:'New Item' }].map(t => (
+            <button key={t.key} className={`ip-tab${tab === t.key ? ' ip-tab--active' : ''}`}
+              onClick={() => { setTab(t.key); setSearch(''); setSourceFilter(ALL_SOURCES); setSourceOpen(false) }}>{t.label}</button>
           ))}
-              </div>
-            )}
         </div>
-      )}
-      </div>
-      <div className="ip-list">
-        {filtered.length === 0 && <div className="ip-empty">No results</div>}
-        {filtered.map(item => (
-          <button key={item.index} className="ip-row" onClick={() => addSrd(item)}>
-            <span className="ip-row-name">{item.name}</span>
-            <span className="ip-row-tag ip-row-tag--source">{sourceCode(item)}</span>
-            {item.armor_class && <span className="ip-row-tag">AC {item.armor_class.base}</span>}
-            {item.damage      && <span className="ip-row-tag">{item.damage.damage_dice}</span>}
-            {item.weight      && <span className="ip-row-tag ip-row-tag--dim">{item.weight} lb</span>}
-            {item.rarity      && <span className="ip-row-tag ip-row-tag--magic">{typeof item.rarity === 'string' ? item.rarity : item.rarity.name}</span>}
-          </button>
-        ))}
+
+        <label className="inv-modal-equip-toggle">
+          <input type="checkbox" checked={addEquipped} onChange={e => setAddEquipped(e.target.checked)} />
+          <span>Add as equipped</span>
+        </label>
+
+        {tab !== 'new' && (
+          <>
+            <div className="ip-search-row">
+              <div className="ip-search-wrap">
+                <input className="ip-search" placeholder="Search inventory database…" value={search}
+                  onChange={e => setSearch(e.target.value)} autoFocus />
+                {search && (
+                  <button className="ip-search-clear" type="button" onClick={() => setSearch('')} aria-label="Clear search">×</button>
+                )}
+              </div>
+              {tab === 'database' && sources.length > 1 && (
+                <div className="ip-source-menu-wrap">
+                  <button
+                    className={`ip-source-filter${sourceFilter !== ALL_SOURCES ? ' ip-source-filter--active' : ''}`}
+                    type="button"
+                    onClick={() => setSourceOpen(open => !open)}
+                    aria-label="Filter sources"
+                  >
+                    {sourceFilter === ALL_SOURCES ? 'Filter' : sourceFilter}
+                  </button>
+                  {sourceOpen && (
+                    <div className="ip-source-menu">
+                      {[ALL_SOURCES, ...sources].map(source => (
+                        <button
+                          key={source}
+                          type="button"
+                          className={`ip-source-option${sourceFilter === source ? ' ip-source-option--active' : ''}`}
+                          onClick={() => { setSourceFilter(source); setSourceOpen(false) }}
+                        >
+                          {source === ALL_SOURCES ? 'All sources' : source}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="ip-list ip-list--modal">
+              {filtered.length === 0 && (
+                <div className="ip-empty">
+                  {tab === 'custom' ? 'No saved custom items on this character yet.' : 'No results'}
+                </div>
+              )}
+              {filtered.map(item => {
+                const invItem = tab === 'custom' ? cloneInventoryItem(item) : catalogItemToInventoryItem(item)
+                return (
+                  <button key={`${item.index}-${item.name}-${item.source ?? ''}`} className="ip-row" onClick={() => addItem(invItem)}>
+                    <span className="ip-row-name">{item.name}</span>
+                    {item.source && <span className="ip-row-tag ip-row-tag--source">{sourceCode(item)}</span>}
+                    {item.armor_class && <span className="ip-row-tag">AC {item.armor_class.base}</span>}
+                    {item.damage && <span className="ip-row-tag">{item.damage.damage_dice ?? item.damage.dice}</span>}
+                    {item.weight && <span className="ip-row-tag ip-row-tag--dim">{item.weight} lb</span>}
+                    {item.rarity && <span className="ip-row-tag ip-row-tag--magic">{typeof item.rarity === 'string' ? item.rarity : item.rarity.name}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+
+        {tab === 'new' && (
+          <CustomItemForm
+            embedded
+            onSave={item => addItem({ ...item, custom: true })}
+            onCancel={onClose}
+          />
+        )}
       </div>
     </div>
   )
@@ -629,10 +697,9 @@ function SrdPicker({ onAdd, onClose }) {
 
 export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const [srdMap,     setSrdMap]     = useState({})
-  const [pickerMode, setPickerMode] = useState(null)   // null | 'srd' | 'custom'
+  const [showAddModal, setShowAddModal] = useState(false)
   const [editItem,   setEditItem]   = useState(null)
   const [expandedId, setExpandedId] = useState(null)
-  const [addEquipped,setAddEquipped]= useState(false)  // whether to equip newly added item
 
   useEffect(() => {
     Promise.all([getEquipment().catch(() => []), getMagicItems().catch(() => [])])
@@ -702,21 +769,14 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   }
 
   function addItem(item) {
-    const finalItem = addEquipped ? { ...item, equipped: true } : item
-    save([...inventory, finalItem])
-    setPickerMode(null)
+    save([...inventory, item])
+    setShowAddModal(false)
     setEditItem(null)
-    setAddEquipped(false)
   }
 
   function saveEdit(updated) {
     save(inventory.map(i => i.itemId === updated.itemId ? updated : i))
     setEditItem(null)
-  }
-
-  function openPicker(mode, equip = false) {
-    setAddEquipped(equip)
-    setPickerMode(mode)
   }
 
   // ── Categorise inventory ──
@@ -740,8 +800,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const gearItems     = bagItems.filter(i => !isCur(i) && !isAmmo(i))
 
   const abilityScores = char.stats?.abilityScores
-  const showingPicker = pickerMode === 'srd'
-  const showingCustom = pickerMode === 'custom' || !!editItem
+  const showingCustom = !!editItem
 
   function renderRow(item, showQty = false) {
     return (
@@ -783,30 +842,36 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
         </div>
       )}
 
-      {/* SRD picker */}
-      {showingPicker && <SrdPicker onAdd={addItem} onClose={() => { setPickerMode(null); setAddEquipped(false) }} />}
+      <div className="inv-top-actions">
+        {isOwner && !locked && (
+          <button className="inv-primary-add" onClick={() => setShowAddModal(true)}>+ Add to Inventory</button>
+        )}
+      </div>
 
-      {/* Custom item / edit form */}
-      {showingCustom && (
-        <CustomItemForm
-          initial={editItem}
-          onSave={editItem ? saveEdit : addItem}
-          onCancel={() => { setPickerMode(null); setEditItem(null); setAddEquipped(false) }}
+      {showAddModal && (
+        <AddInventoryModal
+          inventory={inventory}
+          srdMap={srdMap}
+          onAdd={addItem}
+          onClose={() => setShowAddModal(false)}
         />
       )}
 
-      {!showingPicker && !showingCustom && (
+      {/* Edit form */}
+      {showingCustom && (
+        <CustomItemForm
+          initial={editItem}
+          onSave={saveEdit}
+          onCancel={() => { setEditItem(null) }}
+        />
+      )}
+
+      {!showingCustom && (
         <>
           {/* ═══════════════ EQUIPPED ═══════════════ */}
           <div className="inv-section">
             <div className="inv-section-head">
               <span className="inv-section-label">Equipped</span>
-              {isOwner && !locked && (
-                <div className="inv-section-adds">
-                  <button className="inv-section-add" onClick={() => openPicker('srd', true)}>+ From SRD</button>
-                  <button className="inv-section-add" onClick={() => openPicker('custom', true)}>+ Custom</button>
-                </div>
-              )}
             </div>
 
             {/* Attuned */}
@@ -872,12 +937,6 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
           <div className="inv-section">
             <div className="inv-section-head">
               <span className="inv-section-label">Bag</span>
-              {isOwner && !locked && (
-                <div className="inv-section-adds">
-                  <button className="inv-section-add" onClick={() => openPicker('srd', false)}>+ From SRD</button>
-                  <button className="inv-section-add" onClick={() => openPicker('custom', false)}>+ Custom</button>
-                </div>
-              )}
             </div>
 
             {ammoItems.length > 0 && (

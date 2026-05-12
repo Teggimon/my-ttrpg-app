@@ -10,6 +10,31 @@
 .carry-track { background: var(--bg-surface); border-radius: 3px; height: 4px; overflow: hidden; }
 .carry-fill  { height: 100%; border-radius: 3px; transition: width 0.3s ease, background 0.3s ease; }
 
+/* ── Top actions ── */
+.inv-top-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 12px;
+}
+
+.inv-primary-add {
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.inv-primary-add:hover {
+  background: var(--accent-hover);
+}
+
 /* ── Section (EQUIPPED / BAG) ── */
 .inv-section {
   margin-bottom: 6px;
@@ -397,11 +422,83 @@
 .inv-action-btn--danger { border-color: var(--danger-border); color: var(--danger); }
 .inv-action-btn--danger:hover { background: var(--danger-subtle); }
 
-/* ── SRD Picker ── */
+/* ── Inventory add modal / picker ── */
+.inv-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--overlay-bg);
+}
+
+.inv-modal {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(760px, calc(100dvh - 32px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-lg);
+}
+
+.inv-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inv-modal-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.inv-modal-sub {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.inv-modal-equip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  min-height: 36px;
+  margin: 10px 12px 0;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.inv-modal-equip-toggle input {
+  accent-color: var(--accent);
+}
+
 .item-picker {
   margin-bottom: 14px;
   padding: 0;
   overflow: hidden;
+}
+
+.custom-item-form--embedded {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 4px !important;
 }
 
 .ip-tabs {
@@ -551,6 +648,12 @@
   max-height: 220px;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.ip-list--modal {
+  max-height: none;
+  flex: 1;
+  min-height: 0;
 }
 
 .ip-empty {
