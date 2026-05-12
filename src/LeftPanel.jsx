@@ -26,6 +26,14 @@ function trimClassLevels(classes, targetTotal) {
   }).reverse()
 }
 
+function levelUpModalKey(char) {
+  const id = char?.meta?.characterId ?? char?.identity?.name ?? 'character'
+  const classLevels = (char?.identity?.class ?? [])
+    .map(c => `${c.name ?? 'class'}:${c.level ?? 0}`)
+    .join('|')
+  return `${id}:${char?.identity?.xp ?? 0}:${classLevels}`
+}
+
 function HpAdjustModal({ amount, setAmount, hpCur, hpMax, onAdjust, onClose }) {
   const step = Math.max(1, Math.abs(parseInt(amount, 10) || 1))
   const applyAdjust = (delta) => {
@@ -69,6 +77,7 @@ export default function LeftPanel({
   const [xpInput,       setXpInput]       = useState('')
   const [showXpInput,   setShowXpInput]   = useState(false)
   const [showLevelUp,   setShowLevelUp]   = useState(false)
+  const [levelUpChar,   setLevelUpChar]   = useState(null)
   const [showHpAdjust,  setShowHpAdjust]  = useState(false)
   const [hpDelta,       setHpDelta]       = useState('5')
 
@@ -118,6 +127,26 @@ export default function LeftPanel({
     updateChar(updatedChar)
     setShowShortRest(false)
     setShowLongRest(false)
+  }
+
+  const openLevelUp = (updatedChar) => {
+    setLevelUpChar(updatedChar)
+    setShowLevelUp(true)
+  }
+
+  const handleLevelUpConfirm = (updatedChar) => {
+    updateChar(updatedChar)
+    if (checkLevelUp(updatedChar)) {
+      openLevelUp(updatedChar)
+      return
+    }
+    setShowLevelUp(false)
+    setLevelUpChar(null)
+  }
+
+  const closeLevelUp = () => {
+    setShowLevelUp(false)
+    setLevelUpChar(null)
   }
 
   return (
@@ -232,7 +261,7 @@ export default function LeftPanel({
                 const classes    = trimClassLevels(char.identity.class ?? [], newTotal)
                 const updated    = { ...char, identity: { ...char.identity, xp: newXp, class: classes } }
                 updateChar({ identity: updated.identity })
-                if (checkLevelUp(updated)) setShowLevelUp(true)
+                if (checkLevelUp(updated)) openLevelUp(updated)
               }
               setXpInput('')
               setShowXpInput(false)
@@ -306,9 +335,10 @@ export default function LeftPanel({
       )}
       {showLevelUp && (
         <LevelUpModal
-          char={char}
-          onConfirm={updated => { updateChar(updated); setShowLevelUp(false) }}
-          onClose={() => setShowLevelUp(false)}
+          key={levelUpModalKey(levelUpChar ?? char)}
+          char={levelUpChar ?? char}
+          onConfirm={handleLevelUpConfirm}
+          onClose={closeLevelUp}
         />
       )}
     </div>
