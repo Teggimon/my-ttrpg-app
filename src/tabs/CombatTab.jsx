@@ -39,6 +39,10 @@ function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 function featureKey(name)   { return String(name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-') }
 
+function sneakAttackDice(level) {
+  return `${Math.ceil(Math.max(1, level) / 2)}d6`
+}
+
 function hasClassFeatureChoice(char, optionName) {
   return (char.customContent?.classFeatureChoices ?? []).some(choice =>
     (choice.options ?? []).some(option => option.name === optionName)
@@ -256,32 +260,65 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const fighterLevel = (char.identity?.class ?? [])
     .filter(cls => /fighter/i.test(cls.name ?? cls.index ?? ''))
     .reduce((sum, cls) => sum + (cls.level ?? 0), 0)
+  const rogueLevel = (char.identity?.class ?? [])
+    .filter(cls => /rogue/i.test(cls.name ?? cls.index ?? ''))
+    .reduce((sum, cls) => sum + (cls.level ?? 0), 0)
 
   const storedAbilities = char.combat?.classAbilities ?? char.classAbilities ?? []
   const storedAbilityMap = Object.fromEntries(storedAbilities.map(ability => [featureKey(ability.name), ability]))
   const classFeatures = char.customContent?.classFeatures ?? []
   const combatFeatures = classFeatures
-    .filter(feature => /^(second wind|action surge)$/i.test(feature.name ?? ''))
+    .filter(feature => /^(second wind|action surge|sneak attack)$/i.test(feature.name ?? ''))
     .filter((feature, index, list) => list.findIndex(other => featureKey(other.name) === featureKey(feature.name)) === index)
     .map(feature => {
       const key = featureKey(feature.name)
       const isActionSurge = key === 'action-surge'
+      const isSneakAttack = key === 'sneak-attack'
       const max = isActionSurge
         ? (fighterLevel >= 17 ? 2 : 1)
-        : (/xphb/i.test(feature.source ?? '') ? 2 : 1)
+        : isSneakAttack
+          ? null
+          : (/xphb/i.test(feature.source ?? '') ? 2 : 1)
       return {
         ...feature,
         key,
-        actionType: isActionSurge ? 'Free' : 'Bonus',
-        recharge: 'SR',
+        sourceType: 'Class',
+        actionType: isActionSurge ? 'Free' : isSneakAttack ? 'Once/turn' : 'Bonus',
+        recharge: isSneakAttack ? null : 'SR',
         max,
         used: storedAbilityMap[key]?.used ?? 0,
-        effect: isActionSurge ? '+1 Action' : `1d10 + ${fighterLevel || 'Fighter level'} HP`,
+        effect: isActionSurge
+          ? '+1 Action'
+          : isSneakAttack
+            ? `${sneakAttackDice(rogueLevel || level)} extra`
+            : `1d10 + ${fighterLevel || 'Fighter level'} HP`,
       }
     })
 
+  const raceAbilityFeatures = racialCombatTraits.map(trait => {
+    const isBreath = trait.index === 'breath-weapon'
+    return {
+      ...trait,
+      key: `race-${trait.index}`,
+      sourceType: char.identity.race || 'Race',
+      actionType: isBreath ? 'Action' : 'Trait',
+      max: null,
+      used: 0,
+      effect: isBreath
+        ? `${breathDice(level, trait)}${trait.damageType ? ` ${trait.damageType}` : ''}`
+        : trait.name,
+      detail: isBreath
+        ? [
+            trait.breathWeapon,
+            `${trait.savingThrow ?? 'DEX/CON'} DC ${8 + pb + conMod}`,
+          ].filter(Boolean).join(' · ')
+        : null,
+    }
+  })
+  const combatAbilityFeatures = [...combatFeatures, ...raceAbilityFeatures]
+
   function handleCombatFeature(feature) {
-    if (!isOwner || locked || feature.used >= feature.max) return
+    if (!isOwner || locked || !feature.max || feature.used >= feature.max) return
     const nextAbility = {
       name: feature.name,
       key: feature.key,
@@ -305,7 +342,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     })
   }
 
-  const hasAnything = equippedWeapons.length > 0 || racialCombatTraits.length > 0 || chargedItems.length > 0 || combatFeatures.length > 0
+  const hasAnything = equippedWeapons.length > 0 || chargedItems.length > 0 || combatAbilityFeatures.length > 0
 
   return (
     <div className="tab-combat">
@@ -336,28 +373,6 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
 
       {!hasAnything && Object.keys(srdMap).length > 0 && (
         <p className="empty-hint">Equip weapons in the Gear tab to show attacks here.</p>
-      )}
-
-      {combatFeatures.length > 0 && (
-        <div className="combat-feature-grid">
-          {combatFeatures.map(feature => {
-            const remaining = Math.max(0, feature.max - feature.used)
-            return (
-              <button
-                key={feature.key}
-                className={`combat-feature-square${remaining <= 0 ? ' combat-feature-square--spent' : ''}`}
-                type="button"
-                onClick={() => handleCombatFeature(feature)}
-                disabled={!isOwner || locked || remaining <= 0}
-                title={(feature.desc ?? []).join(' ')}
-              >
-                <span className="combat-feature-name">{feature.name}</span>
-                <span className="combat-feature-effect">{feature.effect}</span>
-                <span className="combat-feature-meta">{feature.actionType} · {remaining}/{feature.max}</span>
-              </button>
-            )
-          })}
-        </div>
       )}
 
       {/* Weapon attack cards */}
@@ -437,30 +452,36 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
         )
       })}
 
-      {/* Racial ability cards */}
-      {racialCombatTraits.map(trait => {
-        const isBreath = trait.index === 'breath-weapon'
-        return (
-          <div key={trait.index} className="attack-card">
-            <div className="atk-line1">
-              <span className="atk-source">{char.identity.race?.toUpperCase()}</span>
-              <span className="atk-name">{trait.name}</span>
-            </div>
-            <div className="atk-line2">
-              {isBreath && (
-                <>
-                  <span className="badge">{breathDice(level, trait)}{trait.damageType ? ` ${trait.damageType}` : ''}</span>
-                  {trait.breathWeapon && <span className="badge badge--dim">{trait.breathWeapon}</span>}
-                  <span className="badge badge--dim">{trait.savingThrow ?? 'DEX/CON'} save DC {8 + pb + conMod}</span>
-                </>
-              )}
-              <div className="atk-btns">
-                <button className="atk-btn atk-btn--use">Use</button>
+      {combatAbilityFeatures.length > 0 && (
+        <div className="combat-feature-grid" aria-label="Combat abilities">
+          {combatAbilityFeatures.map(feature => {
+            const remaining = feature.max ? Math.max(0, feature.max - feature.used) : null
+            const isSpent = remaining != null && remaining <= 0
+            const title = Array.isArray(feature.desc) ? feature.desc.join(' ') : feature.detail ?? ''
+            return feature.max ? (
+              <button
+                key={feature.key}
+                className={`combat-feature-square${isSpent ? ' combat-feature-square--spent' : ''}`}
+                type="button"
+                onClick={() => handleCombatFeature(feature)}
+                disabled={!isOwner || locked || isSpent}
+                title={title}
+              >
+                <span className="combat-feature-name">{feature.name}</span>
+                <span className="combat-feature-effect">{feature.effect}</span>
+                <span className="combat-feature-meta">{feature.actionType} · {remaining}/{feature.max}</span>
+              </button>
+            ) : (
+              <div key={feature.key} className="combat-feature-square combat-feature-square--static" title={title}>
+                <span className="combat-feature-source">{String(feature.sourceType).toUpperCase()}</span>
+                <span className="combat-feature-name">{feature.name}</span>
+                <span className="combat-feature-effect">{feature.effect}</span>
+                <span className="combat-feature-meta">{feature.detail || feature.actionType}</span>
               </div>
-            </div>
-          </div>
-        )
-      })}
+            )
+          })}
+        </div>
+      )}
 
       {/* ── Spell slots ── */}
       {slotEntries.length > 0 && (
