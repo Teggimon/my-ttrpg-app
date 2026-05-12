@@ -111,10 +111,68 @@
   background: var(--accent-hover);
 }
 
+.inv-label-form {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.inv-label-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-inset);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  outline: none;
+}
+
+.inv-label-input::placeholder {
+  color: var(--text-muted);
+}
+
+.inv-label-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+.inv-label-add {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.inv-label-add:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-light);
+}
+
+.inv-label-add:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 @media (max-width: 640px) {
   .inv-top-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .inv-label-form {
+    flex-direction: column;
   }
 
   .currency-tracker {
@@ -464,6 +522,59 @@
   gap: 8px;
   padding-top: 8px;
   border-top: 0.5px solid var(--border);
+}
+
+.inv-detail-sort {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.inv-detail-sort-label {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.inv-detail-sort-select {
+  min-width: 0;
+  width: 100%;
+  min-height: 32px;
+  padding: 5px 8px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--border-strong);
+  background: var(--bg-inset);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  outline: none;
+}
+
+.inv-detail-buttons {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+  .inv-detail-actions {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .inv-detail-sort {
+    flex: 1 1 100%;
+    order: -1;
+  }
+
+  .inv-detail-buttons {
+    margin-left: auto;
+  }
 }
 
 /* ── Qty stepper (in expanded detail) ── */

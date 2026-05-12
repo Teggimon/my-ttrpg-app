@@ -7,6 +7,7 @@ import '../TabShared.css'
 import './InventoryTab.css'
 
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
+function labelName(value) { return String(value ?? '').trim().replace(/\s+/g, ' ') }
 
 const MAGIC_AC_BONUS = {
   'ring-of-protection':    1,
@@ -177,7 +178,7 @@ function rowChips(item, srdMap, abilityScores) {
 
 // ── Item row ──────────────────────────────────────────────────────────────────
 
-function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onCharges, onRemove, onEdit, showQty, attunedCount, attunementLimit }) {
+function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onToggleExpand, onEquip, onAttune, onQty, onCharges, onRemove, onEdit, onLabel, labels, showQty, attunedCount, attunementLimit }) {
   const chips     = rowChips(item, srdMap, abilityScores)
   const reqAttune = needsAttunement(item, srdMap)
   const canEquip  = isItemEquippable(item, srdMap)
@@ -264,6 +265,8 @@ function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onTog
           onQty={onQty}
           onRemove={onRemove}
           onEdit={onEdit}
+          onLabel={onLabel}
+          labels={labels}
         />
       )}
     </div>
@@ -272,7 +275,7 @@ function ItemRow({ item, srdMap, abilityScores, locked, isOwner, expanded, onTog
 
 // ── Expanded detail panel ─────────────────────────────────────────────────────
 
-function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) {
+function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit, onLabel, labels }) {
   const srd  = srdMap[item.index] ?? {}
   const desc = item.description ?? srd.desc?.join(' ') ?? null
 
@@ -331,7 +334,20 @@ function ItemDetail({ item, srdMap, locked, isOwner, onQty, onRemove, onEdit }) 
             <span className="inv-qty-val">{item.quantity ?? 1}</span>
             <button className="inv-qty-btn" onClick={() => onQty((item.quantity ?? 1) + 1)}>+</button>
           </div>
-          <div style={{ display:'flex', gap:6 }}>
+          <div className="inv-detail-sort">
+            <span className="inv-detail-sort-label">Sort</span>
+            <select
+              className="inv-detail-sort-select"
+              value={item.inventoryLabelId ?? ''}
+              onChange={e => onLabel(e.target.value || undefined)}
+            >
+              <option value="">Main inventory</option>
+              {labels.map(label => (
+                <option key={label.id} value={label.id}>{label.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="inv-detail-buttons">
             <button className="inv-action-btn" onClick={onEdit}>Edit</button>
             <button className="inv-action-btn inv-action-btn--danger" onClick={onRemove}>Remove</button>
           </div>
@@ -408,6 +424,7 @@ function CustomItemForm({ initial, onSave, onCancel, embedded = false }) {
       enhancement: enh || undefined,
       equipped,
       requiresAttunement: attune || undefined,
+      ...(initial?.inventoryLabelId && { inventoryLabelId: initial.inventoryLabelId }),
       ...(chargesMax !== '' && Number(chargesMax) > 0 && {
         chargesMax: Number(chargesMax),
         chargesCurrent: initial?.chargesCurrent ?? Number(chargesMax),
@@ -712,6 +729,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editItem,   setEditItem]   = useState(null)
   const [expandedId, setExpandedId] = useState(null)
+  const [newLabelName, setNewLabelName] = useState('')
 
   useEffect(() => {
     Promise.all([getEquipment().catch(() => []), getMagicItems().catch(() => [])])
@@ -727,6 +745,11 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     const itemWithId = item.itemId ? item : { ...item, itemId: tempIds.current[idx] ?? (tempIds.current[idx] = uuidv4()) }
     return normalizeInventoryItem(itemWithId, srdMap)
   })
+  const inventoryLabels = (char.settings?.inventoryLabels ?? [])
+    .map(label => typeof label === 'string'
+      ? { id: `label-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || uuidv4()}`, name: labelName(label) }
+      : { id: label.id, name: labelName(label.name) })
+    .filter(label => label.id && label.name)
   useEffect(() => {
     if (JSON.stringify(rawInventory) === JSON.stringify(inventory)) return
     updateChar({ inventory })
@@ -746,6 +769,21 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
 
   function setEncumbranceTracking(enabled) {
     updateChar({ settings: { ...char.settings, encumbranceTracking: enabled } })
+  }
+
+  function saveInventoryLabels(labels) {
+    updateChar({ settings: { ...char.settings, inventoryLabels: labels } })
+  }
+
+  function addInventoryLabel() {
+    const name = labelName(newLabelName)
+    if (!name) return
+    if (inventoryLabels.some(label => label.name.toLowerCase() === name.toLowerCase())) {
+      setNewLabelName('')
+      return
+    }
+    saveInventoryLabels([...inventoryLabels, { id: uuidv4(), name }])
+    setNewLabelName('')
   }
 
   function toggleEquip(itemId) {
@@ -782,6 +820,18 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
 
   function updateCharges(itemId, charges) {
     save(inventory.map(i => i.itemId === itemId ? { ...i, chargesCurrent: charges } : i))
+  }
+
+  function updateItemLabel(itemId, inventoryLabelId) {
+    save(inventory.map(i => {
+      if (i.itemId !== itemId) return i
+      if (!inventoryLabelId) {
+        const next = { ...i }
+        delete next.inventoryLabelId
+        return next
+      }
+      return { ...i, inventoryLabelId }
+    }))
   }
 
   function currencyTotals() {
@@ -857,9 +907,13 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
 
   const isCur  = i => CURRENCY_NAMES.has(i.name) || i.isCurrency
   const isAmmo = i => srdMap[i.index]?.equipment_category?.index === 'ammunition' || i.isAmmo
-  const currencyItems = bagItems.filter(isCur)
-  const ammoItems     = bagItems.filter(i => !isCur(i) && isAmmo(i))
-  const gearItems     = bagItems.filter(i => !isCur(i) && !isAmmo(i))
+  const mainBagItems  = bagItems.filter(i => !i.inventoryLabelId || !inventoryLabels.some(label => label.id === i.inventoryLabelId))
+  const currencyItems = mainBagItems.filter(isCur)
+  const ammoItems     = mainBagItems.filter(i => !isCur(i) && isAmmo(i))
+  const gearItems     = mainBagItems.filter(i => !isCur(i) && !isAmmo(i))
+  const labeledBagGroups = inventoryLabels
+    .map(label => ({ label, items: bagItems.filter(item => item.inventoryLabelId === label.id) }))
+    .filter(group => group.items.length > 0)
 
   const abilityScores = char.stats?.abilityScores
   const showingCustom = !!editItem
@@ -882,6 +936,8 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
         onCharges={c => updateCharges(item.itemId, c)}
         onRemove={() => removeItem(item.itemId)}
         onEdit={() => { setEditItem(item); setExpandedId(null) }}
+        onLabel={labelId => updateItemLabel(item.itemId, labelId)}
+        labels={inventoryLabels}
         showQty={showQty}
         attunedCount={attunedCount}
         attunementLimit={attunementLimit}
@@ -929,6 +985,19 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
           <button className="inv-primary-add" onClick={() => setShowAddModal(true)}>+ Add to Inventory</button>
         )}
       </div>
+
+      {isOwner && !locked && (
+        <form className="inv-label-form" onSubmit={e => { e.preventDefault(); addInventoryLabel() }}>
+          <input
+            className="inv-label-input"
+            value={newLabelName}
+            onChange={e => setNewLabelName(e.target.value)}
+            placeholder="New inventory label…"
+            aria-label="New inventory label"
+          />
+          <button className="inv-label-add" type="submit" disabled={!labelName(newLabelName)}>+ Add Label</button>
+        </form>
+      )}
 
       {showAddModal && (
         <AddInventoryModal
@@ -1034,6 +1103,13 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
                 {gearItems.map(item => renderRow(item, true))}
               </div>
             )}
+
+            {labeledBagGroups.map(group => (
+              <div className="inv-sub" key={group.label.id}>
+                <div className="inv-sub-head"><span>{group.label.name}</span></div>
+                {group.items.map(item => renderRow(item, true))}
+              </div>
+            ))}
 
             {currencyItems.length > 0 && (
               <div className="inv-sub">
