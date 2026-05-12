@@ -18,6 +18,27 @@ const SKILL_INDEX_TO_STAT_KEY = {
   'sleight-of-hand': 'sleightOfHand',
 }
 
+const CHARACTERS_REPO = 'ttrpg-characters'
+
+function stringToBase64(value) {
+  const bytes = new TextEncoder().encode(value)
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
+
+function characterFileName(name) {
+  const slug = String(name ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${slug || 'character'}.json`
+}
+
 function skillKeyFromIndex(index) {
   const key = String(index ?? '').replace(/^skill-/, '')
   return SKILL_INDEX_TO_STAT_KEY[key] ?? key
@@ -160,11 +181,29 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     .flat()
     .filter(feature => (feature.level ?? 1) <= 1)
     .map(feature => ({
-      ...feature,
+      index: feature.index,
+      name: feature.name,
+      source: feature.source,
+      desc: feature.desc ?? [],
       classIndex: classData?.index ?? null,
       className: classData?.name ?? '',
       gainedAtLevel: feature.level ?? 1,
     }))
+  const selectedClassFeatureChoices = classFeatureChoices.map(choice => ({
+    choiceKey: choice.choiceKey,
+    featureIndex: choice.featureIndex,
+    featureName: choice.featureName,
+    className: choice.className,
+    classIndex: choice.classIndex,
+    gainedAtLevel: choice.gainedAtLevel,
+    options: (choice.options ?? []).map(option => ({
+      id: option.id,
+      name: option.name,
+      source: option.source,
+      desc: option.desc ?? [],
+      featureType: option.featureType,
+    })),
+  }))
 
   // 10. Languages
   const languages = [
@@ -227,7 +266,7 @@ function buildCharacter({ user, name, raceData, subraceData, classData, subclass
     },
     customContent: {
       classFeatures,
-      classFeatureChoices,
+      classFeatureChoices: selectedClassFeatureChoices,
       backgroundFeature: backgroundFeature ?? null,
     },
     notes: {
@@ -1614,7 +1653,7 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
   const [alignment, setAlignment] = useState('')
 
   const octokit = new Octokit({ auth: token })
-  const repoName = localStorage.getItem('character_repo')
+  const repoName = localStorage.getItem('character_repo') || CHARACTERS_REPO
 
   useEffect(() => {
     Promise.all([getRaces(), getSubraces(), getClasses(), getBackgrounds(), getEquipment()])
@@ -1664,13 +1703,24 @@ function CreateCharacter({ token, user, onComplete, onCancel }) {
           racialOptionChoices,
         },
       })
-      const fileName = name.toLowerCase().replace(/\s+/g, '-')
+      const fileName = characterFileName(name)
+      const path = `characters/${fileName}`
+      let sha
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: user.login,
+          repo: repoName,
+          path,
+        })
+        sha = Array.isArray(data) ? undefined : data.sha
+      } catch { /* new character file */ }
       await octokit.repos.createOrUpdateFileContents({
         owner: user.login,
         repo: repoName,
-        path: `characters/${fileName}.json`,
+        path,
         message: `Add character: ${name}`,
-        content: btoa(unescape(encodeURIComponent(JSON.stringify(character, null, 2)))),
+        content: stringToBase64(JSON.stringify(character, null, 2)),
+        ...(sha ? { sha } : {}),
       })
       onComplete(character)
     } catch (err) {
