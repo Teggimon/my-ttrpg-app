@@ -1,6 +1,7 @@
 /* ── Base panel ──────────────────────────────────────────────── */
 .left-panel {
   background: var(--bg-surface);
+  color: var(--surface-text-primary);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -70,7 +71,7 @@
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.01em;
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -78,7 +79,7 @@
 
 .lp-char-meta {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
   margin-top: 3px;
   white-space: nowrap;
   overflow: hidden;
@@ -111,7 +112,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
   margin-bottom: 6px;
 }
 
@@ -126,13 +127,13 @@
   font-size: 28px;
   font-weight: 500;
   line-height: 1;
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
 }
 
 .lp-hp-max {
   font-family: var(--font-mono);
   font-size: 16px;
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
 }
 
 .lp-hp-controls {
@@ -152,7 +153,7 @@
   justify-content: center;
   cursor: pointer;
   background: var(--bg-inset);
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
   font-family: var(--font-body);
   line-height: 1;
 }
@@ -166,7 +167,7 @@
 .lp-hp-btn--plus:hover { background: var(--accent-hover); }
 
 .lp-hp-btn--more {
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
   font-size: 15px;
   letter-spacing: 0;
   gap: 0;
@@ -222,14 +223,14 @@
   font-family: var(--font-name);
   font-size: 20px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
 }
 
 .lp-hp-modal-sub {
   margin-top: 3px;
   font-family: var(--font-mono);
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
 }
 
 .lp-hp-modal-field {
@@ -241,7 +242,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
 }
 
 .lp-hp-modal-input {
@@ -250,7 +251,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--accent-border);
   background: var(--bg-input);
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
   font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 700;
@@ -270,7 +271,7 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--border-strong);
   background: var(--bg-inset);
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 800;
@@ -303,7 +304,7 @@
   font-size: 17px;
   font-weight: 500;
   line-height: 1;
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
 }
 
 .lp-stat-label {
@@ -311,7 +312,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
   margin-top: 4px;
 }
 
@@ -337,7 +338,7 @@
 
 .lp-add-condition {
   background: transparent;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
   font-size: 11px;
   font-weight: 600;
   padding: 3px 8px;
@@ -346,7 +347,7 @@
   cursor: pointer;
   font-family: var(--font-body);
 }
-.lp-add-condition:hover { color: var(--text-secondary); border-color: var(--border-hi); }
+.lp-add-condition:hover { color: var(--surface-text-secondary); border-color: var(--border-hi); }
 
 /* ── XP row ──────────────────────────────────────────────────── */
 .lp-xp-row {
@@ -357,7 +358,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 10px;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
   font-family: var(--font-mono);
   margin-bottom: 5px;
 }
@@ -380,7 +381,7 @@
   font-size: 9px; font-weight: 700; font-family: var(--font-body);
   padding: 1px 6px; border-radius: var(--radius-sm); cursor: pointer;
   border: 1px solid var(--border-strong); background: transparent;
-  color: var(--text-faint); transition: all .15s; line-height: 1.4;
+  color: var(--surface-text-muted); transition: all .15s; line-height: 1.4;
 }
 .lp-xp-add-btn:hover { border-color: var(--accent-border); color: var(--accent-light); }
 
@@ -389,7 +390,7 @@
 }
 .lp-xp-input {
   flex: 1; background: var(--bg-input); border: 1px solid var(--accent-border);
-  border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px;
+  border-radius: var(--radius-sm); color: var(--surface-text-primary); font-size: 12px;
   padding: 4px 7px; font-family: var(--font-mono); outline: none; min-width: 0;
 }
 .lp-xp-input:focus { border-color: var(--accent); }
@@ -408,7 +409,7 @@
   padding: 8px 14px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
 }
 
 .lp-saved-dot {
@@ -420,7 +421,7 @@
 }
 
 .lp-sync--saved  { color: var(--hp-high); }
-.lp-sync--saving { color: var(--text-faint); }
+.lp-sync--saving { color: var(--surface-text-muted); }
 .lp-sync--error  { color: var(--hp-low); }
 
 /* ── Rest buttons ────────────────────────────────────────────── */
@@ -456,17 +457,17 @@
 .lp-rest-btn--short:hover {
   background: var(--hover-strong);
   border-color: var(--accent);
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
 }
 
 .lp-rest-btn--long {
   background: var(--bg-inset);
   border-color: var(--border-strong);
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
 }
 .lp-rest-btn--long:hover {
   border-color: var(--border-hi);
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
 }
 
 /* ── Sidebar tabs ────────────────────────────────────────────── */
@@ -488,7 +489,7 @@
   padding: 10px;
   border-radius: var(--radius-md);
   cursor: pointer;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
   font-size: 13px;
   font-weight: 600;
   font-family: var(--font-body);
@@ -498,12 +499,12 @@
   transition: background 0.1s, color 0.1s;
 }
 .lp-sidebar-tab:hover {
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
   background: var(--bg-elevated);
 }
 .lp-sidebar-tab--active {
   background: var(--bg-elevated);
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
   border-color: var(--border);
 }
 

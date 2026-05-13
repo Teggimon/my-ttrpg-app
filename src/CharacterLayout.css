@@ -39,19 +39,19 @@
   white-space: nowrap;
   cursor: pointer;
   border: 1px solid transparent;
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
   background: transparent;
   transition: all 0.15s;
 }
-.char-tab:hover { color: var(--text-primary); }
+.char-tab:hover { color: var(--surface-text-primary); }
 .char-tab--active {
   background: var(--accent);
-  color: var(--text-inverse);
+  color: var(--accent-text);
   border-color: var(--accent);
 }
 .char-tab--new {
   border: 1px solid var(--border-strong);
-  color: var(--text-muted);
+  color: var(--surface-text-muted);
 }
 .char-tab--new:hover { border-color: var(--accent); color: var(--accent); }
 

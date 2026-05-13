@@ -256,10 +256,18 @@ function contrastText(background, darkText, lightText) {
   return relativeLuminance(background) > 0.45 ? darkText : lightText
 }
 
+function isLight(value) {
+  return relativeLuminance(value) > 0.45
+}
+
 function applyTheme(theme) {
   const root = document.documentElement
+  const hasLightSurface = isLight(theme.vars['--bg-surface'])
   root.setAttribute('data-theme', theme.id)
   Object.entries(theme.vars).forEach(([key, value]) => root.style.setProperty(key, value))
+  root.style.setProperty('--surface-text-primary', hasLightSurface ? theme.vars['--text-inverse'] : theme.vars['--text-primary'])
+  root.style.setProperty('--surface-text-secondary', hasLightSurface ? theme.vars['--border-hi'] : theme.vars['--text-secondary'])
+  root.style.setProperty('--surface-text-muted', hasLightSurface ? theme.vars['--border-strong'] : theme.vars['--text-muted'])
   root.style.setProperty('--accent-text', contrastText(theme.vars['--accent'], theme.vars['--text-inverse'], theme.vars['--text-primary']))
   root.style.setProperty('--accent-subtle', rgba(theme.vars['--accent'], 0.15))
   root.style.setProperty('--accent-bg', rgba(theme.vars['--accent'], 0.15))

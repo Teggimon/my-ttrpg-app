@@ -47,6 +47,9 @@ img { display: block; max-width: 100%; }
   --text-secondary:      #8885aa;
   --text-muted:          #45426a;
   --text-inverse:        #0e0d1a;
+  --surface-text-primary:   #eeedf8;
+  --surface-text-secondary: #8885aa;
+  --surface-text-muted:     #45426a;
 
   /* ── Accent — player purple ── */
   --accent:              #7c6ff5;

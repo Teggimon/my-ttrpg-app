@@ -12,7 +12,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
   font-family: var(--font-body);
   cursor: pointer;
 }
@@ -39,7 +39,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
 }
 
 .action-square:hover:not(:disabled),
@@ -53,7 +53,7 @@
 }
 
 .action-square--spent .action-square-count {
-  color: var(--text-muted);
+  color: var(--surface-text-muted);
 }
 
 .action-square:disabled,
@@ -75,7 +75,7 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   background: var(--bg-surface);
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
   text-align: left;
   font-family: var(--font-body);
   cursor: pointer;
@@ -107,7 +107,7 @@
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
 }
 
 .combat-feature-name {
@@ -128,7 +128,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-muted);
+  color: var(--surface-text-muted);
 }
 
 @media (max-width: 520px) {
@@ -154,6 +154,7 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   margin-bottom: 6px;
+  color: var(--surface-text-primary);
 }
 .attack-card--magic {
   border-color: var(--gold-border);
@@ -175,14 +176,14 @@
   font-family: var(--font-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-faint);
+  color: var(--surface-text-muted);
   flex-shrink: 0;
 }
 
 .atk-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
 }
 
 .atk-line2 {
@@ -195,9 +196,9 @@
 
 .atk-btns { margin-left: auto; display: flex; gap: 5px; }
 
-.badge--dim { color: var(--text-faint); }
+.badge--dim { color: var(--surface-text-muted); }
 .badge--ammo {
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
 }
 
 /* ── Prepared spell cards ─────────────────────────────────── */
@@ -208,6 +209,7 @@
   padding: 0;
   overflow: hidden;
   margin-bottom: 5px;
+  color: var(--surface-text-primary);
 }
 .spell-combat-line1 {
   display: flex;
@@ -218,7 +220,7 @@
 .spell-combat-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--surface-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -238,7 +240,7 @@
 .atk-btn:disabled { opacity: 0.4; cursor: default; }
 .atk-btn--roll { background: var(--accent); color: var(--accent-text); }
 .atk-btn--roll:hover { background: var(--accent-hover); }
-.atk-btn--use  { background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-secondary); }
+.atk-btn--use  { background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--surface-text-secondary); }
 
 .cast-slot-select {
   height: 25px;
@@ -246,7 +248,7 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--bg-elevated);
-  color: var(--text-secondary);
+  color: var(--surface-text-secondary);
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 700;
