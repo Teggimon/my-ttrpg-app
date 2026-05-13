@@ -245,6 +245,30 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#D0FFCB',
     },
   },
+  {
+    id: 'plum-gold',
+    name: 'Plum Gold',
+    description: 'Deep plum page, warm clay base, golden surfaces, parchment lift, blush action, and olive DM mode.',
+    vars: {
+      '--bg-page': '#2B061E',
+      '--bg-base': '#875053',
+      '--bg-surface': '#D2BF55',
+      '--bg-elevated': '#FFEED6',
+      '--bg-inset': '#5F373B',
+      '--border': '#A98253',
+      '--border-strong': '#BFA54E',
+      '--border-hi': '#FFEED6',
+      '--text-primary': '#FFF5E6',
+      '--text-secondary': '#F1C7C9',
+      '--text-muted': '#DFA5A7',
+      '--text-inverse': '#2B061E',
+      '--accent': '#FBBFCA',
+      '--accent-hover': '#FFD9E0',
+      '--accent-secondary': '#C98794',
+      '--dm': '#30321C',
+      '--dm-hover': '#565A33',
+    },
+  },
 ]
 
 function hexToRgb(value) {
