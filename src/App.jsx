@@ -366,6 +366,7 @@ function App() {
         setSelectedCampaign(campaign)
         setScreen('dm-campaign')
       }}
+      onLogout={logout}
     />
   )
 
