@@ -173,6 +173,30 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#A6B5FF',
     },
   },
+  {
+    id: 'harbor-rose',
+    name: 'Harbor Rose',
+    description: 'Deep harbor blue, warm parchment panels, rose player accents, and teal DM mode.',
+    vars: {
+      '--bg-page': '#001A23',
+      '--bg-base': '#001A23',
+      '--bg-surface': '#DDD1C7',
+      '--bg-elevated': '#F9F4F5',
+      '--bg-inset': '#00131A',
+      '--border': '#B8A99E',
+      '--border-strong': '#8F8178',
+      '--border-hi': '#62584F',
+      '--text-primary': '#F9F4F5',
+      '--text-secondary': '#DDD1C7',
+      '--text-muted': '#9C8F86',
+      '--text-inverse': '#001A23',
+      '--accent': '#D1495B',
+      '--accent-hover': '#E56D7C',
+      '--accent-secondary': '#9E2F3F',
+      '--dm': '#00798C',
+      '--dm-hover': '#19A5BC',
+    },
+  },
 ]
 
 function hexToRgb(value) {
