@@ -125,6 +125,30 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#ff9489',
     },
   },
+  {
+    id: 'stonewake',
+    name: 'Stonewake',
+    description: 'Green-gray stone, pale parchment text, and quiet teal accents.',
+    vars: {
+      '--bg-page': '#303633',
+      '--bg-base': '#303633',
+      '--bg-surface': '#556B6D',
+      '--bg-elevated': '#698385',
+      '--bg-inset': '#303633',
+      '--border': '#556B6D',
+      '--border-strong': '#698385',
+      '--border-hi': '#799496',
+      '--text-primary': '#FFFFF2',
+      '--text-secondary': '#FFFFF2',
+      '--text-muted': '#799496',
+      '--text-inverse': '#303633',
+      '--accent': '#799496',
+      '--accent-hover': '#FFFFF2',
+      '--accent-secondary': '#698385',
+      '--dm': '#698385',
+      '--dm-hover': '#FFFFF2',
+    },
+  },
 ]
 
 function hexToRgb(value) {
