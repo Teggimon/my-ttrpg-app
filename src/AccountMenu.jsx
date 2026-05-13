@@ -221,6 +221,30 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#9E5CE0',
     },
   },
+  {
+    id: 'ember-mint',
+    name: 'Ember Mint',
+    description: 'Smoked plum page, copper base, pale shell panels, ember action, and mint DM mode.',
+    vars: {
+      '--bg-page': '#3F2A2B',
+      '--bg-base': '#81523F',
+      '--bg-surface': '#FAC9B8',
+      '--bg-elevated': '#565656',
+      '--bg-inset': '#5F3C32',
+      '--border': '#A77763',
+      '--border-strong': '#C99784',
+      '--border-hi': '#FAC9B8',
+      '--text-primary': '#FFF2EC',
+      '--text-secondary': '#F4C8B8',
+      '--text-muted': '#D8A28E',
+      '--text-inverse': '#241616',
+      '--accent': '#FF4A1C',
+      '--accent-hover': '#FF7A54',
+      '--accent-secondary': '#C93514',
+      '--dm': '#B2FFA9',
+      '--dm-hover': '#D0FFCB',
+    },
+  },
 ]
 
 function hexToRgb(value) {
