@@ -99,7 +99,7 @@
   border: none;
   border-radius: var(--radius-md);
   background: var(--accent);
-  color: var(--text-inverse);
+  color: var(--accent-text);
   font-family: var(--font-body);
   font-size: 13px;
   font-weight: 800;
@@ -441,8 +441,8 @@
   display: block;
   width: 6px;
   height: 10px;
-  border-right: 2px solid var(--text-primary);
-  border-bottom: 2px solid var(--text-primary);
+  border-right: 2px solid var(--accent-text);
+  border-bottom: 2px solid var(--accent-text);
   transform: rotate(45deg) translate(-1px, -1px);
 }
 
@@ -1049,5 +1049,5 @@
 }
 .effect-mode-btn--on {
   background: var(--accent);
-  color: var(--text-inverse);
+  color: var(--accent-text);
 }

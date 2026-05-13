@@ -571,7 +571,7 @@ function CustomItemForm({ initial, onSave, onCancel, embedded = false }) {
         <button onClick={onCancel} style={{ flex:1, padding:'8px', background:'var(--bg-inset)', border:'0.5px solid var(--border-strong)', borderRadius:'var(--radius-md)', color:'var(--text-secondary)', fontFamily:'var(--font-body)', fontSize:13, cursor:'pointer' }}>
           Cancel
         </button>
-        <button onClick={save} disabled={!name.trim()} style={{ flex:2, padding:'8px', background:'var(--accent)', border:'none', borderRadius:'var(--radius-md)', color:'var(--text-primary)', fontFamily:'var(--font-body)', fontSize:13, fontWeight:700, cursor:'pointer', opacity: name.trim() ? 1 : 0.4 }}>
+        <button onClick={save} disabled={!name.trim()} style={{ flex:2, padding:'8px', background:'var(--accent)', border:'none', borderRadius:'var(--radius-md)', color:'var(--accent-text)', fontFamily:'var(--font-body)', fontSize:13, fontWeight:700, cursor:'pointer', opacity: name.trim() ? 1 : 0.4 }}>
           {initial ? 'Save Changes' : '+ Add Item'}
         </button>
       </div>

@@ -277,7 +277,7 @@ function App() {
           display: 'flex', alignItems: 'center', gap: '10px',
           padding: '12px 28px',
           background: 'var(--accent)',
-          color: 'var(--text-primary)',
+          color: 'var(--accent-text)',
           border: 'none',
           borderRadius: 'var(--radius-md)',
           fontFamily: 'var(--font-body)',

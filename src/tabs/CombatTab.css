@@ -236,7 +236,7 @@
   padding: 4px 12px; border-radius: var(--radius-sm); cursor: pointer; border: none;
 }
 .atk-btn:disabled { opacity: 0.4; cursor: default; }
-.atk-btn--roll { background: var(--accent); color: var(--text-primary); }
+.atk-btn--roll { background: var(--accent); color: var(--accent-text); }
 .atk-btn--roll:hover { background: var(--accent-hover); }
 .atk-btn--use  { background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--text-secondary); }
 

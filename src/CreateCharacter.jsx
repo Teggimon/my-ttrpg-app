@@ -325,7 +325,7 @@ const S = {
   btn: (primary) => ({
     width:'100%', minHeight:44, padding: '0.65rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem',
     background: primary ? 'var(--accent)' : 'var(--bg-elevated)',
-    color: primary ? 'var(--text-inverse)' : 'var(--text-secondary)',
+    color: primary ? 'var(--accent-text)' : 'var(--text-secondary)',
     border: primary ? 'none' : '1px solid var(--border-strong)',
   }),
   progress: { display: 'flex', gap: '0.35rem', marginBottom: '1.5rem' },
@@ -479,7 +479,7 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
     flex: 1, padding: '0.5rem', borderRadius: '6px', cursor: 'pointer',
     fontWeight: 600, fontSize: '0.82rem', fontFamily: 'var(--font-body)',
     background: method === id ? 'var(--accent)' : 'var(--bg-elevated)',
-    color:      method === id ? 'var(--text-inverse)'    : 'var(--text-secondary)',
+    color:      method === id ? 'var(--accent-text)'    : 'var(--text-secondary)',
     border:     method === id ? 'none'    : '1px solid var(--border)',
   })
 

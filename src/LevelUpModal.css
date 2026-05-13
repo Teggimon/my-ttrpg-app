@@ -712,7 +712,7 @@
 
 .lu-btn--primary {
   background: var(--accent);
-  color: var(--text-primary);
+  color: var(--accent-text);
 }
 .lu-btn--primary:not(:disabled):hover { background: var(--accent-hover); }
 

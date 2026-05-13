@@ -790,9 +790,9 @@
   transition: opacity 0.15s, background 0.15s;
 }
 .cv-btn:disabled { opacity: 0.4; cursor: default; }
-.cv-btn--accent { background: var(--accent); color: var(--text-inverse); }
+.cv-btn--accent { background: var(--accent); color: var(--accent-text); }
 .cv-btn--accent:not(:disabled):hover { background: var(--accent-hover); }
-.cv-btn--dm { background: var(--dm); color: var(--text-inverse); }
+.cv-btn--dm { background: var(--dm); color: var(--dm-text); }
 .cv-btn--dm:not(:disabled):hover { background: var(--dm-hover); }
 .cv-btn--ghost { background: var(--bg-inset); border: 0.5px solid var(--border-strong); color: var(--text-secondary); flex: none; padding: 11px 20px; }
 .cv-btn--ghost:hover { color: var(--text-primary); }
@@ -1005,7 +1005,7 @@
   white-space: nowrap;
 }
 .npc-add-btn--enemy { color: var(--dm); border-color: var(--dm-border); background: var(--dm-subtle); }
-.npc-add-btn--enemy:hover { background: var(--dm); color: var(--text-primary); }
+.npc-add-btn--enemy:hover { background: var(--dm); color: var(--dm-text); }
 .npc-add-btn--ally  { color: var(--text-muted); border-color: var(--border); background: transparent; }
 .npc-add-btn--ally:hover  { border-color: var(--border-strong); color: var(--text-secondary); }
 .npc-add-btn--boss  { color: var(--warning); border-color: var(--warning-border); background: var(--warning-subtle); }

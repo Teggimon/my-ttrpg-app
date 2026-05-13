@@ -197,13 +197,13 @@
 
 .ob-btn--accent {
   background: var(--accent);
-  color: var(--text-primary);
+  color: var(--accent-text);
 }
 .ob-btn--accent:not(:disabled):hover { background: var(--accent-hover); }
 
 .ob-btn--dm {
   background: var(--dm);
-  color: var(--text-primary);
+  color: var(--dm-text);
 }
 .ob-btn--dm:not(:disabled):hover { background: var(--dm-hover); }
 
