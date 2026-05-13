@@ -457,10 +457,25 @@ function EncounterBuildRow({ encounter, onToggleDefeated, onEdit }) {
 
 // ── CR formatter ──────────────────────────────────────────────
 function formatCR(cr) {
+  if (cr == null || cr === '') return 'Unknown'
   if (cr === 0.125) return '⅛'
   if (cr === 0.25)  return '¼'
   if (cr === 0.5)   return '½'
   return String(cr)
+}
+function formatMonsterCR(monster) {
+  const base = formatCR(monster.challenge_rating)
+  return monster.challenge_rating_detail ? `${base} (${monster.challenge_rating_detail})` : base
+}
+function crNumber(cr) {
+  if (typeof cr === 'number') return cr
+  if (typeof cr !== 'string') return null
+  if (cr.includes('/')) {
+    const [num, den] = cr.split('/').map(Number)
+    return den ? num / den : null
+  }
+  const parsed = Number(cr)
+  return Number.isNaN(parsed) ? null : parsed
 }
 function dexMod(dex) { return Math.floor(((dex ?? 10) - 10) / 2) }
 function abilityMod(val) {
@@ -541,7 +556,7 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
       npcId:      genId(),
       name:       monster.name,
       type:       monster.type,
-      cr:         formatCR(monster.challenge_rating),
+      cr:         formatMonsterCR(monster),
       hp:         monster.hit_points ?? null,
       hitDie:     firstText(monster.hit_dice, monster.hitDie),
       ac:         monster.armor_class?.[0]?.value ?? null,
@@ -689,11 +704,11 @@ function AddNPCModal({ campaignNpcs, onAdd, onClose }) {
                   <div key={m.index} className="npc-search-row npc-search-row--enemy">
                     <div className="npc-sr-info">
                       <div className="npc-sr-name">{m.name}</div>
-                      <div className="npc-sr-meta">{m.type} · CR {formatCR(m.challenge_rating)} · {m.hit_points} HP{firstText(m.hit_dice, m.hitDie) ? ` · ${firstText(m.hit_dice, m.hitDie)}` : ''} · AC {m.armor_class?.[0]?.value} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}</div>
+                      <div className="npc-sr-meta">{m.type ?? 'Creature'} · CR {formatMonsterCR(m)} · {m.hit_points ?? 'Unknown'} HP{firstText(m.hit_dice, m.hitDie) ? ` · ${firstText(m.hit_dice, m.hitDie)}` : ''} · AC {m.armor_class?.[0]?.value ?? 'Unknown'} · Init {dexMod(m.dexterity) >= 0 ? '+' : ''}{dexMod(m.dexterity)}</div>
                     </div>
                     <span className="npc-sr-badge npc-sr-badge--srd">{sourceCode(m)}</span>
                     <div className="npc-sr-btns">
-                      {m.challenge_rating >= 4 && (
+                      {crNumber(m.challenge_rating) >= 4 && (
                         <button className="npc-add-btn npc-add-btn--boss" onClick={() => addFromSrd(m, 'boss')}>Boss</button>
                       )}
                       <button className="npc-add-btn npc-add-btn--enemy" onClick={() => addFromSrd(m, 'standard')}>Enemy</button>
