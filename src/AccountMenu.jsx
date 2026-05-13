@@ -197,6 +197,30 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#19A5BC',
     },
   },
+  {
+    id: 'gilded-hearth',
+    name: 'Gilded Hearth',
+    description: 'Smoky olive stone, bronze panels, rose action, and violet DM mode.',
+    vars: {
+      '--bg-page': '#585B56',
+      '--bg-base': '#585B56',
+      '--bg-surface': '#937D64',
+      '--bg-elevated': '#D7AF70',
+      '--bg-inset': '#424640',
+      '--border': '#766959',
+      '--border-strong': '#A28C6D',
+      '--border-hi': '#C19E69',
+      '--text-primary': '#FFF7E8',
+      '--text-secondary': '#E6D2B6',
+      '--text-muted': '#C4A77E',
+      '--text-inverse': '#292C28',
+      '--accent': '#EA526F',
+      '--accent-hover': '#F47D93',
+      '--accent-secondary': '#B83951',
+      '--dm': '#7A28CB',
+      '--dm-hover': '#9E5CE0',
+    },
+  },
 ]
 
 function hexToRgb(value) {
