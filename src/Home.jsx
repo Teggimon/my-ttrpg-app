@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
+import AccountMenu from './AccountMenu'
 import { CHARACTERS_PATH, DATA_REPO } from './githubStorage'
 import './Home.css'
 
@@ -293,10 +294,7 @@ export default function Home({
               <span className="home-user-name">{user.login}</span>
               <span className="home-user-handle">@{user.login}</span>
             </div>
-            {user.avatar_url
-              ? <img src={user.avatar_url} alt={user.login} className="home-avatar" onClick={onLogout} title="Log out" />
-              : <div className="home-avatar home-avatar--initial" onClick={onLogout}>{user.login[0].toUpperCase()}</div>
-            }
+            <AccountMenu user={user} mode={gmMode ? 'dm' : 'player'} onLogout={onLogout} />
           </div>
         </header>
 

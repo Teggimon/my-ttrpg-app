@@ -195,6 +195,36 @@ function normalizeEntriesToTraits(entries = []) {
     .map(entry => ({ index: slug(entry.name), name: entry.name, desc: [stripTags(entry.entries)] }))
 }
 
+function normalizeMonsterAc(ac) {
+  const firstAc = Array.isArray(ac) ? ac[0] : ac
+  if (firstAc == null) return null
+  if (typeof firstAc === 'number' || typeof firstAc === 'string') return firstAc
+  if (typeof firstAc?.ac === 'number' || typeof firstAc?.ac === 'string') return firstAc.ac
+  if (firstAc?.special) return stripTags(firstAc.special)
+  return stripTags(firstAc)
+}
+
+function normalizeMonsterType(type) {
+  if (type == null) return null
+  if (typeof type === 'string') return type
+  return stripTags(type.type ?? type)
+}
+
+function normalizeMonsterCr(cr) {
+  if (cr == null) return null
+  if (typeof cr === 'number' || typeof cr === 'string') return cr
+  if (cr.cr != null) return cr.cr
+  return stripTags(cr)
+}
+
+function normalizeMonsterCrDetail(cr) {
+  if (cr == null || typeof cr !== 'object') return null
+  const details = []
+  if (cr.lair != null) details.push(`lair ${cr.lair}`)
+  if (cr.coven != null) details.push(`coven ${cr.coven}`)
+  return details.length ? details.join(', ') : null
+}
+
 function draconicAncestryOptions(entries = []) {
   const ancestry = entries.find(entry => /(draconic|chromatic|gem|metallic) ancestry/i.test(entry?.name ?? ''))
   const table = ancestry?.entries?.find(entry => entry?.type === 'table' && Array.isArray(entry.rows))
@@ -709,12 +739,13 @@ function normalizeMonster(monster) {
     index: slug(monster.name),
     name: monster.name,
     source: monster.source,
-    type: typeof monster.type === 'string' ? monster.type : monster.type?.type,
-    challenge_rating: monster.cr,
+    type: normalizeMonsterType(monster.type),
+    challenge_rating: normalizeMonsterCr(monster.cr),
+    challenge_rating_detail: normalizeMonsterCrDetail(monster.cr),
     hit_points: monster.hp?.average,
     hit_dice: monster.hp?.formula,
     hitDie: monster.hp?.formula,
-    armor_class: [{ value: Array.isArray(monster.ac) ? (monster.ac[0]?.ac ?? monster.ac[0]) : monster.ac }],
+    armor_class: [{ value: normalizeMonsterAc(monster.ac) }],
     strength: monster.str,
     dexterity: monster.dex,
     constitution: monster.con,

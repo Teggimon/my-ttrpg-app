@@ -179,29 +179,6 @@
   font-family: var(--font-mono);
 }
 
-.home-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  object-fit: cover;
-  border: 1.5px solid var(--border-strong);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color 0.15s;
-}
-
-.home-avatar:hover { border-color: var(--accent); }
-
-.home-avatar--initial {
-  background: var(--accent-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--accent);
-}
-
 /* ════════════════════════════════════════════
    DM banner
    ════════════════════════════════════════════ */

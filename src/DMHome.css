@@ -155,25 +155,6 @@
   color: var(--text-primary);
 }
 
-.dm-home-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  object-fit: cover;
-  border: 1.5px solid var(--dm-border);
-  flex-shrink: 0;
-}
-
-.dm-home-avatar--initial {
-  background: var(--dm-subtle);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--dm);
-}
-
 /* ════════════════════════════════════════════
    Scroll area
    ════════════════════════════════════════════ */

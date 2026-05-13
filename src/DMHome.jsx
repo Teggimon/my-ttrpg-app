@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
+import AccountMenu from './AccountMenu'
 import { APP_META_PATH, CAMPAIGNS_PATH, DATA_REPO, repoDescription } from './githubStorage'
 import './DMHome.css'
 
@@ -221,7 +222,7 @@ function NoRepoState({ onSetup, loading }) {
 }
 
 // ── Main DMHome ───────────────────────────────────────────────
-export default function DMHome({ token, user, onBack, onOpenCampaign }) {
+export default function DMHome({ token, user, onBack, onOpenCampaign, onLogout }) {
   const [campaigns, setCampaigns]         = useState([])
   const [loading, setLoading]             = useState(true)
   const [repoExists, setRepoExists]       = useState(null)   // null = checking
@@ -378,10 +379,7 @@ export default function DMHome({ token, user, onBack, onOpenCampaign }) {
 
           <div className="dm-home-user">
             <span className="dm-home-username">{user.login}</span>
-            {user.avatar_url
-              ? <img src={user.avatar_url} alt={user.login} className="dm-home-avatar" />
-              : <div className="dm-home-avatar dm-home-avatar--initial">{user.login[0].toUpperCase()}</div>
-            }
+            <AccountMenu user={user} mode="dm" onLogout={onLogout} />
           </div>
         </header>
 
