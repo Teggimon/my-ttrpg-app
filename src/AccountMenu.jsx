@@ -149,6 +149,30 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#FFFFF2',
     },
   },
+  {
+    id: 'lime-rift',
+    name: 'Lime Rift',
+    description: 'Near-black green, mineral teal panels, electric lime, and periwinkle DM mode.',
+    vars: {
+      '--bg-page': '#000F08',
+      '--bg-base': '#000F08',
+      '--bg-surface': '#1C3738',
+      '--bg-elevated': '#2B494A',
+      '--bg-inset': '#000A05',
+      '--border': '#1C3738',
+      '--border-strong': '#446567',
+      '--border-hi': '#668789',
+      '--text-primary': '#ECF0F1',
+      '--text-secondary': '#B9C5C6',
+      '--text-muted': '#6D8587',
+      '--text-inverse': '#000F08',
+      '--accent': '#CEFF1A',
+      '--accent-hover': '#E3FF73',
+      '--accent-secondary': '#9FC60F',
+      '--dm': '#7189FF',
+      '--dm-hover': '#A6B5FF',
+    },
+  },
 ]
 
 function hexToRgb(value) {
