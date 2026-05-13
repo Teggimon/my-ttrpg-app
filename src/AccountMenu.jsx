@@ -287,11 +287,14 @@ function isLight(value) {
 function applyTheme(theme) {
   const root = document.documentElement
   const hasLightSurface = isLight(theme.vars['--bg-surface'])
+  const surfaceTextPrimary = hasLightSurface ? theme.vars['--text-inverse'] : theme.vars['--text-primary']
+  const surfaceTextSecondary = hasLightSurface ? theme.vars['--bg-base'] : theme.vars['--text-secondary']
+  const surfaceTextMuted = hasLightSurface ? theme.vars['--bg-page'] : theme.vars['--text-muted']
   root.setAttribute('data-theme', theme.id)
   Object.entries(theme.vars).forEach(([key, value]) => root.style.setProperty(key, value))
-  root.style.setProperty('--surface-text-primary', hasLightSurface ? theme.vars['--text-inverse'] : theme.vars['--text-primary'])
-  root.style.setProperty('--surface-text-secondary', hasLightSurface ? theme.vars['--border-hi'] : theme.vars['--text-secondary'])
-  root.style.setProperty('--surface-text-muted', hasLightSurface ? theme.vars['--border-strong'] : theme.vars['--text-muted'])
+  root.style.setProperty('--surface-text-primary', surfaceTextPrimary)
+  root.style.setProperty('--surface-text-secondary', surfaceTextSecondary)
+  root.style.setProperty('--surface-text-muted', surfaceTextMuted)
   root.style.setProperty('--accent-text', contrastText(theme.vars['--accent'], theme.vars['--text-inverse'], theme.vars['--text-primary']))
   root.style.setProperty('--accent-subtle', rgba(theme.vars['--accent'], 0.15))
   root.style.setProperty('--accent-bg', rgba(theme.vars['--accent'], 0.15))
@@ -309,7 +312,7 @@ function applyTheme(theme) {
   root.style.setProperty('--text-faint', theme.vars['--text-muted'])
   root.style.setProperty('--tab-active-bg', theme.vars['--bg-elevated'])
   root.style.setProperty('--tab-active-text', theme.vars['--text-primary'])
-  root.style.setProperty('--tab-inactive-text', theme.vars['--text-muted'])
+  root.style.setProperty('--tab-inactive-text', hasLightSurface ? surfaceTextMuted : theme.vars['--text-muted'])
   root.style.setProperty('--spell-slot-filled', theme.vars['--accent'])
   root.style.setProperty('--spell-slot-empty', theme.vars['--border'])
   root.style.setProperty('--hp-bg', theme.vars['--bg-surface'])
