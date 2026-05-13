@@ -193,15 +193,32 @@ function rgba(value, alpha) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+function relativeLuminance(value) {
+  const { r, g, b } = hexToRgb(value)
+  const channels = [r, g, b].map(channel => {
+    const scaled = channel / 255
+    return scaled <= 0.03928
+      ? scaled / 12.92
+      : ((scaled + 0.055) / 1.055) ** 2.4
+  })
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+}
+
+function contrastText(background, darkText, lightText) {
+  return relativeLuminance(background) > 0.45 ? darkText : lightText
+}
+
 function applyTheme(theme) {
   const root = document.documentElement
   root.setAttribute('data-theme', theme.id)
   Object.entries(theme.vars).forEach(([key, value]) => root.style.setProperty(key, value))
+  root.style.setProperty('--accent-text', contrastText(theme.vars['--accent'], theme.vars['--text-inverse'], theme.vars['--text-primary']))
   root.style.setProperty('--accent-subtle', rgba(theme.vars['--accent'], 0.15))
   root.style.setProperty('--accent-bg', rgba(theme.vars['--accent'], 0.15))
   root.style.setProperty('--accent-border', theme.vars['--accent-secondary'])
   root.style.setProperty('--accent-light', theme.vars['--accent-hover'])
   root.style.setProperty('--accent-glow', `0 8px 28px ${rgba(theme.vars['--accent'], 0.2)}`)
+  root.style.setProperty('--dm-text', contrastText(theme.vars['--dm'], theme.vars['--text-inverse'], theme.vars['--text-primary']))
   root.style.setProperty('--dm-subtle', rgba(theme.vars['--dm'], 0.12))
   root.style.setProperty('--dm-border', rgba(theme.vars['--dm'], 0.38))
   root.style.setProperty('--dm-glow', `0 8px 28px ${rgba(theme.vars['--dm'], 0.15)}`)

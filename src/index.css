@@ -51,12 +51,14 @@ img { display: block; max-width: 100%; }
   /* ── Accent — player purple ── */
   --accent:              #7c6ff5;
   --accent-hover:        #9b90ff;
+  --accent-text:         #0e0d1a;
   --accent-subtle:       rgba(124, 111, 245, 0.15);
   --accent-secondary:    #5550cc;
 
   /* ── DM crimson ── */
   --dm:                  #e05252;
   --dm-hover:            #f07070;
+  --dm-text:             #0e0d1a;
   --dm-subtle:           rgba(224, 82, 82, 0.12);
   --dm-border:           rgba(224, 82, 82, 0.38);
 
@@ -384,7 +386,7 @@ body {
 .btn--sm   { min-height: 32px; padding: 6px 12px; font-size: 12px; }
 .btn--full { width: 100%; }
 
-.btn-primary   { background: var(--accent); color: var(--text-inverse); }
+.btn-primary   { background: var(--accent); color: var(--accent-text); }
 .btn-primary:not(:disabled):hover { background: var(--accent-hover); }
 
 .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-strong); }
@@ -396,7 +398,7 @@ body {
 .btn-danger    { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-bdr); }
 .btn-danger:not(:disabled):hover { background: rgba(248, 113, 113, 0.22); }
 
-.btn-dm        { background: var(--dm); color: #fff; }
+.btn-dm        { background: var(--dm); color: var(--dm-text); }
 .btn-dm:not(:disabled):hover { background: var(--dm-hover); }
 
 .btn-gold      { background: var(--gold); color: var(--text-inverse); }

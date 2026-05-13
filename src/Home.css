@@ -142,13 +142,13 @@
 
 .mode-btn--active {
   background: var(--accent);
-  color: var(--text-inverse);
+  color: var(--accent-text);
   box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .mode-btn--dm-active {
   background: var(--dm);
-  color: var(--text-inverse);
+  color: var(--dm-text);
   box-shadow: 0 0 10px var(--dm-glow);
 }
 

@@ -137,7 +137,7 @@
 
 .dm-mode-btn--active {
   background: var(--dm);
-  color: var(--text-inverse);
+  color: var(--dm-text);
   box-shadow: var(--shadow-sm);
   cursor: default;
 }
@@ -344,7 +344,7 @@
   top: 10px;
   left: 10px;
   background: var(--dm);
-  color: var(--text-primary);
+  color: var(--dm-text);
   font-size: 10px;
   font-weight: 700;
   padding: 3px 8px;
@@ -717,7 +717,7 @@
 
 .dm-btn--accent {
   background: var(--dm);
-  color: var(--text-primary);
+  color: var(--dm-text);
 }
 .dm-btn--accent:not(:disabled):hover { background: var(--dm-hover); }
 
