@@ -152,18 +152,16 @@ function ConfirmDelete({ char, onConfirm, onCancel, loading }) {
 
 export default function Home({
   token, user,
-  isGM,
   onGMToggle,
   onCreateCharacter,
   onSelectCharacter,
-  onOpenGMDashboard,
+  onOpenDMHome,
   onLogout,
 }) {
   const [characters, setCharacters]       = useState([])
   const [loading, setLoading]             = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
-  const [gmMode, setGmMode]               = useState(isGM)
 
   const octokit  = new Octokit({ auth: token })
   const repoName = DATA_REPO
@@ -256,33 +254,33 @@ export default function Home({
     <div className="home-body">
 
       {/* ── The floating panel ── */}
-      <div className={`home-panel${gmMode ? ' home-panel--dm' : ''}`}>
+      <div className="home-panel">
 
         {/* ── Header ── */}
         <header className="home-header">
 
           {/* Logo + wordmark */}
           <div className="home-logo-wrap">
-            <div className={`home-logo-icon${gmMode ? ' home-logo-icon--dm' : ''}`}>
+            <div className="home-logo-icon">
               <img src="/uploads/placeholders/default-portrait.jpg" alt="" className="home-logo-img" />
             </div>
             <div>
               <div className="home-wordmark">TTRPG Sheet</div>
-              <div className="home-tagline">{gmMode ? 'Dungeon Master' : 'Character Manager'}</div>
+              <div className="home-tagline">Character Manager</div>
             </div>
           </div>
 
           {/* Player / DM pill toggle — centred */}
           <div className="mode-toggle">
             <button
-              className={`mode-btn${!gmMode ? ' mode-btn--active' : ''}`}
-              onClick={() => { setGmMode(false); onGMToggle?.(false) }}
+              className="mode-btn mode-btn--active"
+              aria-current="page"
             >
               Player
             </button>
             <button
-              className={`mode-btn mode-btn--dm${gmMode ? ' mode-btn--active mode-btn--dm-active' : ''}`}
-              onClick={() => { setGmMode(true); onGMToggle?.(true); onOpenGMDashboard() }}
+              className="mode-btn mode-btn--dm"
+              onClick={() => { onGMToggle?.(true); onOpenDMHome() }}
             >
               DM
             </button>
@@ -294,38 +292,12 @@ export default function Home({
               <span className="home-user-name">{user.login}</span>
               <span className="home-user-handle">@{user.login}</span>
             </div>
-            <AccountMenu user={user} mode={gmMode ? 'dm' : 'player'} onLogout={onLogout} />
+            <AccountMenu user={user} mode="player" onLogout={onLogout} />
           </div>
         </header>
 
-        {/* ── DM mode banner ── */}
-        {gmMode && (
-          <div className="dm-banner">
-            <span className="dm-banner-icon">DM</span>
-            You're in DM mode. Your characters are safe — switch back to Player mode anytime.
-          </div>
-        )}
-
         {/* ── Scrollable content ── */}
         <div className="home-scroll">
-
-          {/* ── GM: Party Dashboard strip ── */}
-          {gmMode && (
-            <section className="home-section">
-              <div className="home-section-header">
-                <h2 className="home-section-title">Party Dashboard</h2>
-                <button className="section-action-btn" onClick={onOpenGMDashboard}>Open →</button>
-              </div>
-              <div className="gm-strip" onClick={onOpenGMDashboard}>
-                <img src="/uploads/placeholders/default-portrait.jpg" alt="" className="gm-strip-img" />
-                <div>
-                  <div className="gm-strip-title">Open Party Dashboard</div>
-                  <div className="gm-strip-sub">Track HP, conditions and stats for all your players live</div>
-                </div>
-                <span className="gm-strip-arrow">→</span>
-              </div>
-            </section>
-          )}
 
           {/* ── My Characters ── */}
           <section className="home-section">

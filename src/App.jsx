@@ -8,7 +8,6 @@ import SessionView from './SessionView'
 import EncounterView from './EncounterView'
 import CreateCharacter from './CreateCharacter'
 import CharacterLayout from './CharacterLayout'
-import GMDashboard from './GMDashboard'
 import { APP_META_PATH, CHARACTERS_PATH, DATA_REPO } from './githubStorage'
 
 const CLIENT_ID      = import.meta.env.VITE_GITHUB_CLIENT_ID
@@ -67,7 +66,6 @@ function App() {
   const [selectedEncounter, setSelectedEncounter] = useState(null)
   const [sessionParty, setSessionParty]           = useState([])
   const [sessionPreparedEncounters, setSessionPreparedEncounters] = useState([])
-  const [isGM, setIsGM]                           = useState(false)
 
   const octokit = token ? new Octokit({ auth: token }) : null
 
@@ -109,14 +107,6 @@ function App() {
     try {
       await ok.repos.get({ owner: login, repo: DATA_REPO })
       setOnboarded(true)
-
-      try {
-        const { data } = await ok.repos.getContent({ owner: login, repo: DATA_REPO, path: APP_META_PATH })
-        const meta = JSON.parse(atob(data.content.replace(/\s/g, '')))
-        setIsGM(!!meta.isGM)
-      } catch {
-        setIsGM(false)
-      }
     } catch {
       setOnboarded(false)
     }
@@ -133,7 +123,6 @@ function App() {
     setToken(null)
     setUser(null)
     setOnboarded(false)
-    setIsGM(false)
     setScreen('home')
     setSelectedCharacter(null)
     setSelectedCampaign(null)
@@ -199,14 +188,12 @@ function App() {
   }
 
   // ── Onboarding complete ─────────────────────────────────────
-  const handleOnboardComplete = (gmStatus) => {
+  const handleOnboardComplete = () => {
     setOnboarded(true)
-    setIsGM(gmStatus)
   }
 
   // ── DM mode toggled from Home ───────────────────────────────
   const handleGMToggle = async (newIsGM) => {
-    setIsGM(newIsGM)
     try {
       let sha
       try {
@@ -348,7 +335,7 @@ function App() {
       activeCharId={selectedCharacter.meta.characterId}
       onSwitchChar={() => {}}
       onNewChar={() => setScreen('create')}
-      onBack={() => setScreen(selectedCampaign ? 'gm-dashboard' : 'home')}
+      onBack={() => setScreen('home')}
       user={user}
       onUpdateChar={saveCharacter}
       onUploadImage={uploadCharacterImage}
@@ -361,7 +348,7 @@ function App() {
     <DMHome
       token={token}
       user={user}
-      onBack={() => { setScreen('home'); setIsGM(false) }}
+      onBack={() => setScreen('home')}
       onOpenCampaign={(campaign) => {
         setSelectedCampaign(campaign)
         setScreen('dm-campaign')
@@ -424,33 +411,21 @@ function App() {
     />
   )
 
-  // ── GM Dashboard (legacy — keep for now) ──
-  if (screen === 'gm-dashboard') return (
-    <GMDashboard
-      token={token}
-      user={user}
-      campaign={selectedCampaign}
-      onBack={() => setScreen('dm-home')}
-      onViewCharacter={(char) => {
-        setSelectedCharacter(char)
-        setScreen('character')
-      }}
-    />
-  )
-
   // ── Home ──
   return (
     <Home
       token={token}
       user={user}
-      isGM={isGM}
       onGMToggle={handleGMToggle}
       onCreateCharacter={() => setScreen('create')}
       onSelectCharacter={(char) => {
+        setSelectedCampaign(null)
+        setSelectedSession(null)
+        setSelectedEncounter(null)
         setSelectedCharacter(char)
         setScreen('character')
       }}
-      onOpenGMDashboard={() => setScreen('dm-home')}
+      onOpenDMHome={() => setScreen('dm-home')}
       onLogout={logout}
     />
   )

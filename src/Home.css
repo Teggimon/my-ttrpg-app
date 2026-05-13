@@ -40,18 +40,6 @@
   }
 }
 
-/* DM mode — border tint shifts to crimson */
-.home-panel--dm {
-  border-color: var(--dm-border);
-}
-
-@media (min-width: 720px) {
-  .home-panel--dm {
-    border-color: var(--dm-border);
-    box-shadow: var(--shadow-lg), 0 0 0 0.5px var(--dm-border);
-  }
-}
-
 /* ════════════════════════════════════════════
    Header
    ════════════════════════════════════════════ */
@@ -85,11 +73,6 @@
   font-size: 18px;
   transition: background 0.2s, border-color 0.2s;
   flex-shrink: 0;
-}
-
-.home-logo-icon--dm {
-  background: var(--dm-subtle);
-  border-color: var(--dm-border);
 }
 
 .home-logo-img {
@@ -180,23 +163,6 @@
 }
 
 /* ════════════════════════════════════════════
-   DM banner
-   ════════════════════════════════════════════ */
-.dm-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 20px;
-  background: var(--dm-subtle);
-  border-bottom: 0.5px solid var(--dm-border);
-  font-size: 13px;
-  color: var(--dm-hover);
-  flex-shrink: 0;
-}
-
-.dm-banner-icon { font-size: 16px; flex-shrink: 0; }
-
-/* ════════════════════════════════════════════
    Scroll area
    ════════════════════════════════════════════ */
 .home-scroll {
@@ -236,52 +202,6 @@
   color: var(--text-muted);
   font-family: var(--font-mono);
 }
-
-.section-action-btn {
-  background: none;
-  border: none;
-  color: var(--accent);
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-}
-
-.section-action-btn:hover { opacity: 0.75; }
-
-/* ════════════════════════════════════════════
-   GM strip
-   ════════════════════════════════════════════ */
-.gm-strip {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  background: var(--dm-subtle);
-  border: 0.5px solid var(--dm-border);
-  border-radius: var(--radius-lg);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.gm-strip:hover {
-  background: var(--hover-strong);
-  border-color: var(--dm);
-}
-
-.gm-strip-emoji  { font-size: 22px; flex-shrink: 0; }
-.gm-strip-img {
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-sm);
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid var(--border);
-}
-.gm-strip-title  { font-size: 14px; font-weight: 700; color: var(--dm-hover); }
-.gm-strip-sub    { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-.gm-strip-arrow  { margin-left: auto; font-size: 16px; color: var(--text-muted); }
 
 /* ════════════════════════════════════════════
    Loading
