@@ -37,6 +37,11 @@ function formatClock(s) {
     ? `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
     : `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
 }
+function sessionDuration(session, nowMs = Date.now()) {
+  const base = session.duration ?? 0
+  if (!session.timerRunning || !session.timerStartedAt) return base
+  return base + Math.max(0, Math.floor((nowMs - new Date(session.timerStartedAt).getTime()) / 1000))
+}
 function formatInGame(rounds) {
   const total = rounds * 6
   if (total < 60) return `${total}s`
@@ -141,7 +146,18 @@ function CharRefCard({ char, isPresent, onTogglePresent }) {
 }
 
 // ── Encounter row ─────────────────────────────────────────────
-function EncounterRow({ encounter, onOpen, isActive }) {
+function EncounterRow({ encounter, onOpen, isActive, actionLabel }) {
+  const statusLabel = actionLabel ?? (isActive
+    ? 'Live'
+    : encounter.defeated
+      ? 'Defeated'
+      : encounter.outcome === 'victory'
+        ? 'Victory'
+        : encounter.outcome === 'fled'
+          ? 'Fled'
+          : encounter.outcome === 'defeat'
+            ? 'Defeat'
+            : '—')
   return (
     <div className={`sv-enc-row${isActive ? ' sv-enc-row--live' : ''}`} onClick={() => onOpen(encounter)}>
       <div className="sv-enc-num">{encounter.number}</div>
@@ -153,18 +169,7 @@ function EncounterRow({ encounter, onOpen, isActive }) {
         </div>
       </div>
       <div className={`sv-enc-status${isActive ? ' sv-enc-status--live' : encounter.outcome ? ' sv-enc-status--done' : ''}`}>
-        {isActive
-          ? 'Live'
-          : encounter.defeated
-            ? 'Defeated'
-          : encounter.outcome === 'victory'
-            ? 'Victory'
-            : encounter.outcome === 'fled'
-              ? 'Fled'
-              : encounter.outcome === 'defeat'
-                ? 'Defeat'
-                : '—'
-        }
+        {statusLabel}
       </div>
     </div>
   )
@@ -194,69 +199,6 @@ function SVNoteSection({ section, onChange }) {
   )
 }
 
-// ── New Encounter Modal ───────────────────────────────────────
-function NewEncounterModal({ encounterNumber, preparedEncounters, onCreate, onClose }) {
-  const [name, setName] = useState(`Encounter ${encounterNumber}`)
-  const [selectedId, setSelectedId] = useState('')
-  const selected = preparedEncounters.find(enc => enc.encounterId === selectedId)
-
-  const submit = () => {
-    if (selected) onCreate(selected.name, selected)
-    else onCreate(name, null)
-  }
-
-  return (
-    <div className="sv-modal-overlay" onClick={onClose}>
-      <div className="sv-modal-sheet" onClick={e => e.stopPropagation()}>
-        <div className="sv-modal-handle" />
-        <div className="sv-modal-title">Start Encounter</div>
-
-        {preparedEncounters.length > 0 && (
-          <>
-            <label className="sv-modal-label">Prepared encounter</label>
-            <select
-              className="sv-modal-input"
-              value={selectedId}
-              onChange={e => setSelectedId(e.target.value)}
-            >
-              <option value="">Custom encounter</option>
-              {preparedEncounters.map(enc => (
-                <option key={enc.encounterId} value={enc.encounterId}>
-                  {enc.name} ({enc.enemyCount ?? enc.combatants?.length ?? 0} enemies{enc.defeated ? ', defeated' : ''})
-                </option>
-              ))}
-            </select>
-          </>
-        )}
-
-        {!selected && (
-          <>
-            <label className="sv-modal-label">Encounter name</label>
-            <input
-              className="sv-modal-input"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && submit()}
-              autoFocus
-            />
-          </>
-        )}
-
-        {selected && (
-          <div className="sv-prepared-summary">
-            {(selected.combatants ?? []).length} combatant{(selected.combatants ?? []).length !== 1 ? 's' : ''} will be loaded into health setup.
-          </div>
-        )}
-
-        <div className="sv-modal-actions">
-          <button className="sv-btn sv-btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="sv-btn sv-btn--dm" onClick={submit}>Start →</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ════════════════════════════════════════════════════════════════
 //  Main SessionView
 // ════════════════════════════════════════════════════════════════
@@ -276,12 +218,11 @@ export default function SessionView({ token, user, session, campaign, party, ini
     allActiveChars(party).forEach(c => { a[c.characterId] = true })
     return a
   })
-  const [showNewEncounter, setShowNewEncounter] = useState(false)
   const [saving, setSaving]       = useState(false)
 
   // ── Session clock ──
-  const [clockSeconds, setClockSeconds] = useState(session.duration ?? 0)
-  const [clockRunning, setClockRunning] = useState(true)
+  const [clockSeconds, setClockSeconds] = useState(() => sessionDuration(session))
+  const [clockRunning, setClockRunning] = useState(session.timerRunning ?? true)
   const clockRef = useRef(null)
   const clockSecondsRef = useRef(clockSeconds)
   const encountersRef = useRef(encounters)
@@ -327,6 +268,9 @@ export default function SessionView({ token, user, session, campaign, party, ini
         encounters: encountersRef.current,
         duration: clockSecondsRef.current,
         status: 'live',
+        timerRunning: clockRunning,
+        timerStartedAt: clockRunning ? new Date().toISOString() : null,
+        timerUpdatedAt: new Date().toISOString(),
         ...patch,
       }
       const updatedSessions = hasSession
@@ -345,14 +289,20 @@ export default function SessionView({ token, user, session, campaign, party, ini
       console.error('Save failed:', e)
     }
     if (showSaving) setSaving(false)
-  }, [basePath, octokit, session, user.login])
+  }, [basePath, clockRunning, octokit, session, user.login])
 
   const saveDuration = useCallback(() => {
     return updateStoredSession(
-      { duration: clockSecondsRef.current, encounters: encountersRef.current },
+      {
+        duration: clockSecondsRef.current,
+        encounters: encountersRef.current,
+        timerRunning: clockRunning,
+        timerStartedAt: clockRunning ? new Date().toISOString() : null,
+        timerUpdatedAt: new Date().toISOString(),
+      },
       'Update session timer'
     )
-  }, [updateStoredSession])
+  }, [clockRunning, updateStoredSession])
 
   useEffect(() => {
     if (!clockRunning) {
@@ -397,13 +347,20 @@ export default function SessionView({ token, user, session, campaign, party, ini
 
   const saveEncounters = async (updated) => {
     await updateStoredSession(
-      { encounters: updated, duration: clockSecondsRef.current, status: 'live' },
+      {
+        encounters: updated,
+        duration: clockSecondsRef.current,
+        status: 'live',
+        timerRunning: clockRunning,
+        timerStartedAt: clockRunning ? new Date().toISOString() : null,
+        timerUpdatedAt: new Date().toISOString(),
+      },
       'Update session encounters',
       true
     )
   }
 
-  const createEncounter = async (name, preparedEncounter = null) => {
+  const startPreparedEncounter = async (preparedEncounter) => {
     const groups = preparedEncounter?.groups ?? []
     const combatants = (preparedEncounter?.combatants ?? []).map(combatant => {
       const hpGroup = groups.find(g => g.npcId === combatant.npcId)
@@ -416,7 +373,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
     })
     const enc = {
       encounterId: genId(),
-      name,
+      name: preparedEncounter.name,
       number:      encounters.length + 1,
       status:      'live',
       rounds:      1,
@@ -429,7 +386,6 @@ export default function SessionView({ token, user, session, campaign, party, ini
     const updated = [...encounters, enc]
     setEncounters(updated)
     await saveEncounters(updated)
-    setShowNewEncounter(false)
   }
 
   const toggleAttendance = (characterId) => {
@@ -444,7 +400,18 @@ export default function SessionView({ token, user, session, campaign, party, ini
   }, [])
 
   const chars = allActiveChars(party)
-  const currentSession = { ...session, duration: clockSeconds, encounters }
+  const sessionPreparedEncounters = preparedEncounters.filter(enc =>
+    !enc.defeated &&
+    !encounters.some(existing => existing.preparedEncounterId === enc.encounterId)
+  )
+  const currentSession = {
+    ...session,
+    duration: clockSeconds,
+    timerRunning: clockRunning,
+    timerStartedAt: clockRunning ? new Date().toISOString() : null,
+    timerUpdatedAt: new Date().toISOString(),
+    encounters,
+  }
   const handleBack = async () => {
     await saveDuration()
     onBack()
@@ -562,12 +529,27 @@ export default function SessionView({ token, user, session, campaign, party, ini
               <div className="sv-no-encounter">
                 <div className="sv-no-enc-icon">ENC</div>
                 <div className="sv-no-enc-title">No active encounter</div>
-                <div className="sv-no-enc-sub">Start a new encounter to begin combat tracking</div>
-                <button className="sv-enter-enc-btn" onClick={() => setShowNewEncounter(true)}>
-                  + Start New Encounter
-                </button>
+                <div className="sv-no-enc-sub">Start a prepared campaign encounter below to begin combat tracking</div>
               </div>
             )}
+
+            <div className="sv-enc-section">
+              <div className="sv-sec-label">Prepared Encounters</div>
+              {sessionPreparedEncounters.length === 0 ? (
+                <div className="sv-prepared-empty">No prepared encounters available. Add or edit encounters from the Campaign Encounters tab.</div>
+              ) : sessionPreparedEncounters.map(enc => (
+                <EncounterRow
+                  key={enc.encounterId}
+                  encounter={{
+                    ...enc,
+                    number: 'ENC',
+                    enemyCount: enc.enemyCount ?? enc.combatants?.length ?? 0,
+                  }}
+                  onOpen={() => startPreparedEncounter(enc)}
+                  actionLabel="Start"
+                />
+              ))}
+            </div>
 
             {/* Past encounters */}
             {pastEncounters.length > 0 && (
@@ -583,10 +565,6 @@ export default function SessionView({ token, user, session, campaign, party, ini
                 ))}
               </div>
             )}
-
-            <button className="sv-add-enc-row" onClick={() => setShowNewEncounter(true)}>
-              + New Encounter
-            </button>
           </div>
         )}
 
@@ -604,14 +582,6 @@ export default function SessionView({ token, user, session, campaign, party, ini
         )}
       </div>
 
-      {showNewEncounter && (
-        <NewEncounterModal
-          encounterNumber={encounters.length + 1}
-          preparedEncounters={preparedEncounters}
-          onCreate={createEncounter}
-          onClose={() => setShowNewEncounter(false)}
-        />
-      )}
     </div>
     </div>
   )

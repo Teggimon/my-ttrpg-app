@@ -259,6 +259,15 @@ function rollHpIncrease(className, conMod) {
   return { roll, conMod, total: Math.max(1, roll + conMod), die }
 }
 
+function hpIncreaseForMode(mode, rolled, manualValue) {
+  const averageRoll = Math.floor(rolled.die / 2) + 1
+  const manual = Math.max(1, parseInt(manualValue, 10) || 1)
+  if (mode === 'average') return { ...rolled, roll: averageRoll, total: Math.max(1, averageRoll + rolled.conMod), mode }
+  if (mode === 'max') return { ...rolled, roll: rolled.die, total: Math.max(1, rolled.die + rolled.conMod), mode }
+  if (mode === 'manual') return { ...rolled, roll: manual - rolled.conMod, total: manual, mode }
+  return { ...rolled, mode: 'roll' }
+}
+
 function getConMod(char) {
   const con = char.stats?.abilityScores?.con ?? char.stats?.CON ?? char.abilities?.constitution ?? 10
   return Math.floor((con - 10) / 2)
@@ -446,7 +455,7 @@ function ClassChoiceStep({ char, onNext, onBack }) {
 }
 
 // ── Step: New Features (simple level) ────────────────────────
-function FeaturesStep({ char, classIdx, hpResult, srdClasses, onNext, isLast }) {
+function FeaturesStep({ char, classIdx, hpResult, hpMode, onHpMode, manualHp, onManualHp, srdClasses, onNext, isLast }) {
   const lvl        = nextClassLevel(char, classIdx)
   const clsData    = char.identity?.class?.[classIdx]
   const cls        = clsData?.name ?? 'your class'
@@ -471,10 +480,36 @@ function FeaturesStep({ char, classIdx, hpResult, srdClasses, onNext, isLast }) 
         <div className="lu-feature-row">
           <div className="lu-feature-name">Hit Points</div>
           <div className="lu-feature-desc">
-            Max HP increases by 1d{hpResult.die} + CON modifier.{' '}
-            Auto-applied:{' '}
+            Choose how max HP increases for this level. Current result:{' '}
             <strong className="lu-hp-gain">+{hpResult.total} HP</strong>
-            {' '}(rolled {hpResult.roll} + CON {hpResult.conMod >= 0 ? '+' : ''}{hpResult.conMod})
+            {' '}({hpMode === 'manual' ? 'manual' : `${hpResult.roll} + CON ${hpResult.conMod >= 0 ? '+' : ''}${hpResult.conMod}`})
+            <div className="lu-hp-options">
+              {[
+                ['roll', 'Rolled'],
+                ['average', 'Average'],
+                ['max', 'Max'],
+                ['manual', 'Manual'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`lu-hp-option${hpMode === value ? ' lu-hp-option--active' : ''}`}
+                  onClick={() => onHpMode(value)}
+                >
+                  {label}
+                </button>
+              ))}
+              {hpMode === 'manual' && (
+                <input
+                  className="lu-hp-manual"
+                  type="number"
+                  min="1"
+                  value={manualHp}
+                  onChange={e => onManualHp(e.target.value)}
+                  aria-label="Manual HP increase"
+                />
+              )}
+            </div>
           </div>
         </div>
 
@@ -1012,6 +1047,8 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
   const [srdClasses, setSrdClasses] = useState({})
   const [stepIdx, setStepIdx] = useState(0)
   const [results, setResults] = useState([])
+  const [hpMode, setHpMode] = useState('roll')
+  const [manualHp, setManualHp] = useState('1')
   const selectedSubclass = results.find(result => result?.type === 'subclass')?.subclass
   const steps = useMemo(
     () => buildSteps(char, chosenClassIdx, selectedSubclass, srdClasses),
@@ -1025,11 +1062,15 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
   }, [])
 
   // Pre-roll HP increase for the chosen class
-  const hpResult = useMemo(() => {
+  const rolledHpResult = useMemo(() => {
     const idx    = chosenClassIdx ?? 0
     const clsName = char.identity?.class?.[idx]?.name ?? ''
     return rollHpIncrease(clsName, getConMod(char))
   }, [char, chosenClassIdx])
+  const hpResult = useMemo(
+    () => hpIncreaseForMode(hpMode, rolledHpResult, manualHp),
+    [hpMode, manualHp, rolledHpResult]
+  )
 
   const currentStep = steps[stepIdx]
   const isLast      = stepIdx === steps.length - 1
@@ -1216,6 +1257,10 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
             char={char}
             classIdx={chosenClassIdx}
             hpResult={hpResult}
+            hpMode={hpMode}
+            onHpMode={setHpMode}
+            manualHp={manualHp}
+            onManualHp={setManualHp}
             srdClasses={srdClasses}
             onNext={() => handleNext()}
             onBack={handleBack}

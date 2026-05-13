@@ -96,6 +96,12 @@ function formatInGameTime(rounds) {
   return s > 0 ? `${m}m ${s}s` : `${m}m`
 }
 
+function sessionDuration(session, nowMs = Date.now()) {
+  const base = session.duration ?? 0
+  if (!session.timerRunning || !session.timerStartedAt) return base
+  return base + Math.max(0, Math.floor((nowMs - new Date(session.timerStartedAt).getTime()) / 1000))
+}
+
 // ── HP helpers ────────────────────────────────────────────────
 function hpPct(cur, max) { return max ? Math.min(100, Math.round((cur / max) * 100)) : 0 }
 function hpColor(pct) {
@@ -110,9 +116,10 @@ function hpColor(pct) {
 // ════════════════════════════════════════════════════════════════
 
 // ── Session Row ───────────────────────────────────────────────
-function SessionRow({ session, index, onOpen }) {
+function SessionRow({ session, index, onOpen, nowMs }) {
   const [expanded, setExpanded] = useState(false)
   const isLive = session.status === 'live'
+  const duration = sessionDuration(session, nowMs)
 
   return (
     <div className={`session-row${isLive ? ' session-row--live' : ''}`}>
@@ -122,7 +129,7 @@ function SessionRow({ session, index, onOpen }) {
           <div className="session-name">{session.name || `Session ${index + 1}`}</div>
           <div className="session-meta">
             {session.date && <span>{new Date(session.date).toLocaleDateString()}</span>}
-            {session.duration && <span>· {formatElapsed(session.duration)}</span>}
+            {duration > 0 && <span>· {formatElapsed(duration)}</span>}
             {session.players?.length > 0 && <span>· {session.players.length} players</span>}
             {session.encounters?.length > 0 && <span>· {session.encounters.length} encounter{session.encounters.length !== 1 ? 's' : ''}</span>}
           </div>
@@ -174,11 +181,11 @@ function SessionRow({ session, index, onOpen }) {
 }
 
 // ── Character Row (in party tab) ──────────────────────────────
-function CharRow({ char, onToggleActive }) {
+function CharRow({ char, onToggleActive, onView }) {
   const pct   = hpPct(char.hpCurrent ?? char.hpMax, char.hpMax)
   const color = hpColor(pct)
   return (
-    <div className={`char-row${char.active ? '' : ' char-row--inactive'}`}>
+    <div className={`char-row${char.active ? '' : ' char-row--inactive'}`} onClick={() => onView(char)}>
       <div className="char-row-info">
         <div className="char-row-name">{char.name}</div>
         <div className="char-row-class">{char.class} · Lv {char.level}</div>
@@ -190,7 +197,7 @@ function CharRow({ char, onToggleActive }) {
         <span className="char-row-hp-text">{char.hpCurrent}/{char.hpMax}</span>
         <button
           className={`active-badge${char.active ? ' active-badge--active' : ''}`}
-          onClick={() => onToggleActive(char.characterId)}
+          onClick={e => { e.stopPropagation(); onToggleActive(char.characterId) }}
         >
           {char.active ? 'Active' : 'Inactive'}
         </button>
@@ -200,7 +207,7 @@ function CharRow({ char, onToggleActive }) {
 }
 
 // ── Player Block (in party tab) ───────────────────────────────
-function PlayerBlock({ player, onToggleCharActive, onManage }) {
+function PlayerBlock({ player, onToggleCharActive, onManage, onViewCharacter }) {
   return (
     <div className="player-block">
       <div className="player-block-header">
@@ -222,6 +229,7 @@ function PlayerBlock({ player, onToggleCharActive, onManage }) {
                 key={char.characterId}
                 char={char}
                 onToggleActive={(id) => onToggleCharActive(player.github, id)}
+                onView={(selected) => onViewCharacter({ ...selected, github: player.github })}
               />
             ))
         }
@@ -264,6 +272,8 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
             )
             return {
               characterId:  char.meta?.characterId ?? genId(),
+              owner:        username.trim(),
+              fileName:     f.name,
               name:         char.identity?.name ?? 'Unknown',
               class:        (char.identity?.class ?? []).map(c => `${c.name} ${c.level}`).join(' / '),
               level:        (char.identity?.class ?? []).reduce((s, c) => s + (c.level ?? 0), 0),
@@ -1204,7 +1214,7 @@ function StartSessionModal({ sessionNumber, onStart, onClose }) {
 // ════════════════════════════════════════════════════════════════
 //  Main CampaignView
 // ════════════════════════════════════════════════════════════════
-export default function CampaignView({ token, user, campaign, onBack, onOpenSession }) {
+export default function CampaignView({ token, user, campaign, onBack, onOpenSession, onViewCharacter }) {
   const [tab, setTab]             = useState('sessions')
   const [sessions, setSessions]   = useState([])
   const [party, setParty]         = useState([])
@@ -1213,6 +1223,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
   const [notes, setNotes]         = useState(null)
   const [loading, setLoading]     = useState(true)
   const [saving, setSaving]       = useState(false)
+  const [nowMs, setNowMs]         = useState(() => Date.now())
 
   // Modals
   const [showStartSession, setShowStartSession] = useState(false)
@@ -1226,6 +1237,11 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
 
   // ── Load all campaign files ──
   useEffect(() => { loadAll() }, [])
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const loadFile = async (filename) => {
     try {
@@ -1297,6 +1313,9 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
       date:        new Date().toISOString(),
       status:      'live',
       duration:    0,
+      timerRunning: true,
+      timerStartedAt: new Date().toISOString(),
+      timerUpdatedAt: new Date().toISOString(),
       players:     [],
       encounters:  [],
     }
@@ -1432,6 +1451,8 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
               <span className="sidebar-live-label">Live Session</span>
             </div>
             <div className="sidebar-live-session">{liveSession.name}</div>
+            <div className="sidebar-live-time">{formatElapsed(sessionDuration(liveSession, nowMs))}</div>
+            {!liveSession.timerRunning && <div className="sidebar-live-paused">Paused</div>}
             <button className="sidebar-resume-btn" onClick={() => onOpenSession(liveSession, campaign, party, encounterBuilds)}>
               Resume
             </button>
@@ -1507,6 +1528,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                         key={session.sessionId}
                         session={session}
                         index={sessions.length - 1 - i}
+                        nowMs={nowMs}
                         onOpen={(s) => onOpenSession(s, campaign, party, encounterBuilds)}
                       />
                     ))
@@ -1535,6 +1557,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                       player={player}
                       onToggleCharActive={toggleCharActive}
                       onManage={p => setShowManagePlayer(p)}
+                      onViewCharacter={(char) => onViewCharacter(char, campaign)}
                     />
                   ))}
 

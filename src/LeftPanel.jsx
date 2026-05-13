@@ -34,10 +34,20 @@ function levelUpModalKey(char) {
   return `${id}:${char?.identity?.xp ?? 0}:${classLevels}`
 }
 
-function HpAdjustModal({ amount, setAmount, hpCur, hpMax, onAdjust, onClose }) {
+function HpAdjustModal({ amount, setAmount, hpCur, hpMax, hpTemp, onAdjust, onSetHp, onClose }) {
+  const [draftCur, setDraftCur] = useState(String(hpCur))
+  const [draftMax, setDraftMax] = useState(String(hpMax))
+  const [draftTemp, setDraftTemp] = useState(String(hpTemp ?? 0))
   const step = Math.max(1, Math.abs(parseInt(amount, 10) || 1))
   const applyAdjust = (delta) => {
     onAdjust(delta)
+    onClose()
+  }
+  const saveHp = () => {
+    const nextMax = Math.max(1, parseInt(draftMax, 10) || 1)
+    const nextCur = Math.max(0, Math.min(nextMax, parseInt(draftCur, 10) || 0))
+    const nextTemp = Math.max(0, parseInt(draftTemp, 10) || 0)
+    onSetHp({ hpCurrent: nextCur, hpMax: nextMax, hpTemp: nextTemp })
     onClose()
   }
 
@@ -61,6 +71,21 @@ function HpAdjustModal({ amount, setAmount, hpCur, hpMax, onAdjust, onClose }) {
           <button className="lp-hp-modal-btn" onClick={() => applyAdjust(-step)}>- HP</button>
           <button className="lp-hp-modal-btn lp-hp-modal-btn--plus" onClick={() => applyAdjust(step)}>+ HP</button>
         </div>
+        <div className="lp-hp-edit-grid">
+          <label className="lp-hp-modal-field">
+            Current HP
+            <input className="lp-hp-modal-input" type="number" min="0" value={draftCur} onChange={e => setDraftCur(e.target.value)} />
+          </label>
+          <label className="lp-hp-modal-field">
+            Max HP
+            <input className="lp-hp-modal-input" type="number" min="1" value={draftMax} onChange={e => setDraftMax(e.target.value)} />
+          </label>
+          <label className="lp-hp-modal-field">
+            Temp HP
+            <input className="lp-hp-modal-input" type="number" min="0" value={draftTemp} onChange={e => setDraftTemp(e.target.value)} />
+          </label>
+        </div>
+        <button className="lp-hp-save-btn" onClick={saveHp}>Save HP</button>
       </div>
     </div>
   )
@@ -329,7 +354,9 @@ export default function LeftPanel({
           setAmount={setHpDelta}
           hpCur={hpCur}
           hpMax={hpMax}
+          hpTemp={char.combat?.hpTemp ?? 0}
           onAdjust={adjustHP}
+          onSetHp={(patch) => updateChar({ combat: { ...char.combat, ...patch } })}
           onClose={() => setShowHpAdjust(false)}
         />
       )}

@@ -338,17 +338,44 @@ export default function DMHome({ token, user, onBack, onOpenCampaign, onLogout }
     if (!confirmDelete) return
     setDeleteLoading(true)
     try {
-      await octokit.repos.deleteFile({
-        owner:   user.login,
-        repo:    DATA_REPO,
-        path:    `${CAMPAIGNS_PATH}/${confirmDelete._fileName}`,
-        message: `Delete campaign: ${confirmDelete.name}`,
-        sha:     confirmDelete._sha,
-      })
+      const paths = []
+      const campaignFile = `${CAMPAIGNS_PATH}/${confirmDelete._fileName ?? `${confirmDelete.slug}.json`}`
+      paths.push(campaignFile)
+
+      try {
+        const { data: folderFiles } = await octokit.repos.getContent({
+          owner: user.login,
+          repo: DATA_REPO,
+          path: `${CAMPAIGNS_PATH}/${confirmDelete.slug}`,
+        })
+        if (Array.isArray(folderFiles)) {
+          folderFiles.forEach(file => paths.push(file.path))
+        }
+      } catch { /* campaign may not have child files yet */ }
+
+      for (const path of [...new Set(paths)]) {
+        try {
+          const { data } = await octokit.repos.getContent({
+            owner: user.login,
+            repo: DATA_REPO,
+            path,
+          })
+          if (Array.isArray(data) || !data.sha) continue
+          await octokit.repos.deleteFile({
+            owner:   user.login,
+            repo:    DATA_REPO,
+            path,
+            message: `Delete campaign: ${confirmDelete.name}`,
+            sha:     data.sha,
+          })
+        } catch (err) {
+          if (err.status !== 404) throw err
+        }
+      }
       setCampaigns(prev => prev.filter(c => c.campaignId !== confirmDelete.campaignId))
       setConfirmDelete(null)
-    } catch {
-      alert('Failed to delete campaign.')
+    } catch (err) {
+      alert(`Failed to delete campaign: ${err.message}`)
     }
     setDeleteLoading(false)
   }

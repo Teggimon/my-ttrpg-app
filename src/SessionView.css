@@ -425,6 +425,18 @@
 .sv-no-enc-title { font-family: var(--font-body); font-size: 15px; font-weight: 700; color: var(--text-secondary); }
 .sv-no-enc-sub   { font-family: var(--font-body); font-size: 12px; color: var(--text-muted); line-height: 1.5; }
 
+.sv-prepared-empty {
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .sv-add-enc-row {
   background: transparent;
   border: 1px dashed var(--border-strong);

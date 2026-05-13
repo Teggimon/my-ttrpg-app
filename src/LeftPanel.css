@@ -266,6 +266,24 @@
   margin-top: 12px;
 }
 
+.lp-hp-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.lp-hp-edit-grid .lp-hp-modal-field {
+  margin-top: 0;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.lp-hp-edit-grid .lp-hp-modal-input {
+  min-height: 44px;
+  font-size: 18px;
+}
+
 .lp-hp-modal-btn {
   min-height: 44px;
   border-radius: var(--radius-md);
@@ -281,6 +299,19 @@
 .lp-hp-modal-btn--plus {
   background: var(--accent);
   border-color: var(--accent);
+}
+
+.lp-hp-save-btn {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 /* ── Stat tiles ──────────────────────────────────────────────── */

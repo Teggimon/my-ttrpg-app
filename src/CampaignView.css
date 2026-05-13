@@ -105,6 +105,24 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--surface-text-primary);
+  margin-bottom: 4px;
+}
+
+.sidebar-live-time {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dm);
+  margin-bottom: 2px;
+}
+
+.sidebar-live-paused {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0;
   margin-bottom: var(--spacing-sm);
 }
 
@@ -429,7 +447,9 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   transition: border-color 0.15s, opacity 0.15s;
+  cursor: pointer;
 }
+.char-row:hover { border-color: var(--dm-border); }
 .char-row--inactive { border-style: dashed; opacity: 0.55; }
 
 .char-row-info { flex: 1; min-width: 0; }

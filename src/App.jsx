@@ -64,6 +64,7 @@ function App() {
   const [selectedCampaign, setSelectedCampaign]   = useState(null)
   const [selectedSession, setSelectedSession]     = useState(null)
   const [selectedEncounter, setSelectedEncounter] = useState(null)
+  const [characterReturnScreen, setCharacterReturnScreen] = useState('home')
   const [sessionParty, setSessionParty]           = useState([])
   const [sessionPreparedEncounters, setSessionPreparedEncounters] = useState([])
 
@@ -185,6 +186,53 @@ function App() {
       size: file.size,
       uploadedAt: new Date(stamp).toISOString(),
     }
+  }
+
+  const loadCampaignCharacter = async (character, campaign) => {
+    const owner = character.owner ?? character.github ?? character.meta?.owner?.replace('github:', '')
+    if (!owner) return
+
+    let loaded = null
+    const fileName = character.fileName ?? character._fileName
+    if (fileName) {
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner,
+          repo: DATA_REPO,
+          path: `${CHARACTERS_PATH}/${fileName.endsWith('.json') ? fileName : `${fileName}.json`}`,
+        })
+        loaded = JSON.parse(atob(data.content.replace(/\s/g, '')))
+        loaded._fileName = data.name
+      } catch {
+        loaded = null
+      }
+    }
+
+    if (!loaded && character.characterId) {
+      const { data: files } = await octokit.repos.getContent({
+        owner,
+        repo: DATA_REPO,
+        path: CHARACTERS_PATH,
+      })
+      for (const file of files.filter(f => f.name.endsWith('.json'))) {
+        const { data } = await octokit.repos.getContent({
+          owner,
+          repo: DATA_REPO,
+          path: file.path,
+        })
+        const parsed = JSON.parse(atob(data.content.replace(/\s/g, '')))
+        if (parsed.meta?.characterId === character.characterId) {
+          loaded = { ...parsed, _fileName: file.name }
+          break
+        }
+      }
+    }
+
+    if (!loaded) return
+    setSelectedCampaign(campaign)
+    setSelectedCharacter(loaded)
+    setCharacterReturnScreen('dm-campaign')
+    setScreen('character')
   }
 
   // ── Onboarding complete ─────────────────────────────────────
@@ -335,7 +383,7 @@ function App() {
       activeCharId={selectedCharacter.meta.characterId}
       onSwitchChar={() => {}}
       onNewChar={() => setScreen('create')}
-      onBack={() => setScreen('home')}
+      onBack={() => setScreen(characterReturnScreen)}
       user={user}
       onUpdateChar={saveCharacter}
       onUploadImage={uploadCharacterImage}
@@ -371,6 +419,7 @@ function App() {
         setSessionPreparedEncounters(preparedEncounters ?? [])
         setScreen('dm-session')
       }}
+      onViewCharacter={loadCampaignCharacter}
     />
   )
 
@@ -423,6 +472,7 @@ function App() {
         setSelectedSession(null)
         setSelectedEncounter(null)
         setSelectedCharacter(char)
+        setCharacterReturnScreen('home')
         setScreen('character')
       }}
       onOpenDMHome={() => setScreen('dm-home')}
