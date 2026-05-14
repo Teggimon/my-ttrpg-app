@@ -207,6 +207,15 @@
       border-color: var(--accent-border);
     }
 
+    .inset-buttons {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .inset-buttons .mode-btn {
+      font-size: 11px;
+      padding: 0 5px;
+    }
+
     .btn {
       min-height: 42px;
       border: 1px solid transparent;
@@ -605,6 +614,17 @@
           <button class="mode-btn" type="button" data-text-mode="light" aria-pressed="false">Light</button>
         </div>
       </div>
+
+      <div class="mode-control" aria-label="Inset background source">
+        <div class="mode-label">Inset Background</div>
+        <div class="mode-buttons inset-buttons">
+          <button class="mode-btn" type="button" data-inset-mode="auto" aria-pressed="true">Auto</button>
+          <button class="mode-btn" type="button" data-inset-mode="page" aria-pressed="false">Page</button>
+          <button class="mode-btn" type="button" data-inset-mode="base" aria-pressed="false">Base</button>
+          <button class="mode-btn" type="button" data-inset-mode="surface" aria-pressed="false">Surface</button>
+          <button class="mode-btn" type="button" data-inset-mode="elevated" aria-pressed="false">Elevated</button>
+        </div>
+      </div>
       <div class="warning" id="warning" role="status"></div>
 
       <section class="derived" aria-label="Derived theme colours">
@@ -720,6 +740,7 @@
     const warning = document.getElementById('warning')
     const derivedGrid = document.getElementById('derivedGrid')
     let textMode = 'auto'
+    let insetMode = 'auto'
 
     function cleanHex(value) {
       const match = String(value).trim().match(/^#?([0-9a-fA-F]{6})$/)
@@ -756,6 +777,13 @@
     function deriveTheme(values) {
       const [page, base, surface, elevated, accent, dm] = values
       const hasLightSurface = luminance(surface) > 0.45
+      const insetOptions = {
+        auto: luminance(base) > 0.45 ? page : base,
+        page,
+        base,
+        surface,
+        elevated,
+      }
       const autoPrimary = contrastText(base, '#101014', '#F7F4EF')
       const forcedDark = textMode === 'dark'
       const forcedLight = textMode === 'light'
@@ -768,7 +796,7 @@
         '--bg-base': base,
         '--bg-surface': surface,
         '--bg-elevated': elevated,
-        '--bg-inset': luminance(base) > 0.45 ? page : base,
+        '--bg-inset': insetOptions[insetMode] ?? insetOptions.auto,
         '--border': luminance(surface) > 0.45 ? base : surface,
         '--border-strong': luminance(surface) > 0.45 ? base : elevated,
         '--border-hi': elevated,
@@ -896,12 +924,25 @@
       setTheme(values)
     }
 
+    function setInsetMode(mode) {
+      insetMode = mode
+      document.querySelectorAll('[data-inset-mode]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.insetMode === insetMode))
+      })
+      const values = getInputValues()
+      if (values.some(value => !value)) return
+      setTheme(values)
+    }
+
     renderInputs(defaults.map(value => `#${value}`))
     bulkInput.value = defaults.join('\n')
     applyBulk.addEventListener('click', applyBlock)
     resetTheme.addEventListener('click', reset)
     document.querySelectorAll('[data-text-mode]').forEach(button => {
       button.addEventListener('click', () => setTextMode(button.dataset.textMode))
+    })
+    document.querySelectorAll('[data-inset-mode]').forEach(button => {
+      button.addEventListener('click', () => setInsetMode(button.dataset.insetMode))
     })
     setTheme(defaults.map(value => `#${value}`))
   </script>

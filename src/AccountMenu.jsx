@@ -317,6 +317,54 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#71A99B',
     },
   },
+  {
+    id: 'paper-pop',
+    name: 'Paper Pop',
+    description: 'Charcoal page, paper base, punch-pink surfaces, pale inset, orange action, and plum DM mode.',
+    vars: {
+      '--bg-page': '#231F20',
+      '--bg-base': '#F9F8F8',
+      '--bg-surface': '#FF5376',
+      '--bg-elevated': '#F8C0C8',
+      '--bg-inset': '#F8C0C8',
+      '--border': '#D74766',
+      '--border-strong': '#B33C58',
+      '--border-hi': '#F8C0C8',
+      '--text-primary': '#231F20',
+      '--text-secondary': '#4C3F43',
+      '--text-muted': '#754F5B',
+      '--text-inverse': '#F9F8F8',
+      '--accent': '#FFA630',
+      '--accent-hover': '#FFBE66',
+      '--accent-secondary': '#C77816',
+      '--dm': '#6B2D5C',
+      '--dm-hover': '#8B4A7C',
+    },
+  },
+  {
+    id: 'charcoal-candy',
+    name: 'Charcoal Candy',
+    description: 'Charcoal page and base, graphite surfaces, blush lift, coral action, and mint DM mode.',
+    vars: {
+      '--bg-page': '#231F20',
+      '--bg-base': '#1E1E24',
+      '--bg-surface': '#444140',
+      '--bg-elevated': '#F8C0C8',
+      '--bg-inset': '#1E1E24',
+      '--border': '#5A5554',
+      '--border-strong': '#7A7070',
+      '--border-hi': '#F8C0C8',
+      '--text-primary': '#F9F8F8',
+      '--text-secondary': '#D9D1D2',
+      '--text-muted': '#9B9294',
+      '--text-inverse': '#1E1E24',
+      '--accent': '#FF6666',
+      '--accent-hover': '#FF8A8A',
+      '--accent-secondary': '#C54848',
+      '--dm': '#4ECDC4',
+      '--dm-hover': '#7DE0D9',
+    },
+  },
 ]
 
 function hexToRgb(value) {
@@ -348,8 +396,16 @@ function relativeLuminance(value) {
   return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
 }
 
-function contrastText(background, darkText, lightText) {
-  return relativeLuminance(background) > 0.45 ? darkText : lightText
+function contrastRatio(first, second) {
+  const lighter = Math.max(relativeLuminance(first), relativeLuminance(second))
+  const darker = Math.min(relativeLuminance(first), relativeLuminance(second))
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+function contrastText(background, firstText, secondText) {
+  return contrastRatio(background, firstText) >= contrastRatio(background, secondText)
+    ? firstText
+    : secondText
 }
 
 function isLight(value) {
