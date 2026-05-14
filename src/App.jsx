@@ -402,6 +402,7 @@ function App() {
       onUploadImage={uploadCharacterImage}
       campaign={selectedCampaign}
       campaignOptions={selectedCampaignOptions}
+      token={token}
       syncStatus="saved"
     />
   )

@@ -44,6 +44,7 @@ export default function CharacterLayout({
   onUploadImage,
   campaign,
   campaignOptions,
+  token,
   syncStatus,
 }) {
   const [activeTab, setActiveTab]   = useState('combat')
@@ -59,7 +60,7 @@ export default function CharacterLayout({
     onUpdateChar({ ...char, ...updates })
   }
 
-  const tabProps = { char, locked, isOwner, updateChar, onUploadImage, campaign, campaignOptions }
+  const tabProps = { char, locked, isOwner, updateChar, onUploadImage, campaign, campaignOptions, token }
 
   const tabContent = (
     <div className="tab-content">

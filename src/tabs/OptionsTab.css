@@ -23,6 +23,18 @@
   background: var(--accent-subtle);
 }
 
+.opt-import--lookup {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+.opt-import-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
 .opt-import-title {
   color: var(--text-primary);
   font-size: 14px;
@@ -50,9 +62,89 @@
   white-space: nowrap;
 }
 
+.opt-import-btn--wide {
+  width: 100%;
+}
+
 .opt-import-btn:disabled {
   cursor: default;
   opacity: 0.55;
+}
+
+.opt-lookup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.opt-lookup-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  padding: 0 12px;
+}
+
+.opt-lookup-input::placeholder {
+  color: var(--text-muted);
+}
+
+.opt-campaign-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.opt-campaign-choice {
+  min-height: 54px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.opt-campaign-choice span,
+.opt-campaign-choice small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opt-campaign-choice small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.opt-campaign-choice--active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent-light);
+}
+
+.opt-import-error {
+  padding: 9px 10px;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  background: var(--danger-subtle);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .opt-group-title {
@@ -175,6 +267,10 @@
   .opt-import {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .opt-lookup-row {
+    grid-template-columns: 1fr;
   }
 
   .opt-rule-note {
