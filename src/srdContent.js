@@ -430,6 +430,15 @@ function manualFeatureChoices(feature, optionalFeatures = {}) {
     })
   }
 
+  if (/additional fighting style/i.test(lowerName)) {
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 105,
+      options: optionalFeaturesForType(optionalFeatures, 'FS:F', feature.level),
+    })
+  }
+
   return choices.filter(choice => choice.options.length > 0)
 }
 

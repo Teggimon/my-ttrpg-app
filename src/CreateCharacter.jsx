@@ -1128,7 +1128,7 @@ async function fetchCategoryItems(categoryIndex) {
 }
 
 function classFeatureChoiceGroups(classData) {
-  return Object.values(classData?.features_by_level ?? {})
+  const choices = Object.values(classData?.features_by_level ?? {})
     .flat()
     .filter(feature => (feature.level ?? 1) <= 1)
     .flatMap(feature => (feature.choices ?? []).map(choice => ({
@@ -1142,6 +1142,26 @@ function classFeatureChoiceGroups(classData) {
         level: feature.level ?? 1,
       },
     })))
+  const merged = new Map()
+  for (const choice of choices) {
+    const optionTypes = [...new Set((choice.options ?? []).flatMap(option => option.featureType ?? []))].sort()
+    const key = optionTypes.length
+      ? `${choice.feature?.classIndex ?? ''}:${choice.feature?.level ?? ''}:${optionTypes.join('|')}`
+      : choice.choiceKey
+    const previous = merged.get(key)
+    if (!previous) {
+      merged.set(key, choice)
+      continue
+    }
+    const optionMap = new Map((previous.options ?? []).map(option => [option.id ?? option.name, option]))
+    for (const option of choice.options ?? []) optionMap.set(option.id ?? option.name, option)
+    merged.set(key, {
+      ...previous,
+      choose: Math.max(previous.choose ?? 1, choice.choose ?? 1),
+      options: [...optionMap.values()],
+    })
+  }
+  return [...merged.values()]
 }
 
 function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEquipment, onEquipmentChange, selectedFeatureChoices, onFeatureChoicesChange, onNext, onBack }) {

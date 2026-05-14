@@ -574,6 +574,11 @@ function spellLevelsForClass(classIndex, classLevel) {
     .sort((a, b) => a - b)
 }
 
+function spellLevelsForSpec(spec, classLevel) {
+  const levels = spellLevelsForClass(spec?.key, classLevel)
+  return levels.length ? levels : spec?.spellLevels ?? []
+}
+
 function classSpellPickNeeds(char, cls, level) {
   const classIndex = getClassIndex(cls)
   const cantripsKnown = CANTRIPS_KNOWN_BY_LEVEL[classIndex]
@@ -611,10 +616,16 @@ function spellPickNeeds(char, cls, level, subclass) {
   const spec = subclassSpellcastingSpec(cls, subclass)
   if (!spec) return null
   const known = char.spells?.known ?? []
-  const cantripNeed = Math.max(0, cantripsKnownAt(spec, level) - known.filter(spell => spell.level === 0).length)
-  const spellNeed = Math.max(0, spellsKnownAt(spec, level) - known.filter(spell => spell.level > 0).length)
+  const sourceClassExists = (char.identity?.class ?? []).some(existing => getClassIndex(existing) === spec.sourceClass)
+  const knownForSubclass = known.filter(spell =>
+    spell.classIndex === spec.key ||
+    spell.origin === spec.key ||
+    (!sourceClassExists && spell.classIndex === spec.sourceClass && spell.castingAbility === SPELLCASTING_ABILITY[spec.key] && !spell.origin)
+  )
+  const cantripNeed = Math.max(0, cantripsKnownAt(spec, level) - knownForSubclass.filter(spell => spell.level === 0).length)
+  const spellNeed = Math.max(0, spellsKnownAt(spec, level) - knownForSubclass.filter(spell => spell.level > 0).length)
   if (cantripNeed <= 0 && spellNeed <= 0) return null
-  return { spec, cantripNeed, spellNeed }
+  return { spec: { ...spec, spellLevels: spellLevelsForSpec(spec, level) }, cantripNeed, spellNeed }
 }
 
 function needsSubclassSpellChoice(char, classIdx, subclass) {
@@ -1508,7 +1519,8 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
     const required = allSpells.find(spell => spell.index === spec.requiredCantrip)
     if (required) setSelectedCantrips([toKnownSpell({
       ...required,
-      classIndex: spec.sourceClass,
+      ...(spec.key !== spec.sourceClass && { origin: spec.key }),
+      classIndex: spec.key ?? spec.sourceClass,
       castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[spec.sourceClass] ?? null,
     })])
   }, [allSpells, knownIds, selectedCantrips.length, spec?.key, spec?.requiredCantrip, spec?.sourceClass])
@@ -1527,6 +1539,8 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
   }
 
   const sourceClass = spec.sourceClass
+  const spellClassIndex = spec.key ?? sourceClass
+  const originKey = spec.key !== sourceClass ? spec.key : null
   const sourceSpells = allSpells.filter(spell => spell.classes?.some(c => c.index === sourceClass))
   const cantrips = sourceSpells.filter(spell => spell.level === 0 && !knownIds.has(spell.index))
   const leveledSpells = sourceSpells.filter(spell =>
@@ -1553,7 +1567,8 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
       if (prev.length >= needs.cantripNeed) return prev
       return [...prev, toKnownSpell({
         ...spell,
-        classIndex: sourceClass,
+        ...(originKey && { origin: originKey }),
+        classIndex: spellClassIndex,
         castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[sourceClass] ?? null,
       })]
     })
@@ -1565,7 +1580,8 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
       if (prev.length >= needs.spellNeed) return prev
       return [...prev, toKnownSpell({
         ...spell,
-        classIndex: sourceClass,
+        ...(originKey && { origin: originKey }),
+        classIndex: spellClassIndex,
         castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[sourceClass] ?? null,
       })]
     })
@@ -1582,7 +1598,8 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
   const toggleReplaceTo = (spell) => {
     setReplaceTo(prev => prev?.index === spell.index ? null : toKnownSpell({
       ...spell,
-      classIndex: sourceClass,
+      ...(originKey && { origin: originKey }),
+      classIndex: spellClassIndex,
       castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[sourceClass] ?? null,
     }))
   }
