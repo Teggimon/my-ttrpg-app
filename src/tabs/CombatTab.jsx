@@ -327,6 +327,20 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
             : `1d10 + ${fighterLevel || 'Fighter level'} HP`,
       }
     })
+  const martialAdeptChoice = (char.customContent?.featChoices ?? []).find(choice => choice.featName === 'Martial Adept')
+  const featCombatFeatures = martialAdeptChoice?.maneuvers?.length
+    ? [{
+        name: 'Martial Adept',
+        key: 'feat-martial-adept',
+        sourceType: 'Feat',
+        actionType: 'Maneuver',
+        recharge: 'SR',
+        max: 1,
+        used: storedAbilityMap['feat-martial-adept']?.used ?? 0,
+        effect: '1d6 superiority',
+        detail: martialAdeptChoice.maneuvers.map(maneuver => maneuver.name).join(' · '),
+      }]
+    : []
 
   const raceAbilityFeatures = racialCombatTraits.map(trait => {
     const isBreath = trait.index === 'breath-weapon'
@@ -352,7 +366,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
         : null,
     }
   })
-  const combatAbilityFeatures = [...combatFeatures, ...raceAbilityFeatures]
+  const combatAbilityFeatures = [...combatFeatures, ...featCombatFeatures, ...raceAbilityFeatures]
 
   function handleCombatFeature(feature) {
     if (!isOwner || locked || !feature.max || feature.used >= feature.max) return

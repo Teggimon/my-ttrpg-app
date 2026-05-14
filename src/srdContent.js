@@ -772,10 +772,22 @@ function normalizeSpell(spell, sourceLookup) {
     name: spell.name,
     source: spell.source,
     level: spell.level ?? 0,
+    ritual: !!spell.meta?.ritual,
     school: { index: slug(SCHOOL_NAMES[spell.school] ?? spell.school), name: SCHOOL_NAMES[spell.school] ?? spell.school },
     classes: [...new Set(classNames)].map(name => ref(name)),
     desc: [stripTags(spell.entries)],
     higher_level: spell.entriesHigherLevel ? [stripTags(spell.entriesHigherLevel)] : [],
+  }
+}
+
+function normalizeOptionalFeature(feature) {
+  return {
+    id: slug(`${feature.name} ${feature.source ?? ''}`),
+    index: slug(feature.name),
+    name: feature.name,
+    source: feature.source,
+    featureType: feature.featureType ?? [],
+    desc: [stripTags(feature.entries)].filter(Boolean),
   }
 }
 
@@ -854,6 +866,10 @@ export const getSpells = () => memo('spells', () => {
   const lookup = firstModule(spellLookupData)
   return dedupeByIndex(fromModules(spellData, 'spell').map(spell => normalizeSpell(spell, lookup)))
 })
+
+export const getOptionalFeatures = () => memo('optionalFeatures', () => (
+  optionFeatureArray(optionalFeatureLookup()).map(normalizeOptionalFeature)
+))
 
 export const getMonsters = () => memo('monsters', () => (
   dedupeByIndex(fromModules(monsterData, 'monster').map(normalizeMonster))
