@@ -697,6 +697,7 @@ function StepRace({ races, selected, onSelect, onNext, onBack }) {
 
 function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonusOptions, selectedFeat, onFeatChange, onNext, onBack }) {
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
+  const [featSearch, setFeatSearch] = useState('')
   // Filter subraces for this race
   const allAvailable = subraces.filter(s => s.race?.index === race.index)
   const available = allAvailable.filter(s => sourceFilter === ALL_SOURCES || sourceCode(s) === sourceFilter)
@@ -725,6 +726,15 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
   const canProceed = available.length === 0 || selected
   const bonusReady = !hasBonusOptions || bonusOptions.length === bonusCount
   const featReady = !grantsFeat || !!selectedFeat
+  const missing = [
+    !canProceed ? 'subrace' : null,
+    !bonusReady ? `${bonusCount - bonusOptions.length} ability bonus${bonusCount - bonusOptions.length === 1 ? '' : 'es'}` : null,
+    !featReady ? 'feat' : null,
+  ].filter(Boolean)
+  const nextLabel = missing.length ? `Choose ${missing.join(' + ')}` : 'Next: Class →'
+  const filteredFeats = FEATS.filter(feat =>
+    `${feat.name} ${feat.desc} ${feat.prereq ?? ''}`.toLowerCase().includes(featSearch.trim().toLowerCase())
+  )
 
   return (
     <div style={S.wrap}>
@@ -775,25 +785,36 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
       {grantsFeat && (
         <>
           <label style={S.label}>Choose a Level 1 Feat</label>
-          <div style={S.cardSub}>Variant Human grants one feat at character creation.</div>
-          {FEATS.map(feat => {
-            const selectedFeatName = selectedFeat?.name === feat.name
-            return (
-              <div key={feat.name} style={S.card(selectedFeatName)} onClick={() => onFeatChange(feat)}>
-                <div style={S.cardTop}>
-                  <div style={S.cardName}>{feat.name}</div>
-                  {feat.prereq && <span style={S.sourceBadge}>{feat.prereq}</span>}
+          <div style={S.cardSub}>
+            Variant Human grants one feat at character creation.
+            {selectedFeat && ` Selected: ${selectedFeat.name}.`}
+          </div>
+          <input
+            style={{ ...S.input, marginBottom: '0.5rem' }}
+            value={featSearch}
+            onChange={e => setFeatSearch(e.target.value)}
+            placeholder="Search feats..."
+          />
+          <div style={{ maxHeight: 280, overflowY: 'auto', paddingRight: 4, marginBottom: '0.75rem' }}>
+            {filteredFeats.map(feat => {
+              const selectedFeatName = selectedFeat?.name === feat.name
+              return (
+                <div key={feat.name} style={S.card(selectedFeatName)} onClick={() => onFeatChange(feat)}>
+                  <div style={S.cardTop}>
+                    <div style={S.cardName}>{feat.name}</div>
+                    {feat.prereq && <span style={S.sourceBadge}>{feat.prereq}</span>}
+                  </div>
+                  <div style={S.cardSub}>{feat.desc}</div>
                 </div>
-                <div style={S.cardSub}>{feat.desc}</div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </>
       )}
 
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
-        <button style={S.btn(true)} onClick={onNext} disabled={!canProceed || !bonusReady || !featReady}>Next: Class →</button>
+        <button style={S.btn(true)} onClick={onNext} disabled={!canProceed || !bonusReady || !featReady}>{nextLabel}</button>
       </div>
     </div>
   )
@@ -1788,9 +1809,9 @@ function CreateCharacter({ user, onComplete, onCancel }) {
 
   const selectSubrace = (s) => {
     setSubraceData(s)
+    setRaceBonusOptions([])
     setRacialOptionChoices({})
     setRacialFeat(null)
-    if (s?.abilityOverridesRace) setRaceBonusOptions([])
   }
 
   // When background changes, reset downstream
