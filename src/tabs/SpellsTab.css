@@ -14,6 +14,7 @@
 }
 .spell-summary-cell:last-child { border-right: none; }
 .spell-summary-val { font-family: var(--font-mono); font-size: 17px; font-weight: 500; color: var(--text-primary); line-height: 1; }
+.spell-summary-val--warning { color: var(--warning); }
 .spell-summary-lbl { font-size: 8px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); margin-top: 4px; text-align: center; }
 
 /* ── Filter bar ─────────────────────────────────────────────── */
@@ -124,6 +125,12 @@
 }
 .spell-star--prep { color: var(--gold); }
 .spell-star:hover { color: var(--gold); }
+.spell-star--disabled,
+.spell-star--disabled:hover {
+  color: var(--text-faint);
+  cursor: default;
+  opacity: .45;
+}
 
 .spell-school-badge {
   font-size: 9px; font-family: var(--font-mono); padding: 2px 7px;
@@ -164,6 +171,11 @@
 }
 .spell-prep-btn--on { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent-light); }
 .spell-prep-btn:hover { color: var(--text-primary); }
+.spell-prep-btn:disabled {
+  opacity: .45;
+  cursor: default;
+}
+.spell-prep-btn:disabled:hover { color: var(--text-secondary); }
 
 /* ── Slot configure button ──────────────────────────────────── */
 .slot-configure-btn {

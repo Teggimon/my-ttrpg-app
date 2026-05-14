@@ -7,6 +7,13 @@ import './SpellsTab.css'
 const ORDINALS    = ['','I','II','III','IV','V','VI','VII','VIII','IX']
 const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
 const SCHOOLS = ['Abjuration','Conjuration','Divination','Enchantment','Evocation','Illusion','Necromancy','Transmutation']
+const PREPARED_CASTER_RULES = {
+  cleric: { ability: 'wis', levelFactor: 1, startsAt: 1 },
+  druid: { ability: 'wis', levelFactor: 1, startsAt: 1 },
+  wizard: { ability: 'int', levelFactor: 1, startsAt: 1 },
+  paladin: { ability: 'cha', levelFactor: 0.5, startsAt: 2 },
+  artificer: { ability: 'int', levelFactor: 0.5, startsAt: 1, round: 'up' },
+}
 
 // Max slots per level for full-casters (used as reference for slot editor)
 const MAX_SLOTS = [0, 4, 3, 3, 3, 3, 2, 2, 1, 1]
@@ -16,6 +23,22 @@ function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 function uid()              { return Math.random().toString(36).slice(2) }
 function characterLevel(char) {
   return (char.identity?.class ?? []).reduce((sum, cls) => sum + (cls.level ?? 0), 0) || 1
+}
+function classIndex(cls) {
+  return cls?.index ?? cls?.name?.toLowerCase?.().replace(/\s+/g, '-')
+}
+function preparedCapacity(char) {
+  const scores = char.stats?.abilityScores ?? {}
+  const caps = (char.identity?.class ?? []).map(cls => {
+    const rule = PREPARED_CASTER_RULES[classIndex(cls)]
+    const level = cls.level ?? 0
+    if (!rule || level < rule.startsAt) return 0
+    const scaledLevel = rule.round === 'up'
+      ? Math.ceil(level * rule.levelFactor)
+      : Math.floor(level * rule.levelFactor)
+    return Math.max(1, scaledLevel + abilityMod(scores[rule.ability] ?? 10))
+  })
+  return caps.some(cap => cap > 0) ? caps.reduce((sum, cap) => sum + cap, 0) : null
 }
 
 // ── Spell Picker ────────────────────────────────────────────────────────────
@@ -180,7 +203,9 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     .sort(([a], [b]) => Number(a) - Number(b))
 
   const preparedLeveled = known.filter(s => s.level > 0 && prepared.includes(s.id))
-  const preparedMax     = castMod != null ? Math.max(1, level + castMod) : null
+  const preparedMax     = preparedCapacity(char)
+  const preparedFull    = preparedMax != null && preparedLeveled.length >= preparedMax
+  const preparedOverCap = preparedMax != null && preparedLeveled.length > preparedMax
 
   useEffect(() => {
     getSpells().then(all => {
@@ -199,6 +224,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   }
 
   function togglePrepared(spellId) {
+    if (!prepared.includes(spellId) && preparedFull) return
     const next = prepared.includes(spellId)
       ? prepared.filter(id => id !== spellId)
       : [...prepared, spellId]
@@ -260,7 +286,9 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
         <div className="spell-summary">
           <div className="spell-summary-cell">
             <span className="spell-summary-val">
-              {preparedMax != null ? `${preparedLeveled.length}/${preparedMax}` : preparedLeveled.length}
+              <span className={preparedOverCap ? 'spell-summary-val--warning' : undefined}>
+                {preparedMax != null ? `${preparedLeveled.length}/${preparedMax}` : preparedLeveled.length}
+              </span>
             </span>
             <span className="spell-summary-lbl">Prepared</span>
           </div>
@@ -408,6 +436,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
 
               {spells.map(spell => {
                 const isPrep    = lvlNum === 0 || prepared.includes(spell.id)
+                const canPrepare = isPrep || preparedMax == null || !preparedFull
                 const isConc    = char.spells?.concentration === spell.id
                 const expanded  = expandedId === spell.id
                 const srd       = srdSpellMap[spell.index] ?? {}
@@ -428,9 +457,9 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                       <span className="spell-name">{spell.name}</span>
                       {lvlNum > 0 && (
                         <span
-                          className={`spell-star${isPrep ? ' spell-star--prep' : ''}`}
-                          onClick={e => { e.stopPropagation(); isOwner && !locked && togglePrepared(spell.id) }}
-                          title={isPrep ? 'Prepared — click to unprepare' : 'Not prepared — click to prepare'}
+                          className={`spell-star${isPrep ? ' spell-star--prep' : ''}${!canPrepare ? ' spell-star--disabled' : ''}`}
+                          onClick={e => { e.stopPropagation(); isOwner && !locked && canPrepare && togglePrepared(spell.id) }}
+                          title={isPrep ? 'Prepared — click to unprepare' : !canPrepare ? 'Preparation limit reached' : 'Not prepared — click to prepare'}
                         >
                           {isPrep ? 'Prepared' : 'Add'}
                         </span>
@@ -456,6 +485,8 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                             <button
                               className={`spell-prep-btn${isPrep ? ' spell-prep-btn--on' : ''}`}
                               onClick={() => togglePrepared(spell.id)}
+                              disabled={!canPrepare}
+                              title={!canPrepare ? 'Preparation limit reached' : undefined}
                             >
                               {isPrep ? 'Prepared' : 'Add to prepared'}
                             </button>
