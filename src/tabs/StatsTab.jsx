@@ -40,6 +40,9 @@ const MAGIC_AC_BONUS = {
 
 function mod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)    { return n >= 0 ? `+${n}` : `${n}` }
+function characterLevel(char) {
+  return (char.identity?.class ?? []).reduce((sum, cls) => sum + (cls.level ?? 0), 0) || 1
+}
 
 // ── Effect dot with hover tooltip ─────────────────────────────────────────────
 function EffectDot({ infos }) {
@@ -78,7 +81,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
   const scores = char.stats?.abilityScores ?? {}
   const skills = char.stats?.skills ?? {}
   const saves  = char.stats?.savingThrows ?? {}
-  const level  = char.identity.class?.[0]?.level ?? 1
+  const level  = characterLevel(char)
   const pb     = PROFICIENCY[level] ?? 2
   const dexMod = mod(scores.dex ?? 10)
 
@@ -86,7 +89,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
   const ac          = char.combat?.ac ?? 10
   const speed       = char.combat?.speed ?? char.identity?.speed ?? 30
   const percLvl     = skillLevel('perception')
-  const passivePerc = 10 + mod(scores.wis ?? 10) + (percLvl === 1 ? pb : percLvl === 2 ? pb * 2 : 0)
+  const passivePerc = 10 + mod(scores.wis ?? 10) + (percLvl === 1 ? pb : percLvl === 2 ? pb * 2 : 0) + (char.stats?.passiveBonuses?.perception ?? 0)
 
   const proficiencies = char.stats?.proficiencies ?? {}
   const profList = typeof proficiencies === 'object' && !Array.isArray(proficiencies)

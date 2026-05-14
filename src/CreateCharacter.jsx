@@ -989,7 +989,9 @@ function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, o
 // ─── Step: Subclass (for classes that choose at level 1) ─────────────────────
 
 function StepSubclass({ classData, selected, onSelect, onNext, onBack }) {
-  const options = SUBCLASSES[classData?.index] ?? []
+  const options = classData?.subclasses?.length
+    ? classData.subclasses
+    : (SUBCLASSES[classData?.index] ?? []).map(name => ({ name, source: 'manual' }))
   return (
     <div style={S.wrap}>
       <div style={S.h1}>Choose Your {classData?.name} Subclass</div>
@@ -997,9 +999,16 @@ function StepSubclass({ classData, selected, onSelect, onNext, onBack }) {
         {classData?.name}s choose their path at level 1. This choice is permanent.
       </div>
       <div style={S.scrollList}>
-        {options.map(name => (
-          <div key={name} style={S.card(selected === name)} onClick={() => onSelect(name)}>
-            <div style={S.cardName}>{name}</div>
+        {options.map(option => (
+          <div
+            key={`${option.name}:${option.source ?? ''}`}
+            style={S.card(selected === option.name)}
+            onClick={() => onSelect(option.name)}
+          >
+            <div style={S.cardTop}>
+              <div style={S.cardName}>{option.name}</div>
+              {option.source && <SourceBadge item={option} />}
+            </div>
           </div>
         ))}
       </div>

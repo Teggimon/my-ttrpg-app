@@ -14,6 +14,9 @@ const MAX_SLOTS = [0, 4, 3, 3, 3, 3, 2, 2, 1, 1]
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 function uid()              { return Math.random().toString(36).slice(2) }
+function characterLevel(char) {
+  return (char.identity?.class ?? []).reduce((sum, cls) => sum + (cls.level ?? 0), 0) || 1
+}
 
 // ── Spell Picker ────────────────────────────────────────────────────────────
 function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
@@ -160,7 +163,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   const prepared = char.spells?.prepared ?? []
   const slots    = char.spells?.slots    ?? {}
   const castAbility = char.spells?.spellcastingAbility
-  const level    = char.identity.class?.[0]?.level ?? 1
+  const level    = characterLevel(char)
   const pb       = PROFICIENCY[level] ?? 2
   const scores   = char.stats?.abilityScores ?? {}
 

@@ -469,6 +469,25 @@ function normalizeClassFeature(feature, optionalFeatures = {}) {
   }
 }
 
+function normalizeSubclassFeature(feature, optionalFeatures = {}) {
+  const choices = [
+    ...normalizeFeatureChoices(feature.entries, optionalFeatures),
+    ...manualFeatureChoices(feature, optionalFeatures),
+  ]
+  return {
+    index: slug(`${feature.className ?? ''} ${feature.subclassShortName ?? ''} ${feature.level ?? ''} ${feature.name}`),
+    name: feature.name,
+    source: feature.source,
+    className: feature.className,
+    classIndex: slug(feature.className),
+    subclassName: feature.subclassShortName,
+    subclassSource: feature.subclassSource,
+    level: feature.level,
+    desc: [stripTags(feature.entries)],
+    choices,
+  }
+}
+
 function normalizeClass(cls, module = {}) {
   const optionalFeatures = optionalFeatureLookup()
   const skillChoice = cls.startingProficiencies?.skills?.find(s => s.choose)?.choose
@@ -483,6 +502,30 @@ function normalizeClass(cls, module = {}) {
     byLevel[level] = [...(byLevel[level] ?? []), feature]
     return byLevel
   }, {})
+  const subclasses = (module.subclass ?? [])
+    .filter(subclass => subclass.className === cls.name && (!subclass.classSource || subclass.classSource === cls.source))
+    .filter(subclass => !subclass.edition || subclass.edition === 'classic')
+    .map(subclass => {
+      const subclassFeatures = (module.subclassFeature ?? [])
+        .filter(feature =>
+          feature.className === cls.name &&
+          feature.subclassShortName === (subclass.shortName ?? subclass.name) &&
+          (!feature.subclassSource || !subclass.source || feature.subclassSource === subclass.source)
+        )
+        .map(feature => normalizeSubclassFeature(feature, optionalFeatures))
+      const featuresByLevel = subclassFeatures.reduce((byLevel, feature) => {
+        const level = String(feature.level ?? 1)
+        byLevel[level] = [...(byLevel[level] ?? []), feature]
+        return byLevel
+      }, {})
+      return {
+        index: slug(subclass.shortName ?? subclass.name),
+        name: subclass.shortName ?? subclass.name,
+        fullName: subclass.name,
+        source: subclass.source,
+        features_by_level: featuresByLevel,
+      }
+    })
   return {
     index: slug(cls.name),
     name: cls.name,
@@ -503,6 +546,7 @@ function normalizeClass(cls, module = {}) {
     starting_equipment: [],
     starting_equipment_options: normalizeStartingEquipment(cls.startingEquipment?.default ?? []),
     features_by_level: featuresByLevel,
+    subclasses,
   }
 }
 

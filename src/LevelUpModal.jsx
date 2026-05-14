@@ -102,6 +102,77 @@ export const FEATS = [
 ]
 
 const ABILITY_SCORES = ['STR','DEX','CON','INT','WIS','CHA']
+const ABILITY_LABEL_BY_KEY = { str:'STR', dex:'DEX', con:'CON', int:'INT', wis:'WIS', cha:'CHA' }
+
+const FEAT_RULES = {
+  Alert: { initiativeBonus: 5 },
+  Athlete: { abilityOptions: ['str', 'dex'], abilityIncrease: 1 },
+  Actor: { abilityOptions: ['cha'], abilityIncrease: 1 },
+  Durable: { abilityOptions: ['con'], abilityIncrease: 1 },
+  'Heavily Armoured': { abilityOptions: ['str'], abilityIncrease: 1 },
+  'Heavy Armour Master': { abilityOptions: ['str'], abilityIncrease: 1 },
+  'Keen Mind': { abilityOptions: ['int'], abilityIncrease: 1 },
+  'Lightly Armoured': { abilityOptions: ['str', 'dex'], abilityIncrease: 1, proficiencies: { Armour: ['Light armor proficiency'] } },
+  Mobile: { speedBonus: 10 },
+  'Moderately Armoured': { abilityOptions: ['str', 'dex'], abilityIncrease: 1, proficiencies: { Armour: ['Medium armor proficiency', 'Shield proficiency'] } },
+  Observant: { abilityOptions: ['int', 'wis'], abilityIncrease: 1, passiveBonus: 5 },
+  Resilient: { abilityOptions: ['str', 'dex', 'con', 'int', 'wis', 'cha'], abilityIncrease: 1, savingThrowChoice: true },
+  Skilled: { skillProficiencies: 3 },
+  'Tavern Brawler': { abilityOptions: ['str', 'con'], abilityIncrease: 1 },
+  Tough: { hpPerLevel: 2 },
+  'Weapon Master': { abilityOptions: ['str', 'dex'], abilityIncrease: 1 },
+}
+
+function getClassIndex(cls) {
+  return cls?.index ?? cls?.name?.toLowerCase?.().replace(/\s+/g, '-')
+}
+
+function characterLevel(char) {
+  return (char.identity?.class ?? []).reduce((sum, cls) => sum + (cls.level ?? 0), 0) || 1
+}
+
+function abilityScore(char, key) {
+  return char.stats?.abilityScores?.[key] ?? 10
+}
+
+function hasSpellcasting(char) {
+  return !!char.spells?.spellcastingAbility || (char.spells?.known ?? []).length > 0 || Object.keys(char.spells?.slots ?? {}).length > 0
+}
+
+function proficiencyList(char, category) {
+  const proficiencies = char.stats?.proficiencies
+  if (Array.isArray(proficiencies)) return proficiencies
+  if (proficiencies && typeof proficiencies === 'object') return proficiencies[category] ?? []
+  return []
+}
+
+function meetsFeatPrereq(feat, char) {
+  const prereq = feat.prereq
+  if (!prereq) return true
+  if (/spellcasting/i.test(prereq)) return hasSpellcasting(char)
+
+  const abilityParts = String(prereq).match(/(STR|DEX|CON|INT|WIS|CHA)(?:\s+or\s+(STR|DEX|CON|INT|WIS|CHA))*\s+(\d+)/i)
+  if (abilityParts) {
+    const required = Number(abilityParts[3])
+    const abilities = [...String(prereq).matchAll(/STR|DEX|CON|INT|WIS|CHA/gi)].map(match => match[0].toLowerCase())
+    return abilities.some(key => abilityScore(char, key) >= required)
+  }
+
+  if (/light armour|light armor/i.test(prereq)) {
+    return proficiencyList(char, 'Armour').some(name => /light/i.test(name))
+  }
+  if (/medium armour|medium armor/i.test(prereq)) {
+    return proficiencyList(char, 'Armour').some(name => /medium/i.test(name))
+  }
+  if (/heavy armour|heavy armor/i.test(prereq)) {
+    return proficiencyList(char, 'Armour').some(name => /heavy/i.test(name))
+  }
+  return true
+}
+
+function featRule(feat) {
+  return FEAT_RULES[feat?.name] ?? {}
+}
 
 // ── Spell slot tables ─────────────────────────────────────────
 
@@ -275,7 +346,7 @@ function getConMod(char) {
 
 // Total levels assigned across all classes (the distribution)
 function assignedLevel(char) {
-  return (char.identity?.class ?? []).reduce((s, c) => s + (c.level ?? 0), 0)
+  return characterLevel(char)
 }
 
 // Level the chosen class will become after this level-up
@@ -304,21 +375,34 @@ function featureKey(feature) {
   return `${feature.classIndex ?? feature.className ?? ''}:${feature.gainedAtLevel ?? feature.level ?? ''}:${feature.index ?? feature.name}`
 }
 
-function classFeaturesForLevel(srdClasses, cls, level) {
-  const classIndex = cls?.index ?? cls?.name?.toLowerCase?.().replace(/\s+/g, '-')
-  const srdClass = srdClasses[classIndex]
-  return (srdClass?.features_by_level?.[String(level)] ?? []).map(feature => ({
+function classFeaturesForLevel(srdClasses, cls, level, subclassOverride = null) {
+  const idx = getClassIndex(cls)
+  const srdClass = srdClasses[idx]
+  const classFeatures = (srdClass?.features_by_level?.[String(level)] ?? []).map(feature => ({
     ...feature,
-    classIndex,
+    classIndex: idx,
     className: cls?.name ?? feature.className ?? '',
     gainedAtLevel: level,
   }))
+  const subclassName = String(subclassOverride ?? cls?.subclass ?? '').toLowerCase()
+  const subclass = (srdClass?.subclasses ?? []).find(option =>
+    String(option.name ?? '').toLowerCase() === subclassName ||
+    String(option.fullName ?? '').toLowerCase() === subclassName
+  )
+  const subclassFeatures = (subclass?.features_by_level?.[String(level)] ?? []).map(feature => ({
+    ...feature,
+    classIndex: idx,
+    className: cls?.name ?? feature.className ?? '',
+    subclassName: subclass.name,
+    gainedAtLevel: level,
+  }))
+  return [...classFeatures, ...subclassFeatures]
 }
 
 function subclassSpellcastingSpec(cls, subclass) {
-  const classIndex = cls?.index ?? cls?.name?.toLowerCase?.().replace(/\s+/g, '-')
+  const idx = getClassIndex(cls)
   const subclassIndex = String(subclass ?? cls?.subclass ?? '').toLowerCase().replace(/\s+/g, ' ')
-  return SUBCLASS_SPELLCASTING[`${classIndex}:${subclassIndex}`] ?? null
+  return SUBCLASS_SPELLCASTING[`${idx}:${subclassIndex}`] ?? null
 }
 
 function spellsKnownAt(spec, classLevel) {
@@ -393,11 +477,11 @@ function buildSteps(char, classIdx, selectedSubclass, srdClasses) {
   const idx = classIdx ?? 0
   const lvl = nextClassLevel(char, idx)
   const cls = char.identity?.class?.[idx]
-  const gainedFeatures = classFeaturesForLevel(srdClasses, cls, lvl)
+  const subclass = selectedSubclass ?? cls?.subclass
+  const gainedFeatures = classFeaturesForLevel(srdClasses, cls, lvl, subclass)
   steps.push({ type: 'features' })
   if (hasASI(char, idx))           steps.push({ type: 'asi' })
   if (hasSubclassChoice(char, idx)) steps.push({ type: 'subclass' })
-  const subclass = selectedSubclass ?? cls?.subclass
   if (subclass && needsSubclassSpellChoice(char, idx, subclass)) steps.push({ type: 'spells' })
   optionChoicesForFeatures(gainedFeatures).forEach(choice => steps.push({ type: 'featureOption', choice }))
   const skillChoices = [
@@ -558,6 +642,8 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   const [choice, setChoice]     = useState(null)  // 'asi' | 'feat'
   const [asiPoints, setAsiPoints] = useState({ STR:0, DEX:0, CON:0, INT:0, WIS:0, CHA:0 })
   const [selectedFeat, setSelectedFeat] = useState(null)
+  const [featAbility, setFeatAbility] = useState(null)
+  const [featSkills, setFeatSkills] = useState([])
   const [featSearch, setFeatSearch]     = useState('')
 
   const pointsUsed = Object.values(asiPoints).reduce((a, b) => a + b, 0)
@@ -589,10 +675,18 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
     f.name.toLowerCase().includes(featSearch.toLowerCase()) ||
     f.desc.toLowerCase().includes(featSearch.toLowerCase())
   )
+  const selectedFeatRule = featRule(selectedFeat)
+  const availableFeatSkills = SKILL_OPTIONS.filter(skill => {
+    const current = char.stats?.skills?.[skill.key]
+    const level = typeof current === 'number' ? current : current?.proficient ? 1 : 0
+    return level === 0
+  })
+  const featNeedsAbility = (selectedFeatRule.abilityOptions ?? []).length > 0
+  const featNeedsSkills = (selectedFeatRule.skillProficiencies ?? 0) > 0
 
   const canConfirm =
     (choice === 'asi' && pointsUsed === 2) ||
-    (choice === 'feat' && selectedFeat)
+    (choice === 'feat' && selectedFeat && (!featNeedsAbility || featAbility) && (!featNeedsSkills || featSkills.length === selectedFeatRule.skillProficiencies))
 
   const handleConfirm = () => {
     onNext({
@@ -600,6 +694,25 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
       choice,
       asiDeltas:   choice === 'asi' ? asiPoints : null,
       selectedFeat: choice === 'feat' ? selectedFeat : null,
+      featChoices: choice === 'feat'
+        ? { ability: featAbility, skills: featSkills }
+        : null,
+    })
+  }
+
+  const selectFeat = (feat) => {
+    if (!meetsFeatPrereq(feat, char)) return
+    setSelectedFeat(feat)
+    setFeatAbility(null)
+    setFeatSkills([])
+  }
+
+  const toggleFeatSkill = (skill) => {
+    const max = selectedFeatRule.skillProficiencies ?? 0
+    setFeatSkills(prev => {
+      if (prev.some(item => item.key === skill.key)) return prev.filter(item => item.key !== skill.key)
+      if (prev.length >= max) return prev
+      return [...prev, skill]
     })
   }
 
@@ -679,10 +792,15 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
           />
           <div className="lu-feat-list">
             {filteredFeats.map(feat => (
+              (() => {
+                const qualifies = meetsFeatPrereq(feat, char)
+                return (
               <button
                 key={feat.name}
                 className={`lu-feat-row${selectedFeat?.name === feat.name ? ' lu-feat-row--selected' : ''}`}
-                onClick={() => setSelectedFeat(feat)}
+                onClick={() => selectFeat(feat)}
+                disabled={!qualifies}
+                title={!qualifies ? `Prerequisite not met: ${feat.prereq}` : undefined}
               >
                 <div className="lu-feat-header">
                   <div className="lu-feat-name">{feat.name}</div>
@@ -690,8 +808,52 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
                 </div>
                 <div className="lu-feat-desc">{feat.desc}</div>
               </button>
+                )
+              })()
             ))}
           </div>
+          {selectedFeat && featNeedsAbility && (
+            <div className="lu-choice-block">
+              <div className="lu-choice-head">
+                <span>Ability Increase</span>
+                <span className="lu-choice-hint">choose one</span>
+              </div>
+              <div className="lu-skill-grid">
+                {selectedFeatRule.abilityOptions.map(key => (
+                  <button
+                    key={key}
+                    className={`lu-skill-chip${featAbility === key ? ' lu-skill-chip--selected' : ''}`}
+                    onClick={() => setFeatAbility(key)}
+                    disabled={(currentScores[ABILITY_LABEL_BY_KEY[key]] ?? 10) >= 20}
+                  >
+                    {ABILITY_LABEL_BY_KEY[key]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {selectedFeat && featNeedsSkills && (
+            <div className="lu-choice-block">
+              <div className="lu-choice-head">
+                <span>Skill Proficiencies</span>
+                <span className="lu-choice-hint">{featSkills.length}/{selectedFeatRule.skillProficiencies}</span>
+              </div>
+              <div className="lu-skill-grid">
+                {availableFeatSkills.map(skill => {
+                  const active = featSkills.some(item => item.key === skill.key)
+                  return (
+                    <button
+                      key={skill.key}
+                      className={`lu-skill-chip${active ? ' lu-skill-chip--selected' : ''}`}
+                      onClick={() => toggleFeatSkill(skill)}
+                    >
+                      {skill.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -714,12 +876,15 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
 }
 
 // ── Step: Subclass choice ─────────────────────────────────────
-function SubclassStep({ char, classIdx, onNext, onBack }) {
+function SubclassStep({ char, classIdx, srdClasses, onNext, onBack }) {
   const [selected, setSelected] = useState(null)
   const clsObj   = char.identity?.class?.[classIdx] ?? char.identity?.class?.[0]
-  const cls      = (clsObj?.name ?? '').toLowerCase()
+  const cls      = getClassIndex(clsObj)
   const lvl      = nextClassLevel(char, classIdx)
-  const options  = SUBCLASSES[cls] ?? []
+  const dataOptions = srdClasses?.[cls]?.subclasses ?? []
+  const options  = dataOptions.length > 0
+    ? dataOptions
+    : (SUBCLASSES[cls] ?? []).map(name => ({ name, source: 'manual' }))
 
   return (
     <div className="lu-step">
@@ -733,16 +898,17 @@ function SubclassStep({ char, classIdx, onNext, onBack }) {
       </div>
 
       <div className="lu-subclass-list">
-        {options.map(name => (
+        {options.map(option => (
           <button
-            key={name}
-            className={`lu-subclass-card${selected === name ? ' lu-subclass-card--selected' : ''}`}
-            onClick={() => setSelected(name)}
+            key={`${option.name}:${option.source ?? ''}`}
+            className={`lu-subclass-card${selected === option.name ? ' lu-subclass-card--selected' : ''}`}
+            onClick={() => setSelected(option.name)}
           >
             <div className="lu-subclass-radio">
-              <div className={`lu-radio-dot${selected === name ? ' lu-radio-dot--active' : ''}`} />
+              <div className={`lu-radio-dot${selected === option.name ? ' lu-radio-dot--active' : ''}`} />
             </div>
-            <div className="lu-subclass-name">{name}</div>
+            <div className="lu-subclass-name">{option.name}</div>
+            {option.source && <div className="lu-choice-hint">{option.source}</div>}
           </button>
         ))}
       </div>
@@ -920,6 +1086,119 @@ function toKnownSpell(spell) {
     source: spell.source,
     level: spell.level,
   }
+}
+
+function addProficiencies(existing, additions = {}) {
+  if (Array.isArray(existing)) {
+    return [...new Set([...existing, ...Object.values(additions).flat()])]
+  }
+  const next = { ...(existing ?? {}) }
+  for (const [category, values] of Object.entries(additions)) {
+    next[category] = [...new Set([...(next[category] ?? []), ...values])]
+  }
+  return next
+}
+
+function applyFeatRules(char, feat, choices = {}) {
+  const rule = featRule(feat)
+  let updated = char
+
+  if (rule.abilityIncrease && choices.ability) {
+    const key = choices.ability
+    const scores = updated.stats?.abilityScores ?? {}
+    updated = {
+      ...updated,
+      stats: {
+        ...(updated.stats ?? {}),
+        abilityScores: {
+          ...scores,
+          [key]: Math.min(20, (scores[key] ?? 10) + rule.abilityIncrease),
+        },
+      },
+    }
+  }
+
+  if (rule.savingThrowChoice && choices.ability) {
+    const savingThrows = updated.stats?.savingThrows ?? {}
+    updated = {
+      ...updated,
+      stats: {
+        ...(updated.stats ?? {}),
+        savingThrows: {
+          ...savingThrows,
+          [choices.ability]: { ...(savingThrows[choices.ability] ?? {}), proficient: true },
+        },
+      },
+    }
+  }
+
+  if (rule.skillProficiencies && choices.skills?.length) {
+    const skills = { ...(updated.stats?.skills ?? {}) }
+    for (const skill of choices.skills) {
+      skills[skill.key] = typeof skills[skill.key] === 'number'
+        ? Math.max(skills[skill.key], 1)
+        : { ...(skills[skill.key] ?? {}), proficient: true }
+    }
+    updated = { ...updated, stats: { ...(updated.stats ?? {}), skills } }
+  }
+
+  if (rule.proficiencies) {
+    updated = {
+      ...updated,
+      stats: {
+        ...(updated.stats ?? {}),
+        proficiencies: addProficiencies(updated.stats?.proficiencies, rule.proficiencies),
+      },
+    }
+  }
+
+  if (rule.initiativeBonus) {
+    updated = {
+      ...updated,
+      combat: {
+        ...(updated.combat ?? {}),
+        initiativeBonus: (updated.combat?.initiativeBonus ?? 0) + rule.initiativeBonus,
+      },
+    }
+  }
+
+  if (rule.speedBonus) {
+    updated = {
+      ...updated,
+      combat: {
+        ...(updated.combat ?? {}),
+        speed: (updated.combat?.speed ?? 30) + rule.speedBonus,
+      },
+    }
+  }
+
+  if (rule.hpPerLevel) {
+    const gain = rule.hpPerLevel * characterLevel(updated)
+    updated = {
+      ...updated,
+      combat: {
+        ...(updated.combat ?? {}),
+        hpMax: (updated.combat?.hpMax ?? 1) + gain,
+        hpCurrent: (updated.combat?.hpCurrent ?? 1) + gain,
+      },
+    }
+  }
+
+  if (rule.passiveBonus) {
+    updated = {
+      ...updated,
+      stats: {
+        ...(updated.stats ?? {}),
+        passiveBonuses: {
+          ...(updated.stats?.passiveBonuses ?? {}),
+          perception: (updated.stats?.passiveBonuses?.perception ?? 0) + rule.passiveBonus,
+          investigation: (updated.stats?.passiveBonuses?.investigation ?? 0) + rule.passiveBonus,
+        },
+      },
+    }
+  }
+
+  return updated
 }
 
 // ── Step: Generic feature option choice ─────────────────────────────────────
@@ -1112,7 +1391,8 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
     const nextLevel = (previousCls?.level ?? 0) + 1
     const newCls   = cls.map((c, i) => i === classIdx ? { ...c, level: (c.level ?? 0) + 1 } : c)
     const existingFeatures = char.customContent?.classFeatures ?? []
-    const gainedFeatures = classFeaturesForLevel(srdClasses, previousCls, nextLevel)
+    const chosenSubclass = allResults.find(r => r.type === 'subclass')?.subclass ?? previousCls?.subclass
+    const gainedFeatures = classFeaturesForLevel(srdClasses, previousCls, nextLevel, chosenSubclass)
     const featureKeys = new Set(existingFeatures.map(featureKey))
     const classFeatures = [
       ...existingFeatures,
@@ -1146,8 +1426,16 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
         updatedChar = { ...updatedChar, stats: { ...updatedChar.stats, abilityScores: newAb } }
       }
       if (r.type === 'asi' && r.choice === 'feat' && r.selectedFeat) {
-        const feats = [...(updatedChar.feats ?? []), { name: r.selectedFeat.name, desc: r.selectedFeat.desc }]
-        updatedChar = { ...updatedChar, feats }
+        const feats = [
+          ...(updatedChar.feats ?? []),
+          {
+            name: r.selectedFeat.name,
+            desc: r.selectedFeat.desc,
+            prereq: r.selectedFeat.prereq ?? null,
+            choices: r.featChoices ?? {},
+          },
+        ]
+        updatedChar = applyFeatRules({ ...updatedChar, feats }, r.selectedFeat, r.featChoices ?? {})
       }
       if (r.type === 'subclass' && r.subclass) {
         const updatedCls = (updatedChar.identity.class ?? []).map((c, i) =>
@@ -1281,6 +1569,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
           <SubclassStep
             char={char}
             classIdx={chosenClassIdx}
+            srdClasses={srdClasses}
             onNext={handleNext}
             onBack={handleBack}
           />
