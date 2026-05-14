@@ -433,13 +433,32 @@ export function getSlotsForCharacter(classes = []) {
     }
     return { slots, pactSlots: {} }
   }
-  if (warlock) return { slots: getSlotsForClass('warlock', warlock.level ?? 1), pactSlots: {} }
+  if (warlock) return { slots: {}, pactSlots: getSlotsForClass('warlock', warlock.level ?? 1) }
   return { slots: {}, pactSlots: {} }
 }
 
 // Starting cantrips and spells known per class at level 1
 export const CANTRIPS_KNOWN = { bard:2, cleric:3, druid:2, sorcerer:4, warlock:2, wizard:3 }
-export const SPELLS_KNOWN_L1 = { bard:2, sorcerer:2, warlock:2, wizard:6, cleric:4, druid:4 }
+export const SPELLS_KNOWN_L1 = { bard:4, sorcerer:2, warlock:2, wizard:6, cleric:4, druid:4 }
+
+const CANTRIPS_KNOWN_BY_LEVEL = {
+  bard: { 1: 2, 4: 3, 10: 4 },
+  sorcerer: { 1: 4, 4: 5, 10: 6 },
+  warlock: { 1: 2, 4: 3, 10: 4 },
+  wizard: { 1: 3, 4: 4, 10: 5 },
+}
+
+const SPELLS_KNOWN_BY_LEVEL = {
+  bard: { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 9, 7: 10, 8: 11, 9: 12, 10: 14, 11: 15, 13: 16, 14: 18, 15: 19, 17: 20, 18: 22 },
+  ranger: { 2: 2, 3: 3, 5: 4, 7: 5, 9: 6, 11: 7, 13: 8, 15: 9, 17: 10, 19: 11 },
+  sorcerer: { 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 10: 11, 11: 12, 13: 13, 15: 14, 17: 15 },
+  warlock: { 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9, 9: 10, 11: 11, 13: 12, 15: 13, 17: 14, 19: 15 },
+  wizard: Object.fromEntries(Array.from({ length: 20 }, (_, i) => [i + 1, 6 + i * 2])),
+}
+const SPELL_REPLACEMENT_CLASSES = new Set(['bard', 'ranger', 'sorcerer', 'warlock'])
+const WARLOCK_INVOCATION_GAIN_LEVELS = new Set([5, 7, 9, 12, 15, 18])
+const RANGER_FAVORED_ENEMY_GAIN_LEVELS = new Set([6, 14])
+const RANGER_NATURAL_EXPLORER_GAIN_LEVELS = new Set([6, 10])
 
 // ── D&D logic helpers ─────────────────────────────────────────
 
@@ -538,6 +557,56 @@ function cantripsKnownAt(spec, classLevel) {
   return spec?.cantripsKnown?.[levels.filter(level => level <= classLevel).pop()] ?? 0
 }
 
+function knownValueAt(table, classLevel) {
+  const levels = Object.keys(table ?? {}).map(Number).sort((a, b) => a - b)
+  return table?.[levels.filter(level => level <= classLevel).pop()] ?? 0
+}
+
+function spellKnownForClass(spell, classIndex, allowUntagged = true) {
+  if (spell.classIndex) return spell.classIndex === classIndex
+  return allowUntagged && !spell.origin
+}
+
+function spellLevelsForClass(classIndex, classLevel) {
+  return Object.keys(getSlotsForClass(classIndex, classLevel))
+    .map(Number)
+    .filter(level => level > 0)
+    .sort((a, b) => a - b)
+}
+
+function classSpellPickNeeds(char, cls, level) {
+  const classIndex = getClassIndex(cls)
+  const cantripsKnown = CANTRIPS_KNOWN_BY_LEVEL[classIndex]
+  const spellsKnown = SPELLS_KNOWN_BY_LEVEL[classIndex]
+  if (!cantripsKnown && !spellsKnown) return null
+
+  const known = char.spells?.known ?? []
+  const existingClass = (char.identity?.class ?? []).some(existing => getClassIndex(existing) === classIndex)
+  const cantripNeed = Math.max(
+    0,
+    knownValueAt(cantripsKnown, level) - known.filter(spell => spell.level === 0 && spellKnownForClass(spell, classIndex, existingClass)).length
+  )
+  const knownClassSpells = known.filter(spell => spell.level > 0 && spellKnownForClass(spell, classIndex, existingClass))
+  const spellNeed = Math.max(
+    0,
+    knownValueAt(spellsKnown, level) - knownClassSpells.length
+  )
+  const canReplace = existingClass && level > 1 && SPELL_REPLACEMENT_CLASSES.has(classIndex) && knownClassSpells.length > 0
+  if (cantripNeed <= 0 && spellNeed <= 0 && !canReplace) return null
+  return {
+    spec: {
+      key: classIndex,
+      sourceClass: classIndex,
+      spellLevels: spellLevelsForClass(classIndex, level),
+      autoPrepare: classIndex !== 'wizard',
+      allowReplacement: canReplace,
+      title: `${cls?.name ?? classLabel(classIndex)} Spell Choices`,
+    },
+    cantripNeed,
+    spellNeed,
+  }
+}
+
 function spellPickNeeds(char, cls, level, subclass) {
   const spec = subclassSpellcastingSpec(cls, subclass)
   if (!spec) return null
@@ -568,7 +637,7 @@ function skillChoiceForFeatures(features) {
 }
 
 function optionChoicesForFeatures(features) {
-  return features.flatMap(feature =>
+  const choices = features.flatMap(feature =>
     (feature.choices ?? []).map(choice => ({
       ...choice,
       choiceKey: `${feature.index}:${choice.choiceIndex ?? 0}`,
@@ -581,6 +650,72 @@ function optionChoicesForFeatures(features) {
       },
     }))
   )
+  const merged = new Map()
+  for (const choice of choices) {
+    const optionTypes = [...new Set((choice.options ?? []).flatMap(option => option.featureType ?? []))].sort()
+    const key = optionTypes.length
+      ? `${choice.feature?.classIndex ?? ''}:${choice.feature?.level ?? ''}:${optionTypes.join('|')}`
+      : choice.choiceKey
+    const previous = merged.get(key)
+    if (!previous) {
+      merged.set(key, choice)
+      continue
+    }
+    const optionMap = new Map((previous.options ?? []).map(option => [option.id ?? option.name, option]))
+    for (const option of choice.options ?? []) optionMap.set(option.id ?? option.name, option)
+    merged.set(key, {
+      ...previous,
+      choose: Math.max(previous.choose ?? 1, choice.choose ?? 1),
+      options: [...optionMap.values()],
+    })
+  }
+  return [...merged.values()]
+}
+
+function reusableOptionChoice(srdClasses, classIndex, featurePattern, optionType, level, choose = 1, dynamic = false) {
+  const feature = Object.values(srdClasses?.[classIndex]?.features_by_level ?? {})
+    .flat()
+    .find(item =>
+      featurePattern.test(item.name ?? '') &&
+      (item.choices ?? []).some(choice =>
+        (choice.options ?? []).some(option => (option.featureType ?? []).includes(optionType))
+      )
+    )
+  const template = feature?.choices?.find(choice =>
+    (choice.options ?? []).some(option => (option.featureType ?? []).includes(optionType))
+  )
+  if (!feature || !template) return null
+  return {
+    ...template,
+    choose,
+    ...(dynamic && { dynamicOptionType: optionType, dynamicOptionLevel: level }),
+    choiceKey: `${classIndex}-${feature.index}-${level}-${optionType}`,
+    feature: {
+      index: feature.index,
+      name: feature.name,
+      className: feature.className,
+      classIndex: feature.classIndex,
+      level,
+    },
+  }
+}
+
+function progressionOptionChoices(cls, level, srdClasses) {
+  const classIndex = getClassIndex(cls)
+  const choices = []
+  if (classIndex === 'warlock' && WARLOCK_INVOCATION_GAIN_LEVELS.has(level)) {
+    const choice = reusableOptionChoice(srdClasses, 'warlock', /eldritch invocations/i, 'EI', level, 1, true)
+    if (choice) choices.push(choice)
+  }
+  if (classIndex === 'ranger' && RANGER_FAVORED_ENEMY_GAIN_LEVELS.has(level)) {
+    const choice = reusableOptionChoice(srdClasses, 'ranger', /^favored enemy/i, 'RANGER:FAVORED_ENEMY', level, 1)
+    if (choice) choices.push(choice)
+  }
+  if (classIndex === 'ranger' && RANGER_NATURAL_EXPLORER_GAIN_LEVELS.has(level)) {
+    const choice = reusableOptionChoice(srdClasses, 'ranger', /natural explorer/i, 'RANGER:NATURAL_EXPLORER', level, 1)
+    if (choice) choices.push(choice)
+  }
+  return choices
 }
 
 function subclassSkillChoice(cls, subclass, level) {
@@ -622,8 +757,13 @@ function buildSteps(char, classIdx, selectedSubclass, srdClasses, newClassData =
   steps.push({ type: 'features' })
   if (!isNewClass && hasASI(char, idx))           steps.push({ type: 'asi' })
   if (SUBCLASS_LEVELS[getClassIndex(cls)]?.includes(lvl) && !cls.subclass) steps.push({ type: 'subclass' })
-  if (!isNewClass && subclass && needsSubclassSpellChoice(char, idx, subclass)) steps.push({ type: 'spells' })
+  const classSpellNeeds = classSpellPickNeeds(char, cls, lvl)
+  if (classSpellNeeds) steps.push({ type: 'spells', spellChoice: classSpellNeeds })
+  if (!isNewClass && subclass && needsSubclassSpellChoice(char, idx, subclass)) {
+    steps.push({ type: 'spells', spellChoice: spellPickNeeds(char, cls, lvl, subclass) })
+  }
   optionChoicesForFeatures(gainedFeatures).forEach(choice => steps.push({ type: 'featureOption', choice }))
+  progressionOptionChoices(cls, lvl, srdClasses).forEach(choice => steps.push({ type: 'featureOption', choice }))
   const skillChoices = [
     isNewClass ? classSkillChoiceForMulticlass(cls) : null,
     subclassSkillChoice(cls, subclass, lvl),
@@ -961,12 +1101,23 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
 
   const toggleFeatCantrip = (spell) => {
     const max = selectedFeatRule.cantripsKnown ?? selectedFeatRule.cantripFromAnyClass ?? 0
-    setFeatCantrips(prev => toggleLimitedOption(prev, toKnownSpell({ ...spell, origin: selectedFeat?.name }), max))
+    const classIndex = featSpellClass ?? spell.classes?.find(cls => SPELLCASTING_ABILITY[cls.index])?.index
+    setFeatCantrips(prev => toggleLimitedOption(prev, toKnownSpell({
+      ...spell,
+      origin: selectedFeat?.name,
+      classIndex,
+      castingAbility: SPELLCASTING_ABILITY[classIndex] ?? null,
+    }), max))
   }
 
   const toggleFeatSpell = (spell) => {
     const max = selectedFeatRule.spellsKnown ?? selectedFeatRule.ritualSpellsKnown ?? 0
-    setFeatSpells(prev => toggleLimitedOption(prev, toKnownSpell({ ...spell, origin: selectedFeat?.name }), max))
+    setFeatSpells(prev => toggleLimitedOption(prev, toKnownSpell({
+      ...spell,
+      origin: selectedFeat?.name,
+      classIndex: featSpellClass,
+      castingAbility: SPELLCASTING_ABILITY[featSpellClass] ?? null,
+    }), max))
   }
 
   const toggleFeatManeuver = (maneuver) => {
@@ -1334,15 +1485,17 @@ function SubclassStep({ char, classIdx, newClassData, srdClasses, onNext, onBack
   )
 }
 
-// ── Step: Spell unlocks from subclass ───────────────────────────────────────
-function SpellUnlockStep({ char, classIdx, subclass, onNext, onBack }) {
+// ── Step: Spell unlocks ─────────────────────────────────────────────────────
+function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack }) {
   const [allSpells, setAllSpells] = useState([])
   const [selectedCantrips, setSelectedCantrips] = useState([])
   const [selectedSpells, setSelectedSpells] = useState([])
+  const [replaceFrom, setReplaceFrom] = useState(null)
+  const [replaceTo, setReplaceTo] = useState(null)
 
   const cls = char.identity?.class?.[classIdx]
   const level = nextClassLevel(char, classIdx)
-  const needs = spellPickNeeds(char, cls, level, subclass)
+  const needs = spellChoice ?? spellPickNeeds(char, cls, level, subclass)
   const spec = needs?.spec
   const knownIds = useMemo(() => new Set((char.spells?.known ?? []).map(spell => spell.index)), [char.spells?.known])
 
@@ -1353,8 +1506,12 @@ function SpellUnlockStep({ char, classIdx, subclass, onNext, onBack }) {
   useEffect(() => {
     if (!spec?.requiredCantrip || selectedCantrips.length || knownIds.has(spec.requiredCantrip)) return
     const required = allSpells.find(spell => spell.index === spec.requiredCantrip)
-    if (required) setSelectedCantrips([toKnownSpell(required)])
-  }, [allSpells, knownIds, selectedCantrips.length, spec?.requiredCantrip])
+    if (required) setSelectedCantrips([toKnownSpell({
+      ...required,
+      classIndex: spec.sourceClass,
+      castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[spec.sourceClass] ?? null,
+    })])
+  }, [allSpells, knownIds, selectedCantrips.length, spec?.key, spec?.requiredCantrip, spec?.sourceClass])
 
   if (!needs) {
     return (
@@ -1376,13 +1533,29 @@ function SpellUnlockStep({ char, classIdx, subclass, onNext, onBack }) {
     spec.spellLevels.includes(spell.level) &&
     !knownIds.has(spell.index)
   )
+  const replaceableSpells = (char.spells?.known ?? []).filter(spell =>
+    spec.allowReplacement &&
+    spell.level > 0 &&
+    spellKnownForClass(spell, sourceClass)
+  )
+  const replacementOptions = sourceSpells.filter(spell =>
+    spec.allowReplacement &&
+    spell.level > 0 &&
+    spec.spellLevels.includes(spell.level) &&
+    !knownIds.has(spell.index) &&
+    !selectedSpells.some(selected => selected.index === spell.index)
+  )
 
   const toggleCantrip = (spell) => {
     if (spec.requiredCantrip && spell.index === spec.requiredCantrip && !knownIds.has(spec.requiredCantrip)) return
     setSelectedCantrips(prev => {
       if (prev.some(s => s.index === spell.index)) return prev.filter(s => s.index !== spell.index)
       if (prev.length >= needs.cantripNeed) return prev
-      return [...prev, toKnownSpell(spell)]
+      return [...prev, toKnownSpell({
+        ...spell,
+        classIndex: sourceClass,
+        castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[sourceClass] ?? null,
+      })]
     })
   }
 
@@ -1390,17 +1563,38 @@ function SpellUnlockStep({ char, classIdx, subclass, onNext, onBack }) {
     setSelectedSpells(prev => {
       if (prev.some(s => s.index === spell.index)) return prev.filter(s => s.index !== spell.index)
       if (prev.length >= needs.spellNeed) return prev
-      return [...prev, toKnownSpell(spell)]
+      return [...prev, toKnownSpell({
+        ...spell,
+        classIndex: sourceClass,
+        castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[sourceClass] ?? null,
+      })]
     })
   }
 
-  const done = selectedCantrips.length === needs.cantripNeed && selectedSpells.length === needs.spellNeed
+  const toggleReplaceFrom = (spell) => {
+    setReplaceFrom(prev => {
+      const next = prev?.id === spell.id ? null : spell
+      if (!next) setReplaceTo(null)
+      return next
+    })
+  }
+
+  const toggleReplaceTo = (spell) => {
+    setReplaceTo(prev => prev?.index === spell.index ? null : toKnownSpell({
+      ...spell,
+      classIndex: sourceClass,
+      castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[sourceClass] ?? null,
+    }))
+  }
+
+  const replacementComplete = !replaceFrom || !!replaceTo
+  const done = selectedCantrips.length === needs.cantripNeed && selectedSpells.length === needs.spellNeed && replacementComplete
 
   return (
     <div className="lu-step">
-      <div className="lu-title lu-title--gold">{subclass} Spellcasting</div>
+      <div className="lu-title lu-title--gold">{spec.title ?? `${subclass} Spellcasting`}</div>
       <div className="lu-sub">
-        Choose spells from the {sourceClass} list for this subclass.
+        Choose spells from the {classLabel(sourceClass)} list.
         {spec.preferredSchools?.length ? ` ${spec.preferredSchools.join(' and ')} are the usual schools for this archetype.` : ''}
       </div>
 
@@ -1416,7 +1610,7 @@ function SpellUnlockStep({ char, classIdx, subclass, onNext, onBack }) {
 
       {needs.spellNeed > 0 && (
         <SpellChoiceList
-          label={`1st-level spells (${selectedSpells.length}/${needs.spellNeed})`}
+          label={`Spells (${selectedSpells.length}/${needs.spellNeed})`}
           spells={leveledSpells}
           selected={selectedSpells}
           onToggle={toggleSpell}
@@ -1424,11 +1618,36 @@ function SpellUnlockStep({ char, classIdx, subclass, onNext, onBack }) {
         />
       )}
 
+      {spec.allowReplacement && replaceableSpells.length > 0 && (
+        <div className="lu-choice-block">
+          <div className="lu-choice-head">
+            <span>Optional Spell Replacement</span>
+            <span className="lu-choice-hint">{replaceFrom ? (replaceTo ? 'ready' : 'choose replacement') : 'optional'}</span>
+          </div>
+          <div className="lu-replace-grid">
+            <SpellChoiceList
+              label="Forget one spell"
+              spells={replaceableSpells}
+              selected={replaceFrom ? [replaceFrom] : []}
+              onToggle={toggleReplaceFrom}
+            />
+            {replaceFrom && (
+              <SpellChoiceList
+                label="Learn instead"
+                spells={replacementOptions}
+                selected={replaceTo ? [replaceTo] : []}
+                onToggle={toggleReplaceTo}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="lu-actions">
         <button className="lu-btn lu-btn--ghost" onClick={onBack}>← Back</button>
         <button
           className="lu-btn lu-btn--gold"
-          onClick={() => onNext({ type: 'spells', cantrips: selectedCantrips, spells: selectedSpells, spec })}
+          onClick={() => onNext({ type: 'spells', cantrips: selectedCantrips, spells: selectedSpells, replaceFrom, replaceTo, spec })}
           disabled={!done}
         >
           Confirm Spells →
@@ -1494,6 +1713,8 @@ function toKnownSpell(spell) {
     level: spell.level,
     ...(spell.origin && { origin: spell.origin }),
     ...(spell.ritual && { ritual: true }),
+    ...(spell.classIndex && { classIndex: spell.classIndex }),
+    ...(spell.castingAbility && { castingAbility: spell.castingAbility }),
   }
 }
 
@@ -1674,9 +1895,44 @@ function applyFeatRules(char, feat, choices = {}) {
 }
 
 // ── Step: Generic feature option choice ─────────────────────────────────────
-function FeatureOptionStep({ choice, onNext, onBack }) {
+function FeatureOptionStep({ char, choice, onNext, onBack }) {
   const [selected, setSelected] = useState([])
+  const [dynamicOptions, setDynamicOptions] = useState(null)
   const choose = choice?.choose ?? 1
+
+  useEffect(() => {
+    if (!choice?.dynamicOptionType) {
+      setDynamicOptions(null)
+      return
+    }
+    getOptionalFeatures()
+      .then(features => {
+        setDynamicOptions(features
+          .filter(option => (option.featureType ?? []).includes(choice.dynamicOptionType))
+          .filter(option => (option.minLevel ?? 0) <= (choice.dynamicOptionLevel ?? 20))
+          .map(option => ({
+            id: option.id,
+            name: option.name,
+            source: option.source,
+            desc: option.desc,
+            featureType: option.featureType,
+          })))
+      })
+      .catch(() => setDynamicOptions(null))
+  }, [choice?.dynamicOptionLevel, choice?.dynamicOptionType])
+
+  const choiceOptions = dynamicOptions ?? choice?.options ?? []
+  const optionTypes = new Set(choiceOptions.flatMap(option => option.featureType ?? []))
+  const previouslySelected = new Set(
+    (char.customContent?.classFeatureChoices ?? [])
+      .filter(saved => (saved.choiceKey ?? saved.featureIndex) !== (choice?.choiceKey ?? choice?.feature?.index))
+      .flatMap(saved => saved.options ?? [])
+      .filter(option => (option.featureType ?? []).some(type => optionTypes.has(type)))
+      .map(option => option.name)
+  )
+  const availableOptions = optionTypes.size
+    ? choiceOptions.filter(option => !previouslySelected.has(option.name))
+    : choiceOptions
 
   const toggle = (option) => {
     setSelected(prev => {
@@ -1692,7 +1948,7 @@ function FeatureOptionStep({ choice, onNext, onBack }) {
       <div className="lu-sub">Choose {choose} {choose === 1 ? 'option' : 'options'} for this feature.</div>
 
       <div className="lu-feature-option-list">
-        {(choice?.options ?? []).map(option => {
+        {availableOptions.map(option => {
           const active = selected.some(item => item.id === option.id)
           return (
             <button
@@ -1709,6 +1965,9 @@ function FeatureOptionStep({ choice, onNext, onBack }) {
             </button>
           )
         })}
+        {availableOptions.length === 0 && (
+          <div className="lu-empty">No new options are available for this feature.</div>
+        )}
       </div>
 
       <div className="lu-actions">
@@ -1716,7 +1975,7 @@ function FeatureOptionStep({ choice, onNext, onBack }) {
         <button
           className="lu-btn lu-btn--gold"
           onClick={() => onNext({ type: 'featureOption', choiceKey: choice.choiceKey, feature: choice.feature, options: selected })}
-          disabled={selected.length !== choose}
+          disabled={selected.length !== choose || availableOptions.length < choose}
         >
           Confirm Choice →
         </button>
@@ -1945,11 +2204,17 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
         }
       }
       if (r.type === 'spells') {
-        const nextKnown = [...(updatedChar.spells?.known ?? [])]
-        const nextPrepared = [...(updatedChar.spells?.prepared ?? [])]
+        const nextKnown = (updatedChar.spells?.known ?? []).filter(spell => spell.id !== r.replaceFrom?.id)
+        const nextPrepared = (updatedChar.spells?.prepared ?? []).filter(id => id !== r.replaceFrom?.id)
         for (const spell of [...(r.cantrips ?? []), ...(r.spells ?? [])]) {
           if (!nextKnown.some(existing => existing.index === spell.index)) nextKnown.push(spell)
-          if (spell.level > 0 && !nextPrepared.includes(spell.id)) nextPrepared.push(spell.id)
+          if (r.spec?.autoPrepare !== false && spell.level > 0 && !nextPrepared.includes(spell.id)) nextPrepared.push(spell.id)
+        }
+        if (r.replaceTo && !nextKnown.some(existing => existing.index === r.replaceTo.index)) {
+          nextKnown.push(r.replaceTo)
+          if (r.spec?.autoPrepare !== false && r.replaceTo.level > 0 && !nextPrepared.includes(r.replaceTo.id)) {
+            nextPrepared.push(r.replaceTo.id)
+          }
         }
         updatedChar = {
           ...updatedChar,
@@ -2085,6 +2350,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
             char={char}
             classIdx={chosenClassIdx}
             subclass={selectedSubclass ?? char.identity?.class?.[chosenClassIdx]?.subclass}
+            spellChoice={currentStep.spellChoice}
             onNext={handleNext}
             onBack={handleBack}
           />
@@ -2092,6 +2358,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
 
         {currentStep?.type === 'featureOption' && chosenClassIdx != null && (
           <FeatureOptionStep
+            char={char}
             choice={currentStep.choice}
             onNext={handleNext}
             onBack={handleBack}

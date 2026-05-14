@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment } from './srdContent'
-import { FEATS, SUBCLASSES, SUBCLASS_LEVELS, getSlotsForClass, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
+import { FEATS, SUBCLASSES, SUBCLASS_LEVELS, getSlotsForCharacter, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
 import { getSpells } from './srdContent'
 import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
 import { inventoryItemFromCatalogItem, normalizeInventoryItem } from './itemRules'
@@ -10,6 +10,7 @@ import { inventoryItemFromCatalogItem, normalizeInventoryItem } from './itemRule
 const SPELLCASTING_ABILITY = {
   bard: 'cha', cleric: 'wis', druid: 'wis', paladin: 'cha',
   ranger: 'wis', sorcerer: 'cha', warlock: 'cha', wizard: 'int',
+  artificer: 'int',
 }
 
 const SKILL_INDEX_TO_STAT_KEY = {
@@ -223,6 +224,7 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
     ...(raceData?.languages ?? []).map(l => l.name),
     ...backgroundLanguages,
   ]
+  const spellSlotData = getSlotsForCharacter([{ index: classData?.index ?? null, level: 1 }])
 
   return {
     meta: {
@@ -273,7 +275,8 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
     racialTraits,
     spells: {
       spellcastingAbility: SPELLCASTING_ABILITY[classData?.index] ?? null,
-      slots: getSlotsForClass(classData?.index ?? null, 1),
+      slots: spellSlotData.slots,
+      pactSlots: spellSlotData.pactSlots,
       known: [...(startingCantrips ?? []), ...(startingSpells ?? [])],
       prepared: (startingSpells ?? []).map(s => s.index),
       concentration: null,
@@ -937,13 +940,29 @@ function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, o
     if (selectedCantrips.some(s => s.index === sp.index))
       onCantrips(selectedCantrips.filter(s => s.index !== sp.index))
     else if (selectedCantrips.length < cantripMax)
-      onCantrips([...selectedCantrips, { id: sp.index, index: sp.index, name: sp.name, source: sp.source, level: 0 }])
+      onCantrips([...selectedCantrips, {
+        id: sp.index,
+        index: sp.index,
+        name: sp.name,
+        source: sp.source,
+        level: 0,
+        classIndex: classIdx,
+        castingAbility: SPELLCASTING_ABILITY[classIdx] ?? null,
+      }])
   }
   const toggleSpell = (sp) => {
     if (selectedSpells.some(s => s.index === sp.index))
       onSpells(selectedSpells.filter(s => s.index !== sp.index))
     else if (selectedSpells.length < spellMax)
-      onSpells([...selectedSpells, { id: sp.index, index: sp.index, name: sp.name, source: sp.source, level: sp.level }])
+      onSpells([...selectedSpells, {
+        id: sp.index,
+        index: sp.index,
+        name: sp.name,
+        source: sp.source,
+        level: sp.level,
+        classIndex: classIdx,
+        castingAbility: SPELLCASTING_ABILITY[classIdx] ?? null,
+      }])
   }
 
   const cantripDone = cantripMax === 0 || selectedCantrips.length === cantripMax

@@ -55,7 +55,7 @@ export const RULE_GROUPS = [
         type: 'choice',
         key: 'concentrationMode',
         label: 'Concentration',
-        note: 'Stored for now. Needs concentration casting behavior pass.',
+        note: 'Combat casting starts concentration. RAW replaces the previous concentration spell; no-limit mode keeps the existing one.',
         options: [
           { value: 'raw', label: 'RAW' },
           { value: 'none', label: 'No limit', sub: 'High magic' },

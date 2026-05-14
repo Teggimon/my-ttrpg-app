@@ -620,6 +620,12 @@
   font-weight: 800;
 }
 
+.lu-replace-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
 .lu-skill-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -719,6 +725,15 @@
   font-size: 10px;
   font-weight: 800;
   color: var(--text-muted);
+}
+
+.lu-empty {
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 /* ── Warning ── */

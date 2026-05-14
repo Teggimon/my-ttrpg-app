@@ -137,6 +137,17 @@
   border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
   background: var(--bg-elevated); color: var(--text-secondary); white-space: nowrap; flex-shrink: 0;
 }
+.spell-mechanic-badge {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent-light);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 
 .spell-xbtn {
   font-size: 10px; color: var(--text-faint); background: none; border: none; cursor: pointer; flex-shrink: 0; padding: 0;
@@ -170,6 +181,14 @@
   transition: all .15s;
 }
 .spell-prep-btn--on { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent-light); }
+.spell-prep-btn--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.spell-prep-btn.spell-prep-btn--danger:hover {
+  background: var(--bg-elevated);
+  color: var(--danger);
+}
 .spell-prep-btn:hover { color: var(--text-primary); }
 .spell-prep-btn:disabled {
   opacity: .45;

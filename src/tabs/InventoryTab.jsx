@@ -67,7 +67,13 @@ function needsAttunement(item, srdMap) {
   return !!(srdMap[item.index]?.requires_attunement)
 }
 
-export function computeAC(inventory, abilityScores, srdMap) {
+function hasClassFeatureChoice(char, optionName) {
+  return (char?.customContent?.classFeatureChoices ?? []).some(choice =>
+    (choice.options ?? []).some(option => option.name === optionName)
+  )
+}
+
+export function computeAC(inventory, abilityScores, srdMap, char = null) {
   const dexMod   = abilityMod(abilityScores?.dex ?? 10)
   const active   = inventory.filter(i => i.equipped || i.attuned)
   let armorBase = null, armorCat = null, shieldAC = 0, flatACBonus = 0, hasBracers = false
@@ -98,7 +104,8 @@ export function computeAC(inventory, abilityScores, srdMap) {
   } else {
     baseAC = 10 + dexMod
   }
-  return baseAC + shieldAC + flatACBonus
+  const defenseBonus = armorBase !== null && hasClassFeatureChoice(char, 'Defense') ? 1 : 0
+  return baseAC + shieldAC + flatACBonus + defenseBonus
 }
 
 function itemCategory(item, srdMap) {
@@ -854,7 +861,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
   const pct         = Math.min(100, Math.round((totalWeight / capacity) * 100))
 
   function save(newInv) {
-    updateChar({ inventory: newInv, combat: { ...char.combat, ac: computeAC(newInv, char.stats?.abilityScores, srdMap) } })
+    updateChar({ inventory: newInv, combat: { ...char.combat, ac: computeAC(newInv, char.stats?.abilityScores, srdMap, char) } })
   }
 
   function setEncumbranceTracking(enabled) {
@@ -887,7 +894,7 @@ export default function InventoryTab({ char, locked, isOwner, updateChar }) {
     updateChar({
       inventory: nextInventory,
       settings: { ...char.settings, inventoryLabels: nextLabels },
-      combat: { ...char.combat, ac: computeAC(nextInventory, char.stats?.abilityScores, srdMap) },
+      combat: { ...char.combat, ac: computeAC(nextInventory, char.stats?.abilityScores, srdMap, char) },
     })
     setDeleteLabel(null)
   }

@@ -237,6 +237,18 @@
   gap: 8px;
   padding: 9px 12px 5px;
 }
+.combat-conc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-hi);
+  background: transparent;
+  flex-shrink: 0;
+}
+.combat-conc-dot.conc-dot--on {
+  background: var(--concentration-indicator);
+  border-color: var(--concentration-indicator);
+}
 .spell-combat-name {
   font-size: 14px;
   font-weight: 600;
@@ -261,6 +273,11 @@
 .atk-btn--roll { background: var(--accent); color: var(--accent-text); }
 .atk-btn--roll:hover { background: var(--accent-hover); }
 .atk-btn--use  { background: var(--bg-elevated); border: 1px solid var(--border-strong); color: var(--surface-text-secondary); }
+.atk-btn--concentration {
+  background: var(--bg-elevated);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
 
 .cast-slot-select {
   height: 25px;

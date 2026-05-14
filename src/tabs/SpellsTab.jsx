@@ -7,6 +7,19 @@ import './SpellsTab.css'
 const ORDINALS    = ['','I','II','III','IV','V','VI','VII','VIII','IX']
 const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
 const SCHOOLS = ['Abjuration','Conjuration','Divination','Enchantment','Evocation','Illusion','Necromancy','Transmutation']
+const SPELLCASTING_ABILITY = {
+  bard: 'cha',
+  cleric: 'wis',
+  druid: 'wis',
+  paladin: 'cha',
+  ranger: 'wis',
+  sorcerer: 'cha',
+  warlock: 'cha',
+  wizard: 'int',
+  artificer: 'int',
+  eldritchKnight: 'int',
+  arcaneTrickster: 'int',
+}
 const PREPARED_CASTER_RULES = {
   cleric: { ability: 'wis', levelFactor: 1, startsAt: 1 },
   druid: { ability: 'wis', levelFactor: 1, startsAt: 1 },
@@ -39,6 +52,19 @@ function preparedCapacity(char) {
     return Math.max(1, scaledLevel + abilityMod(scores[rule.ability] ?? 10))
   })
   return caps.some(cap => cap > 0) ? caps.reduce((sum, cap) => sum + cap, 0) : null
+}
+function defaultSpellClass(char, srdSpell) {
+  const characterClasses = new Set((char.identity?.class ?? []).map(classIndex))
+  const matches = (srdSpell.classes ?? [])
+    .map(cls => cls.index)
+    .filter(index => characterClasses.has(index) && SPELLCASTING_ABILITY[index])
+  return matches.length === 1 ? matches[0] : null
+}
+function spellCastingAbility(spell, char) {
+  return spell.castingAbility
+    ?? SPELLCASTING_ABILITY[spell.classIndex]
+    ?? char.spells?.spellcastingAbility
+    ?? null
 }
 
 // ── Spell Picker ────────────────────────────────────────────────────────────
@@ -232,12 +258,14 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   }
 
   function addSpell(srdSpell) {
+    const spellClass = defaultSpellClass(char, srdSpell)
     const newSpell = {
       id:    uid(),
       index: srdSpell.index,
       name:  srdSpell.name,
       source: srdSpell.source,
       level: srdSpell.level,
+      ...(spellClass && { classIndex: spellClass, castingAbility: SPELLCASTING_ABILITY[spellClass] }),
     }
     updateChar({ spells: { ...char.spells, known: [...known, newSpell] } })
   }
@@ -248,8 +276,13 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
         ...char.spells,
         known:    known.filter(s => s.id !== spellId),
         prepared: prepared.filter(id => id !== spellId),
+        concentration: char.spells?.concentration === spellId ? null : char.spells?.concentration,
       }
     })
+  }
+
+  function clearConcentration() {
+    updateChar({ spells: { ...char.spells, concentration: null } })
   }
 
   function saveSlots(newSlots) {
@@ -445,6 +478,12 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 const range     = srd.range
                 const duration  = srd.duration
                 const components = srd.components?.join(', ')
+                const spellAbility = spellCastingAbility(spell, char)
+                const spellMod = spellAbility ? abilityMod(scores[spellAbility] ?? 10) : null
+                const rowSpellDC = spellMod != null ? 8 + pb + spellMod : null
+                const rowSpellAtk = spellMod != null ? pb + spellMod : null
+                const isAtk = !!srd.attack_type
+                const saveName = srd.dc?.dc_type?.name ?? srd.saving_throw
                 const desc      = Array.isArray(srd.desc) ? srd.desc.join('\n\n') : srd.desc
 
                 return (
@@ -465,6 +504,12 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                         </span>
                       )}
                       {school && <span className="spell-school-badge">{school}</span>}
+                      {isAtk && rowSpellAtk != null && (
+                        <span className="spell-mechanic-badge">{fmtB(rowSpellAtk)} hit</span>
+                      )}
+                      {saveName && rowSpellDC != null && (
+                        <span className="spell-mechanic-badge">DC {rowSpellDC} {saveName.slice(0, 3).toUpperCase()}</span>
+                      )}
                       <button className="spell-xbtn">{expanded ? '▲' : '▾'}</button>
                     </div>
 
@@ -477,6 +522,9 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                             {duration   && <div className="spd"><span className="spd-l">Duration</span><span className="spd-v">{duration}</span></div>}
                             {components && <div className="spd"><span className="spd-l">Components</span><span className="spd-v">{components}</span></div>}
                             {school     && <div className="spd"><span className="spd-l">School</span><span className="spd-v">{school}</span></div>}
+                            {spellAbility && <div className="spd"><span className="spd-l">Casting Stat</span><span className="spd-v">{spellAbility.toUpperCase()}</span></div>}
+                            {isAtk && rowSpellAtk != null && <div className="spd"><span className="spd-l">Spell Attack</span><span className="spd-v">{fmtB(rowSpellAtk)}</span></div>}
+                            {saveName && rowSpellDC != null && <div className="spd"><span className="spd-l">Save DC</span><span className="spd-v">{rowSpellDC} {saveName}</span></div>}
                           </div>
                         )}
                         {desc && <p className="spell-desc">{desc.slice(0, 400)}{desc.length > 400 ? '…' : ''}</p>}
@@ -489,6 +537,15 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                               title={!canPrepare ? 'Preparation limit reached' : undefined}
                             >
                               {isPrep ? 'Prepared' : 'Add to prepared'}
+                            </button>
+                          )}
+                          {isConc && isOwner && !locked && (
+                            <button
+                              className="spell-prep-btn spell-prep-btn--danger"
+                              onClick={clearConcentration}
+                              title="End concentration"
+                            >
+                              End concentration
                             </button>
                           )}
                           {isOwner && !locked && (

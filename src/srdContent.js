@@ -389,7 +389,7 @@ function manualFeatureChoices(feature, optionalFeatures = {}) {
         'Aberrations', 'Beasts', 'Celestials', 'Constructs', 'Dragons', 'Elementals',
         'Fey', 'Fiends', 'Giants', 'Monstrosities', 'Oozes', 'Plants', 'Undead',
         'Two humanoid races',
-      ].map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [] })),
+      ].map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [], featureType: ['RANGER:FAVORED_ENEMY'] })),
     })
   }
 
@@ -399,7 +399,7 @@ function manualFeatureChoices(feature, optionalFeatures = {}) {
       choose: 1,
       choiceIndex: 101,
       options: ['Arctic', 'Coast', 'Desert', 'Forest', 'Grassland', 'Mountain', 'Swamp', 'Underdark']
-        .map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [] })),
+        .map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [], featureType: ['RANGER:NATURAL_EXPLORER'] })),
     })
   }
 
@@ -415,9 +415,18 @@ function manualFeatureChoices(feature, optionalFeatures = {}) {
   if (/^metamagic$/i.test(name) && !feature.entries?.some(entry => entry?.type === 'options')) {
     choices.push({
       type: 'option',
-      choose: 1,
+      choose: /XPHB/i.test(feature.source ?? '') ? 2 : 1,
       choiceIndex: 103,
       options: optionalFeaturesForType(optionalFeatures, 'MM', feature.level),
+    })
+  }
+
+  if (/additional maneuvers/i.test(lowerName)) {
+    choices.push({
+      type: 'option',
+      choose: 2,
+      choiceIndex: 104,
+      options: optionalFeaturesForType(optionalFeatures, 'MV:B', feature.level),
     })
   }
 
@@ -764,9 +773,85 @@ function normalizePackContent(content) {
   return { index: slug(special), name: stripTags(special), quantity: content?.quantity ?? 1 }
 }
 
+function titleCase(value) {
+  return String(value ?? '').replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function formatSpellTime(time = []) {
+  const first = time[0]
+  if (!first) return ''
+  return `${first.number ?? 1} ${first.unit}${first.number === 1 ? '' : 's'}`
+}
+
+function formatSpellRange(range) {
+  if (!range) return ''
+  const distance = range.distance
+  if (!distance) return titleCase(range.type)
+  if (distance.type === 'self') return range.type === 'cone' ? `Self (${distance.amount ?? ''}-foot cone)` : 'Self'
+  if (distance.amount != null) return `${distance.amount} ${distance.type}`
+  return titleCase(distance.type ?? range.type)
+}
+
+function formatSpellDuration(duration = []) {
+  const first = duration[0]
+  if (!first) return ''
+  const prefix = first.concentration ? 'Concentration, up to ' : ''
+  if (first.type === 'instant') return 'Instantaneous'
+  if (first.type === 'permanent') return 'Until dispelled'
+  const amount = first.duration?.amount
+  const type = first.duration?.type
+  return `${prefix}${amount ?? ''}${amount ? ' ' : ''}${type ?? first.type}${amount === 1 ? '' : 's'}`.trim()
+}
+
+function normalizeSpellComponents(components = {}) {
+  return [
+    components.v ? 'V' : null,
+    components.s ? 'S' : null,
+    components.m ? `M${typeof components.m === 'string' ? ` (${stripTags(components.m)})` : ''}` : null,
+  ].filter(Boolean)
+}
+
+function parseDice(dice) {
+  const match = String(dice ?? '').match(/(\d+)d(\d+)/i)
+  return match ? { count: Number(match[1]), die: Number(match[2]) } : null
+}
+
+function addDice(base, increment, times) {
+  const baseDice = parseDice(base)
+  const incrementDice = parseDice(increment)
+  if (!baseDice || !incrementDice || baseDice.die !== incrementDice.die) return base
+  return `${baseDice.count + incrementDice.count * times}d${baseDice.die}`
+}
+
+function normalizeSpellDamage(spell) {
+  const damageType = spell.damageInflict?.[0]
+  const damage = {}
+  if (spell.scalingLevelDice?.scaling) {
+    damage.damage_at_character_level = spell.scalingLevelDice.scaling
+  }
+
+  const rawHigher = JSON.stringify(spell.entriesHigherLevel ?? '')
+  const scaling = rawHigher.match(/{@scaledamage ([^|}]+)\|[^|}]+\|([^}]+)}/)
+  const baseDamage = scaling?.[1] ?? JSON.stringify(spell.entries ?? '').match(/{@damage ([^}|]+)(?:\|[^}]*)?}/)?.[1]
+  if (spell.level > 0 && baseDamage) {
+    damage.damage_at_slot_level = {}
+    for (let slotLevel = spell.level; slotLevel <= 9; slotLevel++) {
+      damage.damage_at_slot_level[slotLevel] = scaling
+        ? addDice(baseDamage, scaling[2], slotLevel - spell.level)
+        : baseDamage
+    }
+  }
+
+  if (damageType) {
+    damage.damage_type = { index: slug(damageType), name: titleCase(damageType) }
+  }
+  return Object.keys(damage).length ? damage : undefined
+}
+
 function normalizeSpell(spell, sourceLookup) {
   const lookup = sourceLookup?.[String(spell.source).toLowerCase()]?.[spell.name.toLowerCase()]
   const classNames = Object.values(lookup?.class ?? {}).flatMap(sourceBlock => Object.keys(sourceBlock))
+  const savingThrow = spell.savingThrow?.[0]
   return {
     index: slug(spell.name),
     name: spell.name,
@@ -775,18 +860,29 @@ function normalizeSpell(spell, sourceLookup) {
     ritual: !!spell.meta?.ritual,
     school: { index: slug(SCHOOL_NAMES[spell.school] ?? spell.school), name: SCHOOL_NAMES[spell.school] ?? spell.school },
     classes: [...new Set(classNames)].map(name => ref(name)),
+    casting_time: formatSpellTime(spell.time),
+    range: formatSpellRange(spell.range),
+    components: normalizeSpellComponents(spell.components),
+    duration: formatSpellDuration(spell.duration),
+    concentration: spell.duration?.some(entry => entry.concentration) ?? false,
+    attack_type: spell.spellAttack?.[0] === 'R' ? 'ranged' : spell.spellAttack?.[0] === 'M' ? 'melee' : undefined,
+    dc: savingThrow ? { dc_type: abilityRef(slug(savingThrow).slice(0, 3)) } : undefined,
+    saving_throw: savingThrow ? titleCase(savingThrow) : undefined,
+    damage: normalizeSpellDamage(spell),
     desc: [stripTags(spell.entries)],
     higher_level: spell.entriesHigherLevel ? [stripTags(spell.entriesHigherLevel)] : [],
   }
 }
 
 function normalizeOptionalFeature(feature) {
+  const minLevel = Math.max(0, ...(feature.prerequisite ?? []).map(prereq => prereq?.level?.level ?? 0))
   return {
     id: slug(`${feature.name} ${feature.source ?? ''}`),
     index: slug(feature.name),
     name: feature.name,
     source: feature.source,
     featureType: feature.featureType ?? [],
+    minLevel,
     desc: [stripTags(feature.entries)].filter(Boolean),
   }
 }
