@@ -162,6 +162,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   const known    = char.spells?.known    ?? []
   const prepared = char.spells?.prepared ?? []
   const slots    = char.spells?.slots    ?? {}
+  const pactSlots = char.spells?.pactSlots ?? {}
   const castAbility = char.spells?.spellcastingAbility
   const level    = characterLevel(char)
   const pb       = PROFICIENCY[level] ?? 2
@@ -172,6 +173,9 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   const spellAtk = castMod != null ? pb + castMod : null
 
   const slotEntries = Object.entries(slots)
+    .filter(([, v]) => v.total > 0)
+    .sort(([a], [b]) => Number(a) - Number(b))
+  const pactSlotEntries = Object.entries(pactSlots)
     .filter(([, v]) => v.total > 0)
     .sort(([a], [b]) => Number(a) - Number(b))
 
@@ -187,10 +191,11 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     }).catch(() => {})
   }, [])
 
-  function toggleSlot(lvl, index) {
-    const current = slots[lvl] ?? { total: index + 1, used: 0 }
+  function toggleSlot(lvl, index, pool = 'slots') {
+    const source = pool === 'pactSlots' ? pactSlots : slots
+    const current = source[lvl] ?? { total: index + 1, used: 0 }
     const used    = current.used > index ? index : index + 1
-    updateChar({ spells: { ...char.spells, slots: { ...slots, [lvl]: { ...current, used } } } })
+    updateChar({ spells: { ...char.spells, [pool]: { ...source, [lvl]: { ...current, used } } } })
   }
 
   function togglePrepared(spellId) {
@@ -295,7 +300,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
       <div className="spells-scroll">
 
         {/* ── Slot tracker ── */}
-        {(slotEntries.length > 0 || (isOwner && !locked)) && (
+        {(slotEntries.length > 0 || pactSlotEntries.length > 0 || (isOwner && !locked)) && (
           <div className="spell-slot-block">
             {slotEntries.map(([lvl, { total, used }]) => (
               <div key={lvl} className="slot-row-sp">
@@ -306,6 +311,20 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                       key={i}
                       className={`slot-pip-sp${i < used ? ' slot-pip-sp--used' : ''}`}
                       onClick={() => isOwner && !locked && toggleSlot(lvl, i)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+            {pactSlotEntries.map(([lvl, { total, used }]) => (
+              <div key={`pact-${lvl}`} className="slot-row-sp slot-row-sp--pact">
+                <span className="slot-lbl-sp slot-lbl-sp--pact">Pact {ORDINALS[Number(lvl)]}</span>
+                <div className="slot-pips-sp">
+                  {Array.from({ length: total }, (_, i) => (
+                    <button
+                      key={i}
+                      className={`slot-pip-sp slot-pip-sp--pact${i < used ? ' slot-pip-sp--used' : ''}`}
+                      onClick={() => isOwner && !locked && toggleSlot(lvl, i, 'pactSlots')}
                     />
                   ))}
                 </div>
@@ -364,6 +383,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
         {Object.entries(byLevel).sort(([a],[b]) => Number(a)-Number(b)).map(([lvl, spells]) => {
           const lvlNum  = Number(lvl)
           const slotDat = slots[lvl]
+          const pactSlotDat = pactSlots[lvl]
           return (
             <div key={lvl} className="spell-level-group">
               <div className="level-group-head">
@@ -374,6 +394,13 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                   <div className="level-slot-pips">
                     {Array.from({ length: slotDat.total }, (_, i) => (
                       <span key={i} className={`lsp${i < slotDat.used ? ' lsp--used' : ''}`} />
+                    ))}
+                  </div>
+                )}
+                {pactSlotDat && (
+                  <div className="level-slot-pips level-slot-pips--pact" title="Pact Magic slots">
+                    {Array.from({ length: pactSlotDat.total }, (_, i) => (
+                      <span key={i} className={`lsp lsp--pact${i < pactSlotDat.used ? ' lsp--used' : ''}`} />
                     ))}
                   </div>
                 )}

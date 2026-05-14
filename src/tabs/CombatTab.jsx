@@ -14,6 +14,10 @@ const ALL_CONDITIONS = [
 const ORDINALS    = ['','I','II','III','IV','V','VI','VII','VIII','IX']
 const PROFICIENCY = [0,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
 
+function characterLevel(char) {
+  return (char.identity?.class ?? []).reduce((sum, cls) => sum + (cls.level ?? 0), 0) || xpToLevel(char.identity?.xp ?? 0)
+}
+
 // Racial traits that are combat-relevant (show in Attacks/Abilities section)
 const COMBAT_TRAIT_INDICES = new Set([
   'breath-weapon', 'relentless-endurance', 'savage-attacks',
@@ -90,7 +94,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const [castSlots,      setCastSlots]      = useState({})
   const [versatileMode,  setVersatileMode]  = useState({})
 
-  const level  = xpToLevel(char.identity?.xp ?? 0)
+  const level  = characterLevel(char)
   const pb     = PROFICIENCY[level] ?? 2
   const scores = char.stats?.abilityScores ?? {}
   const strMod = abilityMod(scores.str ?? 10)
@@ -221,6 +225,9 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const slotEntries = Object.entries(char.spells?.slots ?? {})
     .filter(([, v]) => v.total > 0)
     .sort(([a], [b]) => Number(a) - Number(b))
+  const pactSlotEntries = Object.entries(char.spells?.pactSlots ?? {})
+    .filter(([, v]) => v.total > 0)
+    .sort(([a], [b]) => Number(a) - Number(b))
 
   // Prepared spells (cantrips + prepared leveled spells)
   const known    = char.spells?.known    ?? []
@@ -233,21 +240,42 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const racialCombatTraits = (char.identity?.racialTraits ?? char.racialTraits ?? [])
     .filter(t => COMBAT_TRAIT_INDICES.has(t.index))
 
-  function availableSlotLevels(spellLevel) {
-    if (spellLevel === 0) return // cantrips use no slots
+  function availableSlotOptions(spellLevel) {
+    if (spellLevel === 0) return [] // cantrips use no slots
     const slots = char.spells?.slots ?? {}
-    return Object.entries(slots)
+    const normalOptions = Object.entries(slots)
       .filter(([lvl, slot]) => Number(lvl) >= spellLevel && slot.total > 0 && slot.used < slot.total)
-      .map(([lvl]) => Number(lvl))
-      .sort((a, b) => a - b)
+      .map(([lvl]) => ({
+        pool: 'slots',
+        level: Number(lvl),
+        value: `slots:${lvl}`,
+        label: `Lv ${lvl}`,
+      }))
+    const pactOptions = Object.entries(char.spells?.pactSlots ?? {})
+      .filter(([lvl, slot]) => Number(lvl) >= spellLevel && slot.total > 0 && slot.used < slot.total)
+      .map(([lvl]) => ({
+        pool: 'pactSlots',
+        level: Number(lvl),
+        value: `pactSlots:${lvl}`,
+        label: `Pact Lv ${lvl}`,
+      }))
+    return [...normalOptions, ...pactOptions]
+      .sort((a, b) => a.level - b.level || (a.pool === 'slots' ? -1 : 1))
   }
 
-  function castSpell(spellLevel, slotLevel) {
+  function castSpell(spellLevel, slotValue) {
     if (spellLevel === 0) return // cantrips use no slots
-    const slots = char.spells?.slots ?? {}
+    const [pool = 'slots', slotLevel] = String(slotValue ?? '').split(':')
+    const slotPool = pool === 'pactSlots' ? 'pactSlots' : 'slots'
+    const slots = char.spells?.[slotPool] ?? {}
     const slot = slots[slotLevel]
     if (!slot || slot.used >= slot.total) return
-    updateChar({ spells: { ...char.spells, slots: { ...slots, [slotLevel]: { ...slot, used: slot.used + 1 } } } })
+    updateChar({
+      spells: {
+        ...char.spells,
+        [slotPool]: { ...slots, [slotLevel]: { ...slot, used: slot.used + 1 } },
+      },
+    })
   }
 
   function toggleDeathSave(type, index) {
@@ -256,11 +284,12 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     updateChar({ combat: { ...char.combat, deathSaves: { ...(char.combat.deathSaves ?? {}), [type]: updated } } })
   }
 
-  function toggleSlot(lvl, index) {
-    const slots   = char.spells?.slots ?? {}
+  function toggleSlot(lvl, index, pool = 'slots') {
+    const slotPool = pool === 'pactSlots' ? 'pactSlots' : 'slots'
+    const slots   = char.spells?.[slotPool] ?? {}
     const current = slots[lvl] ?? { total: index + 1, used: 0 }
     const used    = current.used > index ? index : index + 1
-    updateChar({ spells: { ...char.spells, slots: { ...slots, [lvl]: { ...current, used } } } })
+    updateChar({ spells: { ...char.spells, [slotPool]: { ...slots, [lvl]: { ...current, used } } } })
   }
 
   function addCondition(cond) {
@@ -556,7 +585,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       )}
 
       {/* ── Spell slots ── */}
-      {slotEntries.length > 0 && (
+      {(slotEntries.length > 0 || pactSlotEntries.length > 0) && (
         <>
           <div className="sec-head">Spell Slots</div>
           <div className="card slot-grid">
@@ -575,6 +604,21 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                 </div>
               </div>
             ))}
+            {pactSlotEntries.map(([lvl, { total, used }]) => (
+              <div key={`pact-${lvl}`} className="slot-row slot-row--pact">
+                <span className="slot-lbl slot-lbl--pact">Pact {ORDINALS[Number(lvl)]}</span>
+                <div className="slot-pips">
+                  {Array.from({ length: total }, (_, i) => (
+                    <button
+                      key={i}
+                      className={`slot-pip slot-pip--pact${i < used ? ' slot-pip--used' : ''}`}
+                      onClick={() => isOwner && !locked && toggleSlot(lvl, i, 'pactSlots')}
+                      aria-label={`Pact slot ${i + 1} ${i < used ? 'used' : 'available'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}
@@ -586,14 +630,15 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
           {preparedSpells.map(spell => {
             const srd  = spellMap[spell.index] ?? {}
             const isConc = srd.concentration === true
-            const availableSlots = spell.level > 0 ? availableSlotLevels(spell.level) : []
-            const selectedSlot = availableSlots.includes(castSlots[spell.id])
+            const availableSlots = spell.level > 0 ? availableSlotOptions(spell.level) : []
+            const selectedSlot = availableSlots.some(option => option.value === castSlots[spell.id])
               ? castSlots[spell.id]
-              : availableSlots[0]
+              : availableSlots[0]?.value
+            const selectedSlotLevel = availableSlots.find(option => option.value === selectedSlot)?.level
             const dmgDice = srd.damage?.damage_at_character_level
               ? Object.values(srd.damage.damage_at_character_level)[0]
               : srd.damage?.damage_at_slot_level
-                ? srd.damage.damage_at_slot_level[selectedSlot] ?? srd.damage.damage_at_slot_level[spell.level] ?? Object.values(srd.damage.damage_at_slot_level)[0]
+                ? srd.damage.damage_at_slot_level[selectedSlotLevel] ?? srd.damage.damage_at_slot_level[spell.level] ?? Object.values(srd.damage.damage_at_slot_level)[0]
                 : null
             const dmgType = srd.damage?.damage_type?.name ?? ''
             const isAtk   = !!srd.attack_type
@@ -613,14 +658,14 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                     <select
                       className="cast-slot-select"
                       value={selectedSlot ?? ''}
-                      onChange={e => setCastSlots(prev => ({ ...prev, [spell.id]: Number(e.target.value) }))}
+                      onChange={e => setCastSlots(prev => ({ ...prev, [spell.id]: e.target.value }))}
                       disabled={!isOwner || locked || availableSlots.length === 0}
                       title="Choose spell slot level"
                     >
                       {availableSlots.length === 0 ? (
                         <option value="">No slots</option>
-                      ) : availableSlots.map(lvl => (
-                        <option key={lvl} value={lvl}>Lv {lvl}</option>
+                      ) : availableSlots.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
                   )}

@@ -43,11 +43,21 @@
 }
 .slot-row-sp { display: flex; align-items: center; gap: 6px; }
 .slot-lbl-sp { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); width: 18px; text-align: right; flex-shrink: 0; }
+.slot-row-sp--pact { flex-basis: 100%; }
+.slot-lbl-sp--pact {
+  width: auto;
+  min-width: 52px;
+  color: var(--gold);
+}
 .slot-pips-sp { display: flex; gap: 4px; }
 .slot-pip-sp {
   width: 11px; height: 11px; border-radius: 50%;
   background: var(--accent); border: 1px solid var(--accent-light);
   cursor: pointer; padding: 0; flex-shrink: 0;
+}
+.slot-pip-sp--pact {
+  background: var(--gold);
+  border-color: var(--gold-border);
 }
 .slot-pip-sp--used { background: transparent; border-color: var(--border-hi); }
 
@@ -70,9 +80,14 @@
   text-transform: uppercase; color: var(--text-faint);
 }
 .level-slot-pips { display: flex; gap: 4px; align-items: center; }
+.level-slot-pips--pact { margin-left: -4px; }
 .lsp {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--accent); border: 1px solid var(--accent-light); flex-shrink: 0;
+}
+.lsp--pact {
+  background: var(--gold);
+  border-color: var(--gold-border);
 }
 .lsp--used { background: transparent; border-color: var(--border-hi); }
 
