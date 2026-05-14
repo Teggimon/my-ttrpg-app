@@ -201,6 +201,26 @@
   color: var(--surface-text-secondary);
 }
 
+.atk-damage-choice {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--surface-text-secondary);
+  font-family: var(--font-body);
+  cursor: pointer;
+  text-align: left;
+}
+
+.atk-damage-choice:hover {
+  border-color: var(--accent-border);
+  color: var(--accent-light);
+}
+
+.atk-damage-choice--active {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+  color: var(--accent-light);
+}
+
 /* ── Prepared spell cards ─────────────────────────────────── */
 .spell-combat-card {
   background: var(--bg-surface);

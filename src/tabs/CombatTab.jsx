@@ -38,6 +38,9 @@ function breathDice(level, trait) {
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 function featureKey(name)   { return String(name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-') }
+function itemKey(item) {
+  return item.itemId ?? item.index ?? item.name
+}
 
 function sneakAttackDice(level) {
   return `${Math.ceil(Math.max(1, level) / 2)}d6`
@@ -68,6 +71,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const [srdMap,         setSrdMap]         = useState({})
   const [spellMap,       setSpellMap]       = useState({})
   const [castSlots,      setCastSlots]      = useState({})
+  const [versatileMode,  setVersatileMode]  = useState({})
 
   const level  = xpToLevel(char.identity?.xp ?? 0)
   const pb     = PROFICIENCY[level] ?? 2
@@ -380,17 +384,38 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
         const resolved = resolveWeapon(item)
         if (!resolved) return null
         const { toHit, dmgStr, versatileStr, breakdown, usesAmmo } = resolved
+        const key = itemKey(item)
+        const useVersatile = !!versatileStr && !!versatileMode[key]
+        const selectedDamage = useVersatile ? versatileStr : dmgStr
         const ammoEntry = usesAmmo ? ammoForWeapon(item) : null
         const ammo = ammoEntry?.item
         return (
-          <div key={item.itemId ?? item.index ?? item.name} className={`attack-card${isMagicItem(item, srdMap) ? ' attack-card--magic' : ''}`}>
+          <div key={key} className={`attack-card${isMagicItem(item, srdMap) ? ' attack-card--magic' : ''}`}>
             <div className="atk-line1">
               <span className="atk-name">{item.name}</span>
             </div>
             <div className="atk-line2">
               <span className="badge" title={breakdown}>{fmtB(toHit)} to hit</span>
-              <span className="badge">{dmgStr}</span>
-              {versatileStr && <span className="badge badge--dim">{versatileStr}</span>}
+              <button
+                className={`badge atk-damage-choice${!useVersatile ? ' atk-damage-choice--active' : ''}`}
+                type="button"
+                onClick={() => setVersatileMode(prev => ({ ...prev, [key]: false }))}
+                aria-pressed={!useVersatile}
+                title="Use one-handed damage"
+              >
+                {dmgStr}
+              </button>
+              {versatileStr && (
+                <button
+                  className={`badge atk-damage-choice${useVersatile ? ' atk-damage-choice--active' : ''}`}
+                  type="button"
+                  onClick={() => setVersatileMode(prev => ({ ...prev, [key]: true }))}
+                  aria-pressed={useVersatile}
+                  title="Use versatile two-handed damage"
+                >
+                  {versatileStr}
+                </button>
+              )}
               {usesAmmo && (
                 <span className="badge badge--ammo" style={{ color: ammo ? undefined : 'var(--danger)' }}>
                   {ammo ? `${ammo.quantity ?? 1} ${ammo.name}` : 'No ammo'}
@@ -401,7 +426,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                   className="atk-btn atk-btn--roll"
                   onClick={() => isOwner && !locked && usesAmmo && spendAmmoForWeapon(item)}
                   disabled={!isOwner || locked || (usesAmmo && !ammo)}
-                  title={usesAmmo ? (ammo ? `Use 1 ${ammo.name}` : 'No matching ammunition in Gear') : 'Roll attack'}
+                  title={usesAmmo ? (ammo ? `Use 1 ${ammo.name} and roll ${selectedDamage}` : 'No matching ammunition in Gear') : `Roll ${selectedDamage}`}
                 >
                   {usesAmmo ? 'Use' : 'Roll'}
                 </button>
