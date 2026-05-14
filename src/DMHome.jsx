@@ -333,27 +333,93 @@ export default function DMHome({ token, user, onBack, onOpenCampaign, onLogout }
     await loadCampaigns()
   }
 
+  const collectFilesUnder = async (path) => {
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner: user.login,
+        repo: DATA_REPO,
+        path,
+      })
+      if (!Array.isArray(data)) return data.sha ? [data.path] : []
+      const nested = await Promise.all(data.map(item =>
+        item.type === 'dir' ? collectFilesUnder(item.path) : [item.path]
+      ))
+      return nested.flat()
+    } catch (err) {
+      if (err.status === 404) return []
+      throw err
+    }
+  }
+
+  const campaignMatches = (candidate, campaign) => {
+    if (!candidate) return false
+    if (campaign.campaignId && candidate.campaignId === campaign.campaignId) return true
+    if (campaign.slug && candidate.slug === campaign.slug) return true
+    return candidate.name === campaign.name && candidate.createdAt === campaign.createdAt
+  }
+
+  const pathsForCampaignDelete = async (campaign) => {
+    const paths = new Set()
+    const slugCandidates = [
+      campaign.slug,
+      campaign.campaignId,
+      campaign.name ? slugify(campaign.name) : null,
+    ].filter(Boolean)
+
+    if (campaign._fileName) {
+      paths.add(`${CAMPAIGNS_PATH}/${campaign._fileName}`)
+    }
+    for (const slug of slugCandidates) {
+      paths.add(`${CAMPAIGNS_PATH}/${slug.endsWith('.json') ? slug : `${slug}.json`}`)
+    }
+
+    try {
+      const { data: rootItems } = await octokit.repos.getContent({
+        owner: user.login,
+        repo: DATA_REPO,
+        path: CAMPAIGNS_PATH,
+      })
+      if (Array.isArray(rootItems)) {
+        for (const item of rootItems) {
+          if (item.type === 'file' && item.name.endsWith('.json')) {
+            try {
+              const { data } = await octokit.repos.getContent({
+                owner: user.login,
+                repo: DATA_REPO,
+                path: item.path,
+              })
+              if (!Array.isArray(data) && campaignMatches(decodeContent(data.content), campaign)) {
+                paths.add(item.path)
+              }
+            } catch (err) {
+              if (err.status !== 404) throw err
+            }
+          }
+          if (item.type === 'dir' && slugCandidates.includes(item.name)) {
+            for (const path of await collectFilesUnder(item.path)) paths.add(path)
+          }
+        }
+      }
+    } catch (err) {
+      if (err.status !== 404) throw err
+    }
+
+    for (const slug of slugCandidates) {
+      for (const path of await collectFilesUnder(`${CAMPAIGNS_PATH}/${slug}`)) paths.add(path)
+    }
+
+    return [...paths].sort((a, b) => b.length - a.length)
+  }
+
   // ── Delete a campaign ──
   const deleteCampaign = async () => {
     if (!confirmDelete) return
     setDeleteLoading(true)
     try {
-      const paths = []
-      const campaignFile = `${CAMPAIGNS_PATH}/${confirmDelete._fileName ?? `${confirmDelete.slug}.json`}`
-      paths.push(campaignFile)
+      const paths = await pathsForCampaignDelete(confirmDelete)
+      if (paths.length === 0) throw new Error('Could not find campaign files to delete.')
 
-      try {
-        const { data: folderFiles } = await octokit.repos.getContent({
-          owner: user.login,
-          repo: DATA_REPO,
-          path: `${CAMPAIGNS_PATH}/${confirmDelete.slug}`,
-        })
-        if (Array.isArray(folderFiles)) {
-          folderFiles.forEach(file => paths.push(file.path))
-        }
-      } catch { /* campaign may not have child files yet */ }
-
-      for (const path of [...new Set(paths)]) {
+      for (const path of paths) {
         try {
           const { data } = await octokit.repos.getContent({
             owner: user.login,
@@ -372,12 +438,13 @@ export default function DMHome({ token, user, onBack, onOpenCampaign, onLogout }
           if (err.status !== 404) throw err
         }
       }
-      setCampaigns(prev => prev.filter(c => c.campaignId !== confirmDelete.campaignId))
       setConfirmDelete(null)
+      await loadCampaigns()
     } catch (err) {
       alert(`Failed to delete campaign: ${err.message}`)
+    } finally {
+      setDeleteLoading(false)
     }
-    setDeleteLoading(false)
   }
 
   // ── Render ────────────────────────────────────────────────
