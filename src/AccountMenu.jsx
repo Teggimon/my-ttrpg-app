@@ -269,6 +269,30 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#565A33',
     },
   },
+  {
+    id: 'sky-sigil',
+    name: 'Sky Sigil',
+    description: 'White page frame, cobalt base, vivid sky panels, yellow action, and coral DM mode.',
+    vars: {
+      '--bg-page': '#FFFFFF',
+      '--bg-base': '#38618C',
+      '--bg-surface': '#35A7FF',
+      '--bg-elevated': '#6CBFFF',
+      '--bg-inset': '#294A70',
+      '--border': '#2F83C5',
+      '--border-strong': '#77C7FF',
+      '--border-hi': '#B9E4FF',
+      '--text-primary': '#F5FBFF',
+      '--text-secondary': '#C9E8FF',
+      '--text-muted': '#89C8F2',
+      '--text-inverse': '#102A3D',
+      '--accent': '#FFE74C',
+      '--accent-hover': '#FFF08A',
+      '--accent-secondary': '#C8B01D',
+      '--dm': '#FF5964',
+      '--dm-hover': '#FF8A91',
+    },
+  },
 ]
 
 function hexToRgb(value) {
