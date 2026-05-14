@@ -14,6 +14,43 @@ const PROF_BONUS = [2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6]
 
 const XP_THRESHOLDS = [0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000]
 
+const MULTICLASS_PREREQS = {
+  barbarian: { str: 13 },
+  bard: { cha: 13 },
+  cleric: { wis: 13 },
+  druid: { wis: 13 },
+  fighter: { strOrDex: 13 },
+  monk: { dex: 13, wis: 13 },
+  paladin: { str: 13, cha: 13 },
+  ranger: { dex: 13, wis: 13 },
+  rogue: { dex: 13 },
+  sorcerer: { cha: 13 },
+  warlock: { cha: 13 },
+  wizard: { int: 13 },
+  artificer: { int: 13 },
+}
+
+const MULTICLASS_PROFICIENCIES = {
+  barbarian: { Armour: ['Shield proficiency'], Weapons: ['Simple weapon proficiency', 'Martial weapon proficiency'] },
+  bard: { Armour: ['Light armor proficiency'] },
+  cleric: { Armour: ['Light armor proficiency', 'Medium armor proficiency', 'Shield proficiency'] },
+  druid: { Armour: ['Light armor proficiency', 'Medium armor proficiency', 'Shield proficiency'] },
+  fighter: { Armour: ['Light armor proficiency', 'Medium armor proficiency', 'Shield proficiency'], Weapons: ['Simple weapon proficiency', 'Martial weapon proficiency'] },
+  monk: { Weapons: ['Simple weapon proficiency', 'Shortsword proficiency'] },
+  paladin: { Armour: ['Light armor proficiency', 'Medium armor proficiency', 'Shield proficiency'], Weapons: ['Simple weapon proficiency', 'Martial weapon proficiency'] },
+  ranger: { Armour: ['Light armor proficiency', 'Medium armor proficiency', 'Shield proficiency'], Weapons: ['Simple weapon proficiency', 'Martial weapon proficiency'] },
+  rogue: { Armour: ['Light armor proficiency'], Tools: ["Thieves' tools"] },
+  warlock: { Armour: ['Light armor proficiency'], Weapons: ['Simple weapon proficiency'] },
+  artificer: { Armour: ['Light armor proficiency', 'Medium armor proficiency', 'Shield proficiency'], Tools: ["Thieves' tools", "Tinker's tools"] },
+}
+
+const MULTICLASS_SKILL_CHOICES = {
+  bard: { choose: 1, mode: 'proficiency', title: 'Bard Multiclass Skill', desc: 'Choose one skill proficiency from multiclassing into Bard.' },
+  ranger: { choose: 1, mode: 'proficiency', title: 'Ranger Multiclass Skill', desc: 'Choose one skill from the Ranger class skill list.' },
+  rogue: { choose: 1, mode: 'proficiency', title: 'Rogue Multiclass Skill', desc: 'Choose one skill from the Rogue class skill list.' },
+  artificer: { choose: 1, mode: 'proficiency', title: 'Artificer Multiclass Skill', desc: 'Choose one skill from the Artificer class skill list.' },
+}
+
 // ASI levels per class
 const ASI_LEVELS = {
   barbarian: [4,8,12,16,19],
@@ -147,6 +184,27 @@ function characterLevel(char) {
 
 function abilityScore(char, key) {
   return char.stats?.abilityScores?.[key] ?? 10
+}
+
+function multiclassPrereqLabel(classIndex) {
+  const req = MULTICLASS_PREREQS[classIndex]
+  if (!req) return 'No prerequisite'
+  if (req.strOrDex) return `STR or DEX ${req.strOrDex}`
+  return Object.entries(req)
+    .map(([key, value]) => `${ABILITY_LABEL_BY_KEY[key] ?? key.toUpperCase()} ${value}`)
+    .join(', ')
+}
+
+function meetsClassPrereq(char, classIndex) {
+  const req = MULTICLASS_PREREQS[classIndex]
+  if (!req) return true
+  if (req.strOrDex) return abilityScore(char, 'str') >= req.strOrDex || abilityScore(char, 'dex') >= req.strOrDex
+  return Object.entries(req).every(([key, value]) => abilityScore(char, key) >= value)
+}
+
+function canMulticlassInto(char, classIndex) {
+  const currentClasses = char.identity?.class ?? []
+  return currentClasses.every(cls => meetsClassPrereq(char, getClassIndex(cls))) && meetsClassPrereq(char, classIndex)
 }
 
 function hasSpellcasting(char) {
@@ -314,6 +372,13 @@ const SKILL_OPTIONS = [
   { key:'survival', index:'skill-survival', label:'Survival' },
 ]
 
+function skillKeyFromIndex(index) {
+  const key = String(index ?? '').replace(/^skill-/, '')
+  if (key === 'animal-handling') return 'animalHandling'
+  if (key === 'sleight-of-hand') return 'sleightOfHand'
+  return key
+}
+
 export function getSlotsForClass(classIndex, classLevel) {
   if (!classIndex || classLevel < 1) return {}
   const idx = classLevel - 1
@@ -343,6 +408,33 @@ export function mergeSlots(existing, newSlots) {
     merged[lvl] = { total: slot.total, used: Math.min(prev?.used ?? 0, slot.total) }
   }
   return merged
+}
+
+export function getSlotsForCharacter(classes = []) {
+  const normalCasterLevel = classes.reduce((sum, cls) => {
+    const idx = getClassIndex(cls)
+    const level = cls.level ?? 0
+    const subclass = String(cls.subclass ?? '').toLowerCase()
+    if (FULL_CASTERS.has(idx)) return sum + level
+    if (idx === 'artificer') return sum + Math.ceil(level / 2)
+    if (HALF_CASTERS.has(idx)) return sum + Math.floor(level / 2)
+    if (idx === 'fighter' && subclass === 'eldritch knight') return sum + Math.floor(level / 3)
+    if (idx === 'rogue' && subclass === 'arcane trickster') return sum + Math.floor(level / 3)
+    return sum
+  }, 0)
+  const warlock = classes.find(cls => getClassIndex(cls) === 'warlock')
+  if (normalCasterLevel > 0) {
+    const row = FULL_CASTER_SLOTS[Math.max(0, Math.min(19, normalCasterLevel - 1))]
+    const slots = {}
+    row?.forEach((count, i) => { if (count > 0) slots[i + 1] = { total: count, used: 0 } })
+    if (warlock) {
+      const pact = WARLOCK_PACT[(warlock.level ?? 1) - 1]
+      return { slots, pactSlots: pact ? { [pact.lv]: { total: pact.n, used: 0 } } : {} }
+    }
+    return { slots, pactSlots: {} }
+  }
+  if (warlock) return { slots: getSlotsForClass('warlock', warlock.level ?? 1), pactSlots: {} }
+  return { slots: {}, pactSlots: {} }
 }
 
 // Starting cantrips and spells known per class at level 1
@@ -497,25 +589,43 @@ function subclassSkillChoice(cls, subclass, level) {
   return SUBCLASS_SKILL_CHOICES[`${classIndex}:${subclassIndex}:${level}`] ?? null
 }
 
+function classSkillChoiceForMulticlass(cls) {
+  const idx = getClassIndex(cls)
+  const base = MULTICLASS_SKILL_CHOICES[idx]
+  if (!base) return null
+  const srdOptions = cls?.proficiency_choices?.flatMap(choice =>
+    choice.from?.options
+      ?.filter(option => option.item?.index?.startsWith('skill-'))
+      ?.map(option => ({
+        key: skillKeyFromIndex(option.item.index),
+        index: option.item.index,
+        label: option.item.name?.replace('Skill: ', '') ?? option.item.index,
+      })) ?? []
+  ) ?? []
+  return { ...base, options: srdOptions.length ? srdOptions : undefined }
+}
+
 // Build step list once class is chosen
-function buildSteps(char, classIdx, selectedSubclass, srdClasses) {
+function buildSteps(char, classIdx, selectedSubclass, srdClasses, newClassData = null) {
   const steps = []
-  const isMulticlass = (char.identity?.class ?? []).length > 1
-  if (isMulticlass && classIdx == null) {
+  if (classIdx == null) {
     steps.push({ type: 'classChoice' })
     return steps
   }
-  const idx = classIdx ?? 0
-  const lvl = nextClassLevel(char, idx)
-  const cls = char.identity?.class?.[idx]
+  const isNewClass = classIdx === 'new'
+  const idx = isNewClass ? null : classIdx
+  const lvl = isNewClass ? 1 : nextClassLevel(char, idx)
+  const cls = isNewClass ? newClassData : char.identity?.class?.[idx]
+  if (!cls) return [{ type: 'classChoice' }]
   const subclass = selectedSubclass ?? cls?.subclass
   const gainedFeatures = classFeaturesForLevel(srdClasses, cls, lvl, subclass)
   steps.push({ type: 'features' })
-  if (hasASI(char, idx))           steps.push({ type: 'asi' })
-  if (hasSubclassChoice(char, idx)) steps.push({ type: 'subclass' })
-  if (subclass && needsSubclassSpellChoice(char, idx, subclass)) steps.push({ type: 'spells' })
+  if (!isNewClass && hasASI(char, idx))           steps.push({ type: 'asi' })
+  if (SUBCLASS_LEVELS[getClassIndex(cls)]?.includes(lvl) && !cls.subclass) steps.push({ type: 'subclass' })
+  if (!isNewClass && subclass && needsSubclassSpellChoice(char, idx, subclass)) steps.push({ type: 'spells' })
   optionChoicesForFeatures(gainedFeatures).forEach(choice => steps.push({ type: 'featureOption', choice }))
   const skillChoices = [
+    isNewClass ? classSkillChoiceForMulticlass(cls) : null,
     subclassSkillChoice(cls, subclass, lvl),
     skillChoiceForFeatures(gainedFeatures),
   ].filter(Boolean)
@@ -538,9 +648,15 @@ function StepIndicator({ total, current }) {
 }
 
 // ── Step: Class choice (multiclass) ──────────────────────────
-function ClassChoiceStep({ char, onNext, onBack }) {
+function ClassChoiceStep({ char, srdClasses, allowNewClass, onNext, onBack }) {
   const classes = char.identity?.class ?? []
   const [selected, setSelected] = useState(null)
+  const [selectedNewClass, setSelectedNewClass] = useState(null)
+  const existingIndexes = new Set(classes.map(getClassIndex))
+  const newClassOptions = Object.values(srdClasses ?? {})
+    .filter(cls => !existingIndexes.has(cls.index))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const selectedNewClassData = newClassOptions.find(cls => cls.index === selectedNewClass)
   return (
     <div className="lu-step">
       <div className="lu-title">Level Up — Choose Class</div>
@@ -556,13 +672,51 @@ function ClassChoiceStep({ char, onNext, onBack }) {
             <span className="lu-class-choice-level">Lv {cls.level} → {cls.level + 1}</span>
           </button>
         ))}
+        {allowNewClass && (
+          <button
+            className={`lu-class-choice-btn${selected === 'new' ? ' lu-class-choice-btn--active' : ''}`}
+            onClick={() => setSelected('new')}
+          >
+            <span className="lu-class-choice-name">Add New Class</span>
+            <span className="lu-class-choice-level">Multiclass level 1</span>
+          </button>
+        )}
       </div>
+      {selected === 'new' && (
+        <div className="lu-choice-block">
+          <div className="lu-choice-head">
+            <span>New Class</span>
+            <span className="lu-choice-hint">multiclass prerequisites enforced</span>
+          </div>
+          <div className="lu-class-choices">
+            {newClassOptions.map(cls => {
+              const qualifies = canMulticlassInto(char, cls.index)
+              return (
+                <button
+                  key={cls.index}
+                  className={`lu-class-choice-btn${selectedNewClass === cls.index ? ' lu-class-choice-btn--active' : ''}`}
+                  onClick={() => qualifies && setSelectedNewClass(cls.index)}
+                  disabled={!qualifies}
+                  title={!qualifies ? `Requires ${multiclassPrereqLabel(cls.index)} and prerequisites for current classes` : undefined}
+                >
+                  <span className="lu-class-choice-name">{cls.name}</span>
+                  <span className="lu-class-choice-level">Requires {multiclassPrereqLabel(cls.index)}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
       <div className="lu-actions">
         <button className="lu-btn lu-btn--ghost" onClick={onBack}>← Back</button>
         <button
           className="lu-btn lu-btn--primary"
-          onClick={() => onNext({ type: 'classChoice', classIdx: selected })}
-          disabled={selected == null}
+          onClick={() => onNext({
+            type: 'classChoice',
+            classIdx: selected,
+            classData: selected === 'new' ? selectedNewClassData : null,
+          })}
+          disabled={selected == null || (selected === 'new' && !selectedNewClassData)}
         >Next →</button>
       </div>
     </div>
@@ -570,9 +724,10 @@ function ClassChoiceStep({ char, onNext, onBack }) {
 }
 
 // ── Step: New Features (simple level) ────────────────────────
-function FeaturesStep({ char, classIdx, hpResult, hpMode, onHpMode, manualHp, onManualHp, srdClasses, onNext, isLast }) {
-  const lvl        = nextClassLevel(char, classIdx)
-  const clsData    = char.identity?.class?.[classIdx]
+function FeaturesStep({ char, classIdx, newClassData, hpResult, hpMode, onHpMode, manualHp, onManualHp, srdClasses, onNext, isLast }) {
+  const isNewClass = classIdx === 'new'
+  const lvl        = isNewClass ? 1 : nextClassLevel(char, classIdx)
+  const clsData    = isNewClass ? newClassData : char.identity?.class?.[classIdx]
   const cls        = clsData?.name ?? 'your class'
   const totalLvl   = assignedLevel(char) + 1
   const oldProf    = PROF_BONUS[totalLvl - 2] ?? 2
@@ -1128,11 +1283,11 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
 }
 
 // ── Step: Subclass choice ─────────────────────────────────────
-function SubclassStep({ char, classIdx, srdClasses, onNext, onBack }) {
+function SubclassStep({ char, classIdx, newClassData, srdClasses, onNext, onBack }) {
   const [selected, setSelected] = useState(null)
-  const clsObj   = char.identity?.class?.[classIdx] ?? char.identity?.class?.[0]
+  const clsObj   = classIdx === 'new' ? newClassData : char.identity?.class?.[classIdx] ?? char.identity?.class?.[0]
   const cls      = getClassIndex(clsObj)
-  const lvl      = nextClassLevel(char, classIdx)
+  const lvl      = classIdx === 'new' ? 1 : nextClassLevel(char, classIdx)
   const dataOptions = srdClasses?.[cls]?.subclasses ?? []
   const options  = dataOptions.length > 0
     ? dataOptions
@@ -1353,6 +1508,18 @@ function addProficiencies(existing, additions = {}) {
   return next
 }
 
+function applyMulticlassProficiencies(char, classIndex) {
+  const additions = MULTICLASS_PROFICIENCIES[classIndex]
+  if (!additions) return char
+  return {
+    ...char,
+    stats: {
+      ...(char.stats ?? {}),
+      proficiencies: addProficiencies(char.stats?.proficiencies, additions),
+    },
+  }
+}
+
 function applyFeatRules(char, feat, choices = {}) {
   const rule = featRule(feat)
   let updated = char
@@ -1570,7 +1737,9 @@ function SkillChoiceStep({ char, skillChoice, onNext, onBack }) {
     if (value?.proficient) return 1
     return 0
   }
-  const options = mode === 'expertise'
+  const options = skillChoice?.options?.length
+    ? skillChoice.options.filter(skill => mode === 'expertise' ? skillLevel(skill.key) === 1 : skillLevel(skill.key) === 0)
+    : mode === 'expertise'
     ? SKILL_OPTIONS.filter(skill => skillLevel(skill.key) === 1)
     : SKILL_OPTIONS.filter(skill => skillLevel(skill.key) === 0)
   const choose = skillChoice?.choose ?? 1
@@ -1626,8 +1795,10 @@ function SkillChoiceStep({ char, skillChoice, onNext, onBack }) {
 //  Main LevelUpModal
 // ════════════════════════════════════════════════════════════════
 export default function LevelUpModal({ char, onConfirm, onClose }) {
-  const isMulticlass = (char.identity?.class ?? []).length > 1
-  const [chosenClassIdx, setChosenClassIdx] = useState(isMulticlass ? null : 0)
+  const allowNewClass = char.settings?.multiclassing !== 'disabled'
+  const shouldChooseClass = allowNewClass || (char.identity?.class ?? []).length > 1
+  const [chosenClassIdx, setChosenClassIdx] = useState(shouldChooseClass ? null : 0)
+  const [newClassData, setNewClassData] = useState(null)
   const [srdClasses, setSrdClasses] = useState({})
   const [stepIdx, setStepIdx] = useState(0)
   const [results, setResults] = useState([])
@@ -1635,8 +1806,8 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
   const [manualHp, setManualHp] = useState('1')
   const selectedSubclass = results.find(result => result?.type === 'subclass')?.subclass
   const steps = useMemo(
-    () => buildSteps(char, chosenClassIdx, selectedSubclass, srdClasses),
-    [char, chosenClassIdx, selectedSubclass, srdClasses]
+    () => buildSteps(char, chosenClassIdx, selectedSubclass, srdClasses, newClassData),
+    [char, chosenClassIdx, selectedSubclass, srdClasses, newClassData]
   )
 
   useEffect(() => {
@@ -1647,10 +1818,12 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
 
   // Pre-roll HP increase for the chosen class
   const rolledHpResult = useMemo(() => {
-    const idx    = chosenClassIdx ?? 0
-    const clsName = char.identity?.class?.[idx]?.name ?? ''
+    const idx = chosenClassIdx ?? 0
+    const clsName = chosenClassIdx === 'new'
+      ? newClassData?.name ?? ''
+      : char.identity?.class?.[idx]?.name ?? ''
     return rollHpIncrease(clsName, getConMod(char))
-  }, [char, chosenClassIdx])
+  }, [char, chosenClassIdx, newClassData])
   const hpResult = useMemo(
     () => hpIncreaseForMode(hpMode, rolledHpResult, manualHp),
     [hpMode, manualHp, rolledHpResult]
@@ -1662,6 +1835,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
   const handleNext = (result = null) => {
     if (result?.type === 'classChoice') {
       setChosenClassIdx(result.classIdx)
+      setNewClassData(result.classData ?? null)
       setStepIdx(0)
       setResults([])
       return
@@ -1670,7 +1844,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
     const nextSelectedSubclass = result?.type === 'subclass'
       ? result.subclass
       : newResults.find(r => r?.type === 'subclass')?.subclass
-    const nextSteps = buildSteps(char, chosenClassIdx, nextSelectedSubclass, srdClasses)
+    const nextSteps = buildSteps(char, chosenClassIdx, nextSelectedSubclass, srdClasses, newClassData)
     const nextIsLast = stepIdx === nextSteps.length - 1
     if (nextIsLast) {
       applyLevelUp(newResults)
@@ -1682,7 +1856,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
 
   const handleBack = () => {
     if (stepIdx === 0) {
-      if (isMulticlass) { setChosenClassIdx(null); return }
+      if (shouldChooseClass) { setChosenClassIdx(null); setNewClassData(null); return }
       onClose(); return
     }
     setResults(prev => prev.slice(0, -1))
@@ -1690,13 +1864,19 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
   }
 
   const applyLevelUp = (allResults) => {
+    const isNewClass = chosenClassIdx === 'new'
     const classIdx = chosenClassIdx ?? 0
     const cls      = char.identity?.class ?? []
-    const previousCls = cls[classIdx]
-    const nextLevel = (previousCls?.level ?? 0) + 1
-    const newCls   = cls.map((c, i) => i === classIdx ? { ...c, level: (c.level ?? 0) + 1 } : c)
-    const existingFeatures = char.customContent?.classFeatures ?? []
+    const previousCls = isNewClass ? newClassData : cls[classIdx]
+    const nextLevel = isNewClass ? 1 : (previousCls?.level ?? 0) + 1
     const chosenSubclass = allResults.find(r => r.type === 'subclass')?.subclass ?? previousCls?.subclass
+    const newClassEntry = isNewClass && newClassData
+      ? { name: newClassData.name, index: newClassData.index, level: 1, subclass: chosenSubclass ?? null }
+      : null
+    const newCls = isNewClass
+      ? [...cls, newClassEntry].filter(Boolean)
+      : cls.map((c, i) => i === classIdx ? { ...c, level: (c.level ?? 0) + 1 } : c)
+    const existingFeatures = char.customContent?.classFeatures ?? []
     const gainedFeatures = classFeaturesForLevel(srdClasses, previousCls, nextLevel, chosenSubclass)
     const featureKeys = new Set(existingFeatures.map(featureKey))
     const classFeatures = [
@@ -1716,6 +1896,18 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
         hpMax:     (char.combat?.hpMax ?? 10) + hpResult.total,
         hpCurrent: (char.combat?.hpCurrent ?? 10) + hpResult.total,
       },
+    }
+    if (isNewClass && newClassData) {
+      updatedChar = applyMulticlassProficiencies(updatedChar, newClassData.index)
+      if (SPELLCASTING_ABILITY[newClassData.index] && !updatedChar.spells?.spellcastingAbility) {
+        updatedChar = {
+          ...updatedChar,
+          spells: {
+            ...(updatedChar.spells ?? {}),
+            spellcastingAbility: SPELLCASTING_ABILITY[newClassData.index],
+          },
+        }
+      }
     }
 
     allResults.forEach(r => {
@@ -1743,12 +1935,13 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
         updatedChar = applyFeatRules({ ...updatedChar, feats }, r.selectedFeat, r.featChoices ?? {})
       }
       if (r.type === 'subclass' && r.subclass) {
+        const targetIdx = isNewClass ? (updatedChar.identity.class ?? []).length - 1 : classIdx
         const updatedCls = (updatedChar.identity.class ?? []).map((c, i) =>
-          i === classIdx ? { ...c, subclass: r.subclass } : c
+          i === targetIdx ? { ...c, subclass: r.subclass } : c
         )
         updatedChar = {
           ...updatedChar,
-          identity: { ...updatedChar.identity, subclass: r.subclass, class: updatedCls },
+          identity: { ...updatedChar.identity, ...(targetIdx === 0 && { subclass: r.subclass }), class: updatedCls },
         }
       }
       if (r.type === 'spells') {
@@ -1818,16 +2011,15 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
       }
     })
 
-    // Recalculate spell slots based on new class level
-    const updatedCls = updatedChar.identity.class ?? []
-    const chosenCls  = updatedCls[classIdx]
-    if (chosenCls) {
-      const subclassSpec = subclassSpellcastingSpec(chosenCls)
-      const slotClassIndex = subclassSpec?.key ?? chosenCls.index ?? chosenCls.name?.toLowerCase()
-      const newSlots = getSlotsForClass(slotClassIndex, chosenCls.level)
-      if (Object.keys(newSlots).length > 0) {
-        const merged = mergeSlots(updatedChar.spells?.slots ?? {}, newSlots)
-        updatedChar = { ...updatedChar, spells: { ...(updatedChar.spells ?? {}), slots: merged } }
+    const slotData = getSlotsForCharacter(updatedChar.identity.class ?? [])
+    if (Object.keys(slotData.slots).length > 0 || Object.keys(slotData.pactSlots).length > 0) {
+      updatedChar = {
+        ...updatedChar,
+        spells: {
+          ...(updatedChar.spells ?? {}),
+          slots: mergeSlots(updatedChar.spells?.slots ?? {}, slotData.slots),
+          pactSlots: mergeSlots(updatedChar.spells?.pactSlots ?? {}, slotData.pactSlots),
+        },
       }
     }
 
@@ -1842,13 +2034,20 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
         <StepIndicator total={steps.length} current={stepIdx} />
 
         {currentStep?.type === 'classChoice' && (
-          <ClassChoiceStep char={char} onNext={handleNext} onBack={onClose} />
+          <ClassChoiceStep
+            char={char}
+            srdClasses={srdClasses}
+            allowNewClass={allowNewClass}
+            onNext={handleNext}
+            onBack={onClose}
+          />
         )}
 
         {currentStep?.type === 'features' && chosenClassIdx != null && (
           <FeaturesStep
             char={char}
             classIdx={chosenClassIdx}
+            newClassData={newClassData}
             hpResult={hpResult}
             hpMode={hpMode}
             onHpMode={setHpMode}
@@ -1874,6 +2073,7 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
           <SubclassStep
             char={char}
             classIdx={chosenClassIdx}
+            newClassData={newClassData}
             srdClasses={srdClasses}
             onNext={handleNext}
             onBack={handleBack}
