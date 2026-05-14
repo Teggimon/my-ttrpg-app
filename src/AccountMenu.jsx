@@ -174,150 +174,6 @@ const SAMPLE_THEMES = [
     },
   },
   {
-    id: 'harbor-rose',
-    name: 'Harbor Rose',
-    description: 'Deep harbor blue, warm parchment panels, rose player accents, and teal DM mode.',
-    vars: {
-      '--bg-page': '#001A23',
-      '--bg-base': '#001A23',
-      '--bg-surface': '#DDD1C7',
-      '--bg-elevated': '#F9F4F5',
-      '--bg-inset': '#00131A',
-      '--border': '#B8A99E',
-      '--border-strong': '#8F8178',
-      '--border-hi': '#62584F',
-      '--text-primary': '#F9F4F5',
-      '--text-secondary': '#DDD1C7',
-      '--text-muted': '#9C8F86',
-      '--text-inverse': '#001A23',
-      '--accent': '#D1495B',
-      '--accent-hover': '#E56D7C',
-      '--accent-secondary': '#9E2F3F',
-      '--dm': '#00798C',
-      '--dm-hover': '#19A5BC',
-    },
-  },
-  {
-    id: 'gilded-hearth',
-    name: 'Gilded Hearth',
-    description: 'Olive page frame, umber base, bronze panels, rose action, and violet DM mode.',
-    vars: {
-      '--bg-page': '#585B56',
-      '--bg-base': '#695947',
-      '--bg-surface': '#937D64',
-      '--bg-elevated': '#D7AF70',
-      '--bg-inset': '#4B3F32',
-      '--border': '#806C56',
-      '--border-strong': '#A28B68',
-      '--border-hi': '#D7AF70',
-      '--text-primary': '#FFF7E8',
-      '--text-secondary': '#E6D2B6',
-      '--text-muted': '#D7AF70',
-      '--text-inverse': '#241E19',
-      '--accent': '#EA526F',
-      '--accent-hover': '#F47D93',
-      '--accent-secondary': '#B83951',
-      '--dm': '#7A28CB',
-      '--dm-hover': '#9E5CE0',
-    },
-  },
-  {
-    id: 'ember-mint',
-    name: 'Ember Mint',
-    description: 'Smoked plum page, copper base, pale shell panels, ember action, and mint DM mode.',
-    vars: {
-      '--bg-page': '#3F2A2B',
-      '--bg-base': '#81523F',
-      '--bg-surface': '#FAC9B8',
-      '--bg-elevated': '#565656',
-      '--bg-inset': '#5F3C32',
-      '--border': '#A77763',
-      '--border-strong': '#C99784',
-      '--border-hi': '#FAC9B8',
-      '--text-primary': '#FFF2EC',
-      '--text-secondary': '#F4C8B8',
-      '--text-muted': '#D8A28E',
-      '--text-inverse': '#241616',
-      '--accent': '#FF4A1C',
-      '--accent-hover': '#FF7A54',
-      '--accent-secondary': '#C93514',
-      '--dm': '#B2FFA9',
-      '--dm-hover': '#D0FFCB',
-    },
-  },
-  {
-    id: 'plum-gold',
-    name: 'Plum Gold',
-    description: 'Deep plum page, warm clay base, golden surfaces, parchment lift, blush action, and olive DM mode.',
-    vars: {
-      '--bg-page': '#2B061E',
-      '--bg-base': '#875053',
-      '--bg-surface': '#D2BF55',
-      '--bg-elevated': '#FFEED6',
-      '--bg-inset': '#5F373B',
-      '--border': '#A98253',
-      '--border-strong': '#BFA54E',
-      '--border-hi': '#FFEED6',
-      '--text-primary': '#FFF5E6',
-      '--text-secondary': '#F1C7C9',
-      '--text-muted': '#DFA5A7',
-      '--text-inverse': '#2B061E',
-      '--accent': '#FBBFCA',
-      '--accent-hover': '#FFD9E0',
-      '--accent-secondary': '#C98794',
-      '--dm': '#30321C',
-      '--dm-hover': '#565A33',
-    },
-  },
-  {
-    id: 'sky-sigil',
-    name: 'Sky Sigil',
-    description: 'White page frame, cobalt base, vivid sky panels, yellow action, and coral DM mode.',
-    vars: {
-      '--bg-page': '#FFFFFF',
-      '--bg-base': '#38618C',
-      '--bg-surface': '#35A7FF',
-      '--bg-elevated': '#6CBFFF',
-      '--bg-inset': '#294A70',
-      '--border': '#2F83C5',
-      '--border-strong': '#77C7FF',
-      '--border-hi': '#B9E4FF',
-      '--text-primary': '#F5FBFF',
-      '--text-secondary': '#C9E8FF',
-      '--text-muted': '#89C8F2',
-      '--text-inverse': '#102A3D',
-      '--accent': '#FFE74C',
-      '--accent-hover': '#FFF08A',
-      '--accent-secondary': '#C8B01D',
-      '--dm': '#FF5964',
-      '--dm-hover': '#FF8A91',
-    },
-  },
-  {
-    id: 'rose-teal',
-    name: 'Rose Teal',
-    description: 'Soft linen page, muted mauve base, rose surfaces, parchment lift, aqua action, and sage DM mode.',
-    vars: {
-      '--bg-page': '#E6DBD0',
-      '--bg-base': '#754F5B',
-      '--bg-surface': '#7D6167',
-      '--bg-elevated': '#F3DFA2',
-      '--bg-inset': '#513740',
-      '--border': '#8F7378',
-      '--border-strong': '#B89188',
-      '--border-hi': '#F3DFA2',
-      '--text-primary': '#FFF8F1',
-      '--text-secondary': '#E6DBD0',
-      '--text-muted': '#C8B7B0',
-      '--text-inverse': '#21171B',
-      '--accent': '#7EBDC2',
-      '--accent-hover': '#A5D6DA',
-      '--accent-secondary': '#4D8E94',
-      '--dm': '#4C8577',
-      '--dm-hover': '#71A99B',
-    },
-  },
-  {
     id: 'paper-pop',
     name: 'Paper Pop',
     description: 'Charcoal page, paper base, punch-pink surfaces, pale inset, orange action, and plum DM mode.',
@@ -415,14 +271,21 @@ function isLight(value) {
 function applyTheme(theme) {
   const root = document.documentElement
   const hasLightSurface = isLight(theme.vars['--bg-surface'])
+  const hasLightElevated = isLight(theme.vars['--bg-elevated'])
   const surfaceTextPrimary = hasLightSurface ? theme.vars['--text-inverse'] : theme.vars['--text-primary']
   const surfaceTextSecondary = hasLightSurface ? theme.vars['--bg-base'] : theme.vars['--text-secondary']
   const surfaceTextMuted = hasLightSurface ? theme.vars['--bg-page'] : theme.vars['--text-muted']
+  const elevatedTextPrimary = hasLightElevated ? theme.vars['--text-inverse'] : theme.vars['--text-primary']
+  const elevatedTextSecondary = hasLightElevated ? theme.vars['--bg-base'] : theme.vars['--text-secondary']
+  const elevatedTextMuted = hasLightElevated ? theme.vars['--bg-page'] : theme.vars['--text-muted']
   root.setAttribute('data-theme', theme.id)
   Object.entries(theme.vars).forEach(([key, value]) => root.style.setProperty(key, value))
   root.style.setProperty('--surface-text-primary', surfaceTextPrimary)
   root.style.setProperty('--surface-text-secondary', surfaceTextSecondary)
   root.style.setProperty('--surface-text-muted', surfaceTextMuted)
+  root.style.setProperty('--elevated-text-primary', elevatedTextPrimary)
+  root.style.setProperty('--elevated-text-secondary', elevatedTextSecondary)
+  root.style.setProperty('--elevated-text-muted', elevatedTextMuted)
   root.style.setProperty('--accent-text', contrastText(theme.vars['--accent'], theme.vars['--text-inverse'], theme.vars['--text-primary']))
   root.style.setProperty('--accent-subtle', rgba(theme.vars['--accent'], 0.15))
   root.style.setProperty('--accent-bg', rgba(theme.vars['--accent'], 0.15))

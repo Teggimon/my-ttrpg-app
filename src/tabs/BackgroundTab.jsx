@@ -574,7 +574,7 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
               <>
                 <div className="bg-feature-label">Background Feature</div>
                 <div className="bg-feature-text">
-                  <strong style={{ color: 'var(--text-primary)' }}>{backgroundFeature.name}.</strong>{' '}
+                  <strong style={{ color: 'var(--surface-text-primary)' }}>{backgroundFeature.name}.</strong>{' '}
                   {backgroundFeature.desc?.[0]}
                 </div>
               </>

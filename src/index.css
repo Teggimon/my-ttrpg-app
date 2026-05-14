@@ -50,6 +50,9 @@ img { display: block; max-width: 100%; }
   --surface-text-primary:   #eeedf8;
   --surface-text-secondary: #8885aa;
   --surface-text-muted:     #45426a;
+  --elevated-text-primary:   #eeedf8;
+  --elevated-text-secondary: #8885aa;
+  --elevated-text-muted:     #45426a;
 
   /* ── Accent — player purple ── */
   --accent:              #7c6ff5;
