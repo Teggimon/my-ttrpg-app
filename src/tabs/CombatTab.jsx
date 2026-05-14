@@ -41,6 +41,16 @@ function featureKey(name)   { return String(name ?? '').toLowerCase().replace(/[
 function itemKey(item) {
   return item.itemId ?? item.index ?? item.name
 }
+function itemEffectBonus(item, statName) {
+  const effects = (item.effects ?? []).filter(effect =>
+    String(effect.stat ?? '').toLowerCase() === statName.toLowerCase()
+  )
+  const setEffect = [...effects].reverse().find(effect => effect.mode === 'set')
+  if (setEffect) return Number(setEffect.value) || 0
+  return effects
+    .filter(effect => (effect.mode ?? 'add') === 'add')
+    .reduce((sum, effect) => sum + (Number(effect.value) || 0), 0)
+}
 
 function sneakAttackDice(level) {
   return `${Math.ceil(Math.max(1, level) / 2)}d6`
@@ -109,9 +119,11 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     const useAttr  = isRanged || (isFin && dexMod > strMod) ? 'dex' : 'str'
     const attrMod  = useAttr === 'dex' ? dexMod : strMod
     const enh      = item.enhancement ?? 0
+    const attackEffectBonus = itemEffectBonus(item, 'Attack Roll')
+    const damageEffectBonus = itemEffectBonus(item, 'Damage')
     const archeryBonus = usesAmmo && hasClassFeatureChoice(char, 'Archery') ? 2 : 0
-    const toHit    = attrMod + pb + enh + archeryBonus
-    const dmgMod   = attrMod + enh
+    const toHit    = attrMod + pb + enh + attackEffectBonus + archeryBonus
+    const dmgMod   = attrMod + enh + damageEffectBonus
 
     // Damage: prefer stored item.damage, fallback to SRD
     const damageDice = item.damage?.dice ?? srd.damage?.damage_dice ?? null
@@ -123,7 +135,14 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     const versatileStr = versatileDice
       ? `${versatileDice}${dmgMod !== 0 ? fmtB(dmgMod) : ''} ${damageType} versatile`.trim()
       : null
-    const breakdown = `${useAttr.toUpperCase()} ${fmtB(attrMod)}, Prof ${fmtB(pb)}${enh > 0 ? `, Magic +${enh}` : ''}${archeryBonus ? ', Archery +2' : ''}`
+    const breakdown = [
+      `${useAttr.toUpperCase()} ${fmtB(attrMod)}`,
+      `Prof ${fmtB(pb)}`,
+      enh ? `Magic ${fmtB(enh)}` : null,
+      attackEffectBonus ? `Attack effect ${fmtB(attackEffectBonus)}` : null,
+      damageEffectBonus ? `Damage effect ${fmtB(damageEffectBonus)}` : null,
+      archeryBonus ? 'Archery +2' : null,
+    ].filter(Boolean).join(', ')
 
     return { toHit, dmgStr, versatileStr, breakdown, usesAmmo }
   }
