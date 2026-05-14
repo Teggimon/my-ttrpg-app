@@ -221,6 +221,30 @@ const SAMPLE_THEMES = [
       '--dm-hover': '#7DE0D9',
     },
   },
+  {
+    id: 'night-chartreuse',
+    name: 'Night Chartreuse',
+    description: 'Deep navy page, near-black base, slate surfaces, parchment lift, chartreuse action, and coral DM mode.',
+    vars: {
+      '--bg-page': '#1B2A41',
+      '--bg-base': '#0C1821',
+      '--bg-surface': '#1B2A41',
+      '--bg-elevated': '#CCC9DC',
+      '--bg-inset': '#CCC9DC',
+      '--border': '#31445F',
+      '--border-strong': '#536783',
+      '--border-hi': '#CCC9DC',
+      '--text-primary': '#F5F7FB',
+      '--text-secondary': '#C6D0DC',
+      '--text-muted': '#7E8DA0',
+      '--text-inverse': '#0C1821',
+      '--accent': '#E0FF4F',
+      '--accent-hover': '#ECFF8A',
+      '--accent-secondary': '#A9C833',
+      '--dm': '#FF6663',
+      '--dm-hover': '#FF908D',
+    },
+  },
 ]
 
 function hexToRgb(value) {
