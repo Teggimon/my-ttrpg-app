@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TTRPG Theme Tester</title>
+  <style>
+    :root {
+      --bg-page: #ffffff;
+      --bg-base: #38618c;
+      --bg-surface: #35a7ff;
+      --bg-elevated: #6cbfff;
+      --bg-inset: #294a70;
+      --border: #2f83c5;
+      --border-strong: #77c7ff;
+      --border-hi: #b9e4ff;
+      --text-primary: #f5fbff;
+      --text-secondary: #c9e8ff;
+      --text-muted: #89c8f2;
+      --text-inverse: #102a3d;
+      --surface-text-primary: #102a3d;
+      --surface-text-secondary: #38618c;
+      --surface-text-muted: #ffffff;
+      --accent: #ffe74c;
+      --accent-hover: #fff08a;
+      --accent-secondary: #c8b01d;
+      --accent-text: #102a3d;
+      --accent-subtle: rgba(255, 231, 76, 0.15);
+      --accent-border: #c8b01d;
+      --dm: #ff5964;
+      --dm-hover: #ff8a91;
+      --dm-text: #102a3d;
+      --dm-subtle: rgba(255, 89, 100, 0.12);
+      --dm-border: rgba(255, 89, 100, 0.38);
+      --success: #4ade80;
+      --warning: #f59e0b;
+      --danger: #f87171;
+      --gold: #c9a227;
+      --font-body: Nunito, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --font-name: Cinzel, Georgia, serif;
+      --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: var(--bg-page);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      padding: 24px;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    .tester {
+      width: min(1280px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .control-panel,
+    .mock-app {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--bg-base);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
+      overflow: hidden;
+    }
+
+    .control-panel {
+      align-self: start;
+      padding: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--font-name);
+      font-size: 24px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .helper {
+      margin: 8px 0 16px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .palette-inputs {
+      display: grid;
+      gap: 9px;
+    }
+
+    .field {
+      display: grid;
+      grid-template-columns: 1fr 96px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      background: var(--bg-inset);
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .field input {
+      height: 42px;
+      padding: 0 10px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .field input:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-subtle);
+    }
+
+    .mini-swatch {
+      height: 42px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      background: currentColor;
+    }
+
+    textarea {
+      min-height: 116px;
+      margin-top: 12px;
+      padding: 11px 12px;
+      resize: vertical;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.45;
+      text-transform: uppercase;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .mode-control {
+      margin-top: 14px;
+    }
+
+    .mode-label {
+      margin-bottom: 7px;
+      color: var(--text-secondary);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .mode-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg-inset);
+    }
+
+    .mode-btn {
+      min-height: 38px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .mode-btn[aria-pressed="true"] {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent-border);
+    }
+
+    .btn {
+      min-height: 42px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 0 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border-color: var(--border-strong);
+    }
+
+    .warning {
+      min-height: 20px;
+      margin-top: 10px;
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .derived {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+    }
+
+    .derived-title {
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .derived-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .derived-chip {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-surface);
+    }
+
+    .derived-colour {
+      height: 28px;
+      background: currentColor;
+    }
+
+    .derived-meta {
+      padding: 7px 8px;
+      color: var(--surface-text-primary);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 1.3;
+    }
+
+    .mock-app {
+      min-height: 720px;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    .mock-sidebar {
+      background: var(--bg-surface);
+      color: var(--surface-text-primary);
+      border-right: 1px solid var(--border);
+      padding: 18px;
+    }
+
+    .back-link {
+      color: var(--surface-text-muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .campaign-title {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 18px;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .campaign-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--dm-subtle);
+      color: var(--dm);
+      border: 1px solid var(--dm-border);
+      font-weight: 900;
+    }
+
+    .side-stats {
+      display: grid;
+      gap: 16px;
+      margin-top: 28px;
+    }
+
+    .side-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .side-stat strong {
+      color: var(--surface-text-primary);
+      font-family: var(--font-mono);
+      font-size: 22px;
+    }
+
+    .side-stat span {
+      color: var(--surface-text-muted);
+      font-size: 13px;
+    }
+
+    .rest-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 28px;
+    }
+
+    .rest-short {
+      border: 1px solid var(--accent-border);
+      background: var(--accent-subtle);
+      color: var(--accent);
+    }
+
+    .rest-long {
+      border: 1px solid var(--border-strong);
+      background: var(--bg-inset);
+      color: var(--surface-text-secondary);
+    }
+
+    .mock-main {
+      min-width: 0;
+      background: var(--bg-base);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 0 22px;
+      background: var(--bg-surface);
+      color: var(--surface-text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab {
+      padding: 16px 10px 14px;
+      border-bottom: 2px solid transparent;
+      font-weight: 900;
+      color: var(--surface-text-muted);
+    }
+
+    .tab.active {
+      color: var(--dm);
+      border-color: var(--dm);
+    }
+
+    .mock-content {
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .top-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat-card,
+    .npc-card,
+    .note-card,
+    .tool-card {
+      background: var(--bg-surface);
+      color: var(--surface-text-primary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .stat-card {
+      min-height: 86px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+
+    .stat-card strong {
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .stat-card span {
+      margin-top: 5px;
+      color: var(--surface-text-muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-label {
+      margin: 2px 0 -8px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .npc-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .npc-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      box-shadow: inset 4px 0 0 var(--danger);
+    }
+
+    .npc-name {
+      color: var(--surface-text-primary);
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .npc-meta {
+      margin-top: 3px;
+      color: var(--surface-text-muted);
+      font-size: 12px;
+    }
+
+    .npc-stat {
+      color: var(--surface-text-secondary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .icon-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--surface-text-muted);
+      font-size: 18px;
+    }
+
+    .lower-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 14px;
+    }
+
+    .note-card,
+    .tool-card {
+      padding: 16px;
+    }
+
+    .card-title {
+      margin: 0 0 8px;
+      color: var(--surface-text-primary);
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .card-copy {
+      margin: 0;
+      color: var(--surface-text-secondary);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .dm-button {
+      background: var(--dm);
+      color: var(--dm-text);
+    }
+
+    .ghost-button {
+      border-color: var(--border-strong);
+      background: var(--bg-elevated);
+      color: var(--surface-text-primary);
+    }
+
+    .hp-card {
+      margin-top: 14px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--bg-inset);
+      color: var(--text-primary);
+    }
+
+    .hp-head {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .hp-track {
+      height: 8px;
+      margin-top: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--bg-elevated);
+    }
+
+    .hp-fill {
+      width: 68%;
+      height: 100%;
+      background: var(--success);
+    }
+
+    @media (max-width: 920px) {
+      body {
+        padding: 12px;
+      }
+
+      .tester,
+      .mock-app {
+        grid-template-columns: 1fr;
+      }
+
+      .mock-sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .top-row,
+      .lower-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="tester">
+    <section class="control-panel" aria-label="Theme controls">
+      <h1>Theme Tester</h1>
+      <p class="helper">Paste six hex codes in this order: page, base, surface, elevated, player accent, DM accent. The tester derives text, borders, hover states, and subtle accents live.</p>
+
+      <div class="palette-inputs" id="paletteInputs"></div>
+
+      <textarea id="bulkInput" spellcheck="false" aria-label="Paste six hex codes"></textarea>
+
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="applyBulk">Apply Block</button>
+        <button class="btn btn-secondary" type="button" id="resetTheme">Reset</button>
+      </div>
+
+      <div class="mode-control" aria-label="Text colour mode">
+        <div class="mode-label">Text Mode</div>
+        <div class="mode-buttons">
+          <button class="mode-btn" type="button" data-text-mode="auto" aria-pressed="true">Auto</button>
+          <button class="mode-btn" type="button" data-text-mode="dark" aria-pressed="false">Dark</button>
+          <button class="mode-btn" type="button" data-text-mode="light" aria-pressed="false">Light</button>
+        </div>
+      </div>
+      <div class="warning" id="warning" role="status"></div>
+
+      <section class="derived" aria-label="Derived theme colours">
+        <div class="derived-title">Derived Tokens</div>
+        <div class="derived-grid" id="derivedGrid"></div>
+      </section>
+    </section>
+
+    <section class="mock-app" aria-label="Mock themed app">
+      <aside class="mock-sidebar">
+        <div class="back-link">← Campaigns</div>
+        <div class="campaign-title">
+          <div class="campaign-icon">DM</div>
+          <div>Dragons of Stormwreck Isle</div>
+        </div>
+
+        <div class="side-stats">
+          <div class="side-stat"><strong>7</strong><span>Encounters</span></div>
+          <div class="side-stat"><strong>3</strong><span>Players</span></div>
+          <div class="side-stat"><strong>2</strong><span>Active PCs</span></div>
+        </div>
+
+        <div class="rest-buttons">
+          <button class="btn rest-short" type="button">Short Rest</button>
+          <button class="btn rest-long" type="button">Long Rest</button>
+        </div>
+      </aside>
+
+      <div class="mock-main">
+        <nav class="tabs" aria-label="Mock tabs">
+          <div class="tab">Sessions</div>
+          <div class="tab">Party</div>
+          <div class="tab active">NPCs</div>
+          <div class="tab">Encounters</div>
+          <div class="tab">Notes</div>
+        </nav>
+
+        <div class="mock-content">
+          <div class="top-row">
+            <div class="stat-card"><div><strong>18</strong><br><span>Armor Class</span></div></div>
+            <div class="stat-card"><div><strong>42</strong><br><span>Hit Points</span></div></div>
+            <div class="stat-card"><div><strong>+6</strong><br><span>To Hit</span></div></div>
+            <div class="stat-card"><div><strong>3</strong><br><span>Challenge</span></div></div>
+          </div>
+
+          <div class="section-label">Standard Enemies</div>
+          <div class="npc-list">
+            <article class="npc-card">
+              <div>
+                <div class="npc-name">Kobold</div>
+                <div class="npc-meta">humanoid · CR 1/8</div>
+              </div>
+              <div class="npc-stat">HP 5 · AC 12</div>
+              <button class="icon-btn" type="button">×</button>
+            </article>
+            <article class="npc-card">
+              <div>
+                <div class="npc-name">Owlbear</div>
+                <div class="npc-meta">monstrosity · CR 3</div>
+              </div>
+              <div class="npc-stat">HP 59 · AC 13</div>
+              <button class="icon-btn" type="button">×</button>
+            </article>
+            <article class="npc-card">
+              <div>
+                <div class="npc-name">Myconid Adult</div>
+                <div class="npc-meta">plant · CR 1/2</div>
+              </div>
+              <div class="npc-stat">HP 22 · AC 12</div>
+              <button class="icon-btn" type="button">×</button>
+            </article>
+          </div>
+
+          <div class="lower-grid">
+            <article class="note-card">
+              <h2 class="card-title">Surface Text Check</h2>
+              <p class="card-copy">This card uses surface-aware primary, secondary, and muted text. If the surface is light, this text should become dark enough to read.</p>
+              <div class="button-row">
+                <button class="btn btn-primary" type="button">Player Action</button>
+                <button class="btn dm-button" type="button">DM Action</button>
+                <button class="btn ghost-button" type="button">Ghost</button>
+              </div>
+            </article>
+
+            <article class="tool-card">
+              <h2 class="card-title">Inset / Status Check</h2>
+              <p class="card-copy">HP and status colours stay semantic while the theme background changes around them.</p>
+              <div class="hp-card">
+                <div class="hp-head"><span>Hit Points</span><span>42 / 62</span></div>
+                <div class="hp-track"><div class="hp-fill"></div></div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const defaults = ['FFFFFF', '38618C', '35A7FF', '6CBFFF', 'FFE74C', 'FF5964']
+    const roles = [
+      ['Page background', '--bg-page'],
+      ['Base background', '--bg-base'],
+      ['Surface', '--bg-surface'],
+      ['Elevated', '--bg-elevated'],
+      ['Player accent', '--accent'],
+      ['DM accent', '--dm'],
+    ]
+    const inputs = document.getElementById('paletteInputs')
+    const bulkInput = document.getElementById('bulkInput')
+    const applyBulk = document.getElementById('applyBulk')
+    const resetTheme = document.getElementById('resetTheme')
+    const warning = document.getElementById('warning')
+    const derivedGrid = document.getElementById('derivedGrid')
+    let textMode = 'auto'
+
+    function cleanHex(value) {
+      const match = String(value).trim().match(/^#?([0-9a-fA-F]{6})$/)
+      return match ? `#${match[1].toUpperCase()}` : null
+    }
+
+    function hexToRgb(value) {
+      const hex = value.replace('#', '')
+      const parsed = parseInt(hex, 16)
+      return {
+        r: (parsed >> 16) & 255,
+        g: (parsed >> 8) & 255,
+        b: parsed & 255,
+      }
+    }
+
+    function rgba(value, alpha) {
+      const { r, g, b } = hexToRgb(value)
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`
+    }
+
+    function luminance(value) {
+      const { r, g, b } = hexToRgb(value)
+      return [r, g, b].map(channel => {
+        const scaled = channel / 255
+        return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4
+      }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0)
+    }
+
+    function contrastText(background, darkText, lightText) {
+      return luminance(background) > 0.45 ? darkText : lightText
+    }
+
+    function deriveTheme(values) {
+      const [page, base, surface, elevated, accent, dm] = values
+      const hasLightSurface = luminance(surface) > 0.45
+      const autoPrimary = contrastText(base, '#101014', '#F7F4EF')
+      const forcedDark = textMode === 'dark'
+      const forcedLight = textMode === 'light'
+      const primaryText = forcedDark ? '#101014' : forcedLight ? '#F7F4EF' : autoPrimary
+      const secondaryText = forcedDark ? '#303036' : forcedLight ? '#D8D2C8' : luminance(base) > 0.45 ? '#303036' : '#D8D2C8'
+      const mutedText = forcedDark ? '#55545C' : forcedLight ? '#A69CA0' : luminance(base) > 0.45 ? '#55545C' : '#A69CA0'
+      const inverseText = primaryText === '#101014' ? '#F7F4EF' : '#101014'
+      const vars = {
+        '--bg-page': page,
+        '--bg-base': base,
+        '--bg-surface': surface,
+        '--bg-elevated': elevated,
+        '--bg-inset': luminance(base) > 0.45 ? page : base,
+        '--border': luminance(surface) > 0.45 ? base : surface,
+        '--border-strong': luminance(surface) > 0.45 ? base : elevated,
+        '--border-hi': elevated,
+        '--text-primary': primaryText,
+        '--text-secondary': secondaryText,
+        '--text-muted': mutedText,
+        '--text-inverse': inverseText,
+        '--accent': accent,
+        '--accent-hover': accent,
+        '--accent-secondary': accent,
+        '--dm': dm,
+        '--dm-hover': dm,
+      }
+      vars['--surface-text-primary'] = textMode === 'auto' && hasLightSurface ? vars['--text-inverse'] : vars['--text-primary']
+      vars['--surface-text-secondary'] = textMode === 'auto' && hasLightSurface ? base : vars['--text-secondary']
+      vars['--surface-text-muted'] = textMode === 'auto' && hasLightSurface ? page : vars['--text-muted']
+      vars['--accent-text'] = contrastText(accent, vars['--text-inverse'], vars['--text-primary'])
+      vars['--accent-subtle'] = rgba(accent, 0.15)
+      vars['--accent-border'] = accent
+      vars['--dm-text'] = contrastText(dm, vars['--text-inverse'], vars['--text-primary'])
+      vars['--dm-subtle'] = rgba(dm, 0.12)
+      vars['--dm-border'] = rgba(dm, 0.38)
+      return vars
+    }
+
+    function setTheme(values) {
+      const vars = deriveTheme(values)
+      Object.entries(vars).forEach(([key, value]) => document.documentElement.style.setProperty(key, value))
+      renderDerived(vars)
+      warning.textContent = ''
+    }
+
+    function getInputValues() {
+      return Array.from(document.querySelectorAll('[data-hex-input]')).map(input => cleanHex(input.value))
+    }
+
+    function updateFromInputs() {
+      const values = getInputValues()
+      if (values.some(value => !value)) {
+        warning.textContent = 'Use six valid 6-digit hex codes.'
+        return
+      }
+      bulkInput.value = values.map(value => value.slice(1)).join('\n')
+      syncSwatches(values)
+      setTheme(values)
+    }
+
+    function syncSwatches(values) {
+      document.querySelectorAll('[data-mini-swatch]').forEach((swatch, index) => {
+        swatch.style.color = values[index]
+      })
+    }
+
+    function renderInputs(values) {
+      inputs.innerHTML = roles.map(([label], index) => `
+        <div class="field">
+          <div>
+            <label for="hex-${index}">${label}</label>
+            <input id="hex-${index}" data-hex-input value="${values[index].replace('#', '')}" maxlength="7" spellcheck="false">
+          </div>
+          <div class="mini-swatch" data-mini-swatch style="color: ${values[index]}"></div>
+        </div>
+      `).join('')
+      document.querySelectorAll('[data-hex-input]').forEach(input => {
+        input.addEventListener('input', updateFromInputs)
+      })
+    }
+
+    function renderDerived(vars) {
+      const keys = [
+        '--text-primary',
+        '--text-secondary',
+        '--text-muted',
+        '--text-inverse',
+        '--surface-text-primary',
+        '--surface-text-secondary',
+        '--surface-text-muted',
+        '--accent-text',
+        '--dm-text',
+        '--border',
+        '--border-strong',
+        '--bg-inset',
+      ]
+      derivedGrid.innerHTML = keys.map(key => `
+        <div class="derived-chip" style="color: ${vars[key]}">
+          <div class="derived-colour"></div>
+          <div class="derived-meta">${key}<br>${vars[key]}</div>
+        </div>
+      `).join('')
+    }
+
+    function applyBlock() {
+      const values = bulkInput.value
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map(cleanHex)
+      if (values.length !== 6 || values.some(value => !value)) {
+        warning.textContent = 'Paste exactly six valid 6-digit hex codes.'
+        return
+      }
+      document.querySelectorAll('[data-hex-input]').forEach((input, index) => {
+        input.value = values[index].slice(1)
+      })
+      syncSwatches(values)
+      setTheme(values)
+    }
+
+    function reset() {
+      const values = defaults.map(value => `#${value}`)
+      document.querySelectorAll('[data-hex-input]').forEach((input, index) => {
+        input.value = defaults[index]
+      })
+      bulkInput.value = defaults.join('\n')
+      syncSwatches(values)
+      setTheme(values)
+    }
+
+    function setTextMode(mode) {
+      textMode = mode
+      document.querySelectorAll('[data-text-mode]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.textMode === textMode))
+      })
+      const values = getInputValues()
+      if (values.some(value => !value)) return
+      setTheme(values)
+    }
+
+    renderInputs(defaults.map(value => `#${value}`))
+    bulkInput.value = defaults.join('\n')
+    applyBulk.addEventListener('click', applyBlock)
+    resetTheme.addEventListener('click', reset)
+    document.querySelectorAll('[data-text-mode]').forEach(button => {
+      button.addEventListener('click', () => setTextMode(button.dataset.textMode))
+    })
+    setTheme(defaults.map(value => `#${value}`))
+  </script>
+</body>
+</html>

@@ -56,6 +56,13 @@ function sneakAttackDice(level) {
   return `${Math.ceil(Math.max(1, level) / 2)}d6`
 }
 
+function breathWeaponLimit(trait, pb) {
+  if (trait?.source === 'XPHB' || trait?.source === 'FTD') {
+    return { max: pb, recharge: 'LR', label: 'LR' }
+  }
+  return { max: 1, recharge: 'SR', label: 'SR' }
+}
+
 function hasClassFeatureChoice(char, optionName) {
   return (char.customContent?.classFeatureChoices ?? []).some(choice =>
     (choice.options ?? []).some(option => option.name === optionName)
@@ -288,7 +295,10 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     .reduce((sum, cls) => sum + (cls.level ?? 0), 0)
 
   const storedAbilities = char.combat?.classAbilities ?? char.classAbilities ?? []
-  const storedAbilityMap = Object.fromEntries(storedAbilities.map(ability => [featureKey(ability.name), ability]))
+  const storedAbilityMap = Object.fromEntries(storedAbilities.flatMap(ability => [
+    [featureKey(ability.name), ability],
+    ability.key ? [ability.key, ability] : null,
+  ].filter(Boolean)))
   const classFeatures = char.customContent?.classFeatures ?? []
   const combatFeatures = classFeatures
     .filter(feature => /^(second wind|action surge|sneak attack)$/i.test(feature.name ?? ''))
@@ -320,13 +330,16 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
 
   const raceAbilityFeatures = racialCombatTraits.map(trait => {
     const isBreath = trait.index === 'breath-weapon'
+    const breathLimit = isBreath ? breathWeaponLimit(trait, pb) : null
+    const key = `race-${trait.index}`
     return {
       ...trait,
-      key: `race-${trait.index}`,
+      key,
       sourceType: char.identity.race || 'Race',
       actionType: isBreath ? 'Action' : 'Trait',
-      max: null,
-      used: 0,
+      recharge: breathLimit?.recharge ?? null,
+      max: breathLimit?.max ?? null,
+      used: storedAbilityMap[key]?.used ?? 0,
       effect: isBreath
         ? `${breathDice(level, trait)}${trait.damageType ? ` ${trait.damageType}` : ''}`
         : trait.name,
@@ -334,6 +347,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
         ? [
             trait.breathWeapon,
             `${trait.savingThrow ?? 'DEX/CON'} DC ${8 + pb + conMod}`,
+            `${breathLimit.max}/${breathLimit.label}`,
           ].filter(Boolean).join(' · ')
         : null,
     }
