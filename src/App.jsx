@@ -62,6 +62,7 @@ function App() {
   const [screen, setScreen]                       = useState('home')
   const [selectedCharacter, setSelectedCharacter] = useState(null)
   const [selectedCampaign, setSelectedCampaign]   = useState(null)
+  const [selectedCampaignOptions, setSelectedCampaignOptions] = useState(null)
   const [selectedSession, setSelectedSession]     = useState(null)
   const [selectedEncounter, setSelectedEncounter] = useState(null)
   const [characterReturnScreen, setCharacterReturnScreen] = useState('home')
@@ -127,6 +128,7 @@ function App() {
     setScreen('home')
     setSelectedCharacter(null)
     setSelectedCampaign(null)
+    setSelectedCampaignOptions(null)
   }
 
   // ── Save character to GitHub ────────────────────────────────
@@ -193,6 +195,16 @@ function App() {
     if (!owner) return
 
     let loaded = null
+    let campaignOptions
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner: user.login,
+        repo: DATA_REPO,
+        path: `campaigns/${campaign.slug}/options.json`,
+      })
+      campaignOptions = JSON.parse(atob(data.content.replace(/\s/g, '')))
+    } catch { /* campaign options not created yet */ }
+
     const fileName = character.fileName ?? character._fileName
     if (fileName) {
       try {
@@ -230,6 +242,7 @@ function App() {
 
     if (!loaded) return
     setSelectedCampaign(campaign)
+    setSelectedCampaignOptions(campaignOptions)
     setSelectedCharacter(loaded)
     setCharacterReturnScreen('dm-campaign')
     setScreen('character')
@@ -387,6 +400,8 @@ function App() {
       user={user}
       onUpdateChar={saveCharacter}
       onUploadImage={uploadCharacterImage}
+      campaign={selectedCampaign}
+      campaignOptions={selectedCampaignOptions}
       syncStatus="saved"
     />
   )
@@ -399,6 +414,7 @@ function App() {
       onBack={() => setScreen('home')}
       onOpenCampaign={(campaign) => {
         setSelectedCampaign(campaign)
+        setSelectedCampaignOptions(null)
         setScreen('dm-campaign')
       }}
       onLogout={logout}
@@ -469,6 +485,7 @@ function App() {
       onCreateCharacter={() => setScreen('create')}
       onSelectCharacter={(char) => {
         setSelectedCampaign(null)
+        setSelectedCampaignOptions(null)
         setSelectedSession(null)
         setSelectedEncounter(null)
         setSelectedCharacter(char)

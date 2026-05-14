@@ -49,6 +49,11 @@ function formatInGame(rounds) {
   const s = total % 60
   return s > 0 ? `${m}m ${s}s` : `${m}m`
 }
+const SESSION_TABS = [
+  { id: 'party',     label: 'PTY', title: 'Party' },
+  { id: 'encounter', label: 'ENC', title: 'Encounter' },
+  { id: 'notes',     label: 'NT', title: 'Notes' },
+]
 
 // ── Character Reference Card ──────────────────────────────────
 function CharRefCard({ char, isPresent, onTogglePresent }) {
@@ -178,6 +183,14 @@ function EncounterRow({ encounter, onOpen, isActive, actionLabel }) {
 // ── Note section ──────────────────────────────────────────────
 function SVNoteSection({ section, onChange }) {
   const [collapsed, setCollapsed] = useState(false)
+  const taRef = useRef(null)
+
+  useEffect(() => {
+    if (!taRef.current || collapsed) return
+    taRef.current.style.height = 'auto'
+    taRef.current.style.height = `${Math.max(120, taRef.current.scrollHeight)}px`
+  }, [section.content, collapsed])
+
   return (
     <div className={`sv-note-section${collapsed ? ' sv-note-section--collapsed' : ''}`}>
       <div className="sv-note-head">
@@ -188,6 +201,7 @@ function SVNoteSection({ section, onChange }) {
       </div>
       {!collapsed && (
         <textarea
+          ref={taRef}
           className="sv-note-textarea"
           value={section.content}
           onChange={e => onChange(section.id, e.target.value)}
@@ -207,10 +221,12 @@ export default function SessionView({ token, user, session, campaign, party, ini
   const [encounters, setEncounters] = useState(session.encounters ?? [])
   const [preparedEncounters, setPreparedEncounters] = useState(initialPreparedEncounters)
   const [notes, setNotes]         = useState({
+    ...(session.notes ?? {}),
     sections: [
       { id: 'happened',  title: 'What Happened',     content: '' },
       { id: 'dm-notes',  title: 'DM Notes (Private)', content: '' },
       { id: 'loot',      title: 'Loot Given Out',     content: '' },
+      ...(session.notes?.sections ?? []).filter(section => !['happened', 'dm-notes', 'loot'].includes(section.id)),
     ]
   })
   const [attendance, setAttendance] = useState(() => {
@@ -226,6 +242,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
   const clockRef = useRef(null)
   const clockSecondsRef = useRef(clockSeconds)
   const encountersRef = useRef(encounters)
+  const notesRef = useRef(notes)
 
   useEffect(() => {
     if (clockRunning) {
@@ -243,6 +260,10 @@ export default function SessionView({ token, user, session, campaign, party, ini
   useEffect(() => {
     encountersRef.current = encounters
   }, [encounters])
+
+  useEffect(() => {
+    notesRef.current = notes
+  }, [notes])
 
   const octokit  = useMemo(() => new Octokit({ auth: token }), [token])
   const slug     = campaign.slug
@@ -266,6 +287,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
       const updatedSession = {
         ...session,
         encounters: encountersRef.current,
+        notes: notesRef.current,
         duration: clockSecondsRef.current,
         status: 'live',
         timerRunning: clockRunning,
@@ -296,6 +318,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
       {
         duration: clockSecondsRef.current,
         encounters: encountersRef.current,
+        notes: notesRef.current,
         timerRunning: clockRunning,
         timerStartedAt: clockRunning ? new Date().toISOString() : null,
         timerUpdatedAt: new Date().toISOString(),
@@ -349,6 +372,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
     await updateStoredSession(
       {
         encounters: updated,
+        notes: notesRef.current,
         duration: clockSecondsRef.current,
         status: 'live',
         timerRunning: clockRunning,
@@ -393,11 +417,14 @@ export default function SessionView({ token, user, session, campaign, party, ini
   }
 
   const updateNote = useCallback((id, content) => {
-    setNotes(prev => ({
-      ...prev,
-      sections: prev.sections.map(s => s.id === id ? { ...s, content } : s)
-    }))
-  }, [])
+    const updatedNotes = {
+      ...notesRef.current,
+      sections: notesRef.current.sections.map(s => s.id === id ? { ...s, content } : s)
+    }
+    setNotes(updatedNotes)
+    notesRef.current = updatedNotes
+    updateStoredSession({ notes: updatedNotes }, 'Update session notes')
+  }, [updateStoredSession])
 
   const chars = allActiveChars(party)
   const sessionPreparedEncounters = preparedEncounters.filter(enc =>
@@ -461,11 +488,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
 
         {/* Sidebar tabs */}
         <div className="sv-sidebar-tabs">
-          {[
-            { id: 'party',     label: 'PTY', title: 'Party' },
-            { id: 'encounter', label: 'ENC', title: 'Encounter' },
-            { id: 'notes',     label: 'NT', title: 'Notes' },
-          ].map(t => (
+          {SESSION_TABS.map(t => (
             <button
               key={t.id}
               className={`sv-sidebar-tab${tab === t.id ? ` sv-sidebar-tab--active${t.id === 'encounter' ? ' sv-sidebar-tab--dm' : ''}` : ''}`}
@@ -480,6 +503,34 @@ export default function SessionView({ token, user, session, campaign, party, ini
 
       {/* ── Right panel ── */}
       <div className="sv-main">
+        <div className="sv-mobile-head">
+          <button className="sv-back-btn" onClick={handleBack}>← Campaign</button>
+          <div className="sv-mobile-title">
+            <span>{session.name}</span>
+            <small>{formatClock(clockSeconds)}{clockRunning ? '' : ' paused'}</small>
+          </div>
+          <button
+            className={`sv-mobile-clock-btn${clockRunning ? '' : ' sv-mobile-clock-btn--paused'}`}
+            onClick={() => setClockRunning(r => !r)}
+          >
+            {clockRunning ? 'Pause' : 'Resume'}
+          </button>
+        </div>
+
+        <div className="sv-mobile-tabs">
+          {SESSION_TABS.map(t => (
+            <button
+              key={t.id}
+              className={`sv-mobile-tab${tab === t.id ? ' sv-mobile-tab--active' : ''}`}
+              type="button"
+              onClick={() => setTab(t.id)}
+            >
+              <span>{t.label}</span>
+              {t.title}
+            </button>
+          ))}
+        </div>
+
         {saving && <div className="sv-saving-bar">Saving…</div>}
 
         {/* ── PARTY TAB ── */}

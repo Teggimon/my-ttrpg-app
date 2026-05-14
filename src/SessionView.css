@@ -178,6 +178,54 @@
   position: relative;
 }
 
+.sv-mobile-head,
+.sv-mobile-tabs {
+  display: none;
+}
+
+.sv-mobile-title {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.sv-mobile-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sv-mobile-title small {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sv-mobile-clock-btn {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.sv-mobile-clock-btn--paused {
+  background: var(--success-subtle);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
 .sv-saving-bar {
   position: absolute;
   top: var(--spacing-sm);
@@ -497,6 +545,7 @@
   line-height: 1.6;
   padding: 10px 14px;
   min-height: 80px;
+  overflow: hidden;
 }
 .sv-note-textarea::placeholder { color: var(--text-muted); }
 
@@ -552,4 +601,52 @@
 @media (max-width: 600px) {
   .sv-sidebar { display: none; }
   .sv-layout { flex-direction: column !important; }
+  .sv-mobile-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+  .sv-mobile-head .sv-back-btn {
+    margin-bottom: 0;
+    min-height: 44px;
+    padding: 0 8px;
+  }
+  .sv-mobile-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+  .sv-mobile-tab {
+    min-height: 44px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-inset);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .sv-mobile-tab span {
+    display: block;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 800;
+  }
+  .sv-mobile-tab--active {
+    border-color: var(--dm-border);
+    background: var(--dm-subtle);
+    color: var(--dm);
+  }
+  .sv-mobile-tab--active span {
+    color: var(--dm);
+  }
 }

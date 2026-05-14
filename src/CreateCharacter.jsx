@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment } from './srdContent'
-import { SUBCLASSES, SUBCLASS_LEVELS, getSlotsForClass, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
+import { FEATS, SUBCLASSES, SUBCLASS_LEVELS, getSlotsForClass, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
 import { getSpells } from './srdContent'
 import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
 import { inventoryItemFromCatalogItem, normalizeInventoryItem } from './itemRules'
@@ -38,6 +38,15 @@ function effectiveRaceAbilityBonuses(raceData, subraceData) {
 function effectiveRaceAbilityChoice(raceData, subraceData) {
   return subraceData?.abilityOverridesRace ? null : raceData?.ability_bonus_options
 }
+function effectiveAbilityChoices(raceData, subraceData) {
+  return [
+    effectiveRaceAbilityChoice(raceData, subraceData),
+    subraceData?.ability_bonus_options,
+  ].filter(Boolean)
+}
+function isVariantHuman(raceData, subraceData) {
+  return raceData?.index === 'human' && /^variant$/i.test(subraceData?.name ?? '') && subraceData?.source === 'PHB'
+}
 
 // ─── Character builder ────────────────────────────────────────────────────────
 
@@ -51,6 +60,7 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
     backgroundEquipment = [],
     backgroundFeature = null,
     racialOptionChoices = {},
+    racialFeat = null,
   } = choices
 
   // 1. Base ability scores from creation step (default 10 if not provided)
@@ -259,6 +269,7 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
       conditions: [],
     },
     inventory,
+    feats: racialFeat ? [{ name: racialFeat.name, desc: racialFeat.desc, source: racialFeat.source ?? null, origin: 'Variant Human' }] : [],
     racialTraits,
     spells: {
       spellcastingAbility: SPELLCASTING_ABILITY[classData?.index] ?? null,
@@ -684,17 +695,22 @@ function StepRace({ races, selected, onSelect, onNext, onBack }) {
 
 // ─── Step 3: Subrace ──────────────────────────────────────────────────────────
 
-function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonusOptions, onNext, onBack }) {
+function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonusOptions, selectedFeat, onFeatChange, onNext, onBack }) {
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
   // Filter subraces for this race
   const allAvailable = subraces.filter(s => s.race?.index === race.index)
   const available = allAvailable.filter(s => sourceFilter === ALL_SOURCES || sourceCode(s) === sourceFilter)
 
-  // Half-Elf style: ability_bonus_options on the race itself
-  const abilityChoice = effectiveRaceAbilityChoice(race, selected)
-  const hasBonusOptions = !!abilityChoice
-  const bonusCount = abilityChoice?.choose ?? 0
-  const bonusPool = abilityChoice?.from?.options ?? []
+  // Half-Elf and Variant Human style: ability_bonus_options can live on race or subrace.
+  const abilityChoices = effectiveAbilityChoices(race, selected)
+  const hasBonusOptions = abilityChoices.length > 0
+  const bonusCount = abilityChoices.reduce((sum, choice) => sum + (choice.choose ?? 0), 0)
+  const bonusPool = abilityChoices
+    .flatMap(choice => choice.from?.options ?? [])
+    .filter((option, index, options) =>
+      options.findIndex(other => other.ability_score.index === option.ability_score.index) === index
+    )
+  const grantsFeat = isVariantHuman(race, selected)
 
   const toggleBonus = (opt) => {
     const key = opt.ability_score.index
@@ -708,6 +724,7 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
 
   const canProceed = available.length === 0 || selected
   const bonusReady = !hasBonusOptions || bonusOptions.length === bonusCount
+  const featReady = !grantsFeat || !!selectedFeat
 
   return (
     <div style={S.wrap}>
@@ -727,7 +744,10 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
               <div style={S.cardSub}>
                 {s.isBaseRaceOption
                   ? `Use the original ${s.source ?? race.source} ${race.name} without a later subrace.`
-                  : s.ability_bonuses?.map(b => `+${b.bonus} ${b.ability_score.name}`).join(' · ')}
+                  : [
+                    ...(s.ability_bonuses?.map(b => `+${b.bonus} ${b.ability_score.name}`) ?? []),
+                    s.ability_bonus_options ? `choose ${s.ability_bonus_options.choose} ability bonus${s.ability_bonus_options.choose > 1 ? 'es' : ''}` : null,
+                  ].filter(Boolean).join(' · ')}
                 {s.abilityOverridesRace && ' · replaces base race ability bonuses'}
               </div>
             </div>
@@ -752,9 +772,28 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
         </>
       )}
 
+      {grantsFeat && (
+        <>
+          <label style={S.label}>Choose a Level 1 Feat</label>
+          <div style={S.cardSub}>Variant Human grants one feat at character creation.</div>
+          {FEATS.map(feat => {
+            const selectedFeatName = selectedFeat?.name === feat.name
+            return (
+              <div key={feat.name} style={S.card(selectedFeatName)} onClick={() => onFeatChange(feat)}>
+                <div style={S.cardTop}>
+                  <div style={S.cardName}>{feat.name}</div>
+                  {feat.prereq && <span style={S.sourceBadge}>{feat.prereq}</span>}
+                </div>
+                <div style={S.cardSub}>{feat.desc}</div>
+              </div>
+            )
+          })}
+        </>
+      )}
+
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
-        <button style={S.btn(true)} onClick={onNext} disabled={!canProceed || !bonusReady}>Next: Class →</button>
+        <button style={S.btn(true)} onClick={onNext} disabled={!canProceed || !bonusReady || !featReady}>Next: Class →</button>
       </div>
     </div>
   )
@@ -1654,6 +1693,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
   const [subraceData, setSubraceData] = useState(null)
   const [raceBonusOptions, setRaceBonusOptions] = useState([])
   const [racialOptionChoices, setRacialOptionChoices] = useState({})
+  const [racialFeat, setRacialFeat] = useState(null)
   const [classData, setClassData] = useState(null)
   const [subclassChoice, setSubclassChoice] = useState(null)
   const [classSkills, setClassSkills] = useState([])
@@ -1713,6 +1753,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
           backgroundEquipment: backgroundEquipment.filter(e => !e.index.startsWith('__')),
           backgroundFeature: backgroundData?.feature ?? null,
           racialOptionChoices,
+          racialFeat,
         },
       })
       const fileName = characterFileName(name)
@@ -1731,6 +1772,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
     setSubraceData(null)
     setRaceBonusOptions([])
     setRacialOptionChoices({})
+    setRacialFeat(null)
   }
 
   // When class changes, reset downstream
@@ -1747,6 +1789,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
   const selectSubrace = (s) => {
     setSubraceData(s)
     setRacialOptionChoices({})
+    setRacialFeat(null)
     if (s?.abilityOverridesRace) setRaceBonusOptions([])
   }
 
@@ -1784,6 +1827,8 @@ function CreateCharacter({ user, onComplete, onCancel }) {
             onSelect={selectSubrace}
             bonusOptions={raceBonusOptions}
             onBonusOptions={setRaceBonusOptions}
+            selectedFeat={racialFeat}
+            onFeatChange={setRacialFeat}
             onNext={() => goTo(hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
             onBack={() => goTo(STEP_RACE)}
           />

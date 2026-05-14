@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Octokit } from '@octokit/rest'
 import { getMonsters } from './srdContent'
 import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
 import { CHARACTERS_PATH, DATA_REPO } from './githubStorage'
+import { RULE_GROUPS, normalizeRuleSettings, patchForRuleSetting } from './ruleSettings'
 import './CampaignView.css'
 
 // ── GitHub helpers ────────────────────────────────────────────
@@ -45,6 +46,19 @@ function normalizeAction(action) {
 }
 function firstText(...values) {
   return values.find(value => String(value ?? '').trim()) ?? ''
+}
+function rollHpFormula(formula) {
+  const match = String(formula ?? '').trim().match(/^(\d*)d(\d+)([+-]\d+)?$/i)
+  if (!match) return null
+  const count = Math.max(1, parseInt(match[1] || '1', 10))
+  const die = parseInt(match[2], 10)
+  const modifier = parseInt(match[3] || '0', 10)
+  if (!die || count > 100) return null
+  let total = modifier
+  for (let i = 0; i < count; i += 1) {
+    total += Math.floor(Math.random() * die) + 1
+  }
+  return Math.max(1, total)
 }
 function npcToCombatant(npc, index = 0, hpOverride = null) {
   const label = labelForIndex(index)
@@ -1012,17 +1026,28 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
     .map(g => ({ ...g, npc: usableNpcs.find(n => n.npcId === g.npcId) }))
     .filter(g => g.npc)
 
+  const rollGroupHp = (npcId) => {
+    const group = selectedGroups.find(g => g.npcId === npcId)
+    if (!group) return
+    const hpFormula = firstText(group.hpFormula, group.npc.hitDie, group.npc.hit_dice)
+    const rolledHp = rollHpFormula(hpFormula)
+    if (rolledHp == null) return
+    updateGroup(npcId, {
+      hpMode: 'fixed',
+      hpValue: rolledHp,
+      hpFormula,
+    })
+  }
+
   const save = () => {
     const combatants = selectedGroups.flatMap(g =>
       Array.from({ length: g.quantity }, (_, index) => {
-        const hpMode = g.hpMode ?? 'fixed'
         const hpFormula = firstText(g.hpFormula, g.npc.hitDie, g.npc.hit_dice)
         const fixedHp = parseInt(g.hpValue, 10)
         const hpValue = !Number.isNaN(fixedHp) ? fixedHp : (g.npc.hp ?? 10)
-        const previewHp = hpMode === 'roll' ? null : hpValue
         return {
-          ...npcToCombatant(g.npc, index, previewHp),
-          hpMode,
+          ...npcToCombatant(g.npc, index, hpValue),
+          hpMode: 'fixed',
           hpValue,
           hpFormula,
         }
@@ -1038,7 +1063,7 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
       groups: selectedGroups.map(g => ({
         npcId: g.npcId,
         quantity: g.quantity,
-        hpMode: g.hpMode ?? 'fixed',
+        hpMode: 'fixed',
         hpValue: g.hpValue ?? g.npc.hp ?? 10,
         hpFormula: firstText(g.hpFormula, g.npc.hitDie, g.npc.hit_dice),
       })),
@@ -1092,28 +1117,32 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
                     {npcCategoryLabel(g.npc.category)}{g.npc.cr ? ` · CR ${g.npc.cr}` : ''}{g.npc.hitDie ? ` · ${g.npc.hitDie}` : ''}
                   </div>
                   <div className="enc-hp-controls">
-                    <select
-                      value={g.hpMode ?? 'fixed'}
-                      onChange={e => updateGroup(g.npcId, { hpMode: e.target.value })}
-                    >
-                      <option value="fixed">Fixed HP</option>
-                      <option value="roll">Roll HP</option>
-                    </select>
-                    {(g.hpMode ?? 'fixed') === 'roll' ? (
+                    <label className="enc-hp-field enc-hp-field--hp">
+                      Fixed HP
+                      <input
+                        type="number"
+                        min="1"
+                        value={g.hpValue ?? g.npc.hp ?? 10}
+                        onChange={e => updateGroup(g.npcId, { hpValue: e.target.value, hpMode: 'fixed' })}
+                        placeholder="HP"
+                      />
+                    </label>
+                    <label className="enc-hp-field enc-hp-field--formula">
+                      Hit Dice
                       <input
                         value={firstText(g.hpFormula, g.npc.hitDie, g.npc.hit_dice)}
                         onChange={e => updateGroup(g.npcId, { hpFormula: e.target.value })}
                         placeholder="2d6+2"
                       />
-                    ) : (
-                      <input
-                        type="number"
-                        min="1"
-                        value={g.hpValue ?? g.npc.hp ?? 10}
-                        onChange={e => updateGroup(g.npcId, { hpValue: e.target.value })}
-                        placeholder="HP"
-                      />
-                    )}
+                    </label>
+                    <button
+                      className="enc-roll-hp-btn"
+                      type="button"
+                      onClick={() => rollGroupHp(g.npcId)}
+                      disabled={!firstText(g.hpFormula, g.npc.hitDie, g.npc.hit_dice)}
+                    >
+                      Roll HP
+                    </button>
                   </div>
                 </div>
                 <div className="enc-qty-stepper">
@@ -1159,6 +1188,13 @@ function BuildEncounterModal({ npcs, encounter, onSave, onClose }) {
 // ── Note Section ──────────────────────────────────────────────
 function NoteSection({ section, onChange, onDelete, locked }) {
   const [collapsed, setCollapsed] = useState(false)
+  const taRef = useRef(null)
+
+  useEffect(() => {
+    if (!taRef.current || collapsed) return
+    taRef.current.style.height = 'auto'
+    taRef.current.style.height = `${Math.max(120, taRef.current.scrollHeight)}px`
+  }, [section.content, collapsed])
 
   return (
     <div className={`note-section${collapsed ? ' note-section--collapsed' : ''}`}>
@@ -1173,6 +1209,7 @@ function NoteSection({ section, onChange, onDelete, locked }) {
       </div>
       {!collapsed && (
         <textarea
+          ref={taRef}
           className="note-textarea"
           value={section.content}
           onChange={e => onChange(section.id, e.target.value)}
@@ -1180,6 +1217,121 @@ function NoteSection({ section, onChange, onDelete, locked }) {
           rows={4}
         />
       )}
+    </div>
+  )
+}
+
+function SessionNotesHistory({ sessions }) {
+  const sessionsWithNotes = [...sessions]
+    .sort((a, b) => (b.number ?? 0) - (a.number ?? 0))
+    .map(session => ({
+      session,
+      sections: (session.notes?.sections ?? []).filter(section => String(section.content ?? '').trim()),
+    }))
+    .filter(item => item.sections.length > 0)
+
+  if (sessionsWithNotes.length === 0) {
+    return (
+      <div className="cv-empty">
+        <div className="cv-empty-icon">NT</div>
+        <div className="cv-empty-title">No session notes yet</div>
+        <div className="cv-empty-sub">Notes saved in Session view will appear here automatically.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="session-notes-history">
+      {sessionsWithNotes.map(({ session, sections }) => (
+        <section key={session.sessionId} className="session-note-card">
+          <div className="session-note-head">
+            <div>
+              <div className="session-note-title">{session.name || `Session ${session.number ?? ''}`}</div>
+              <div className="session-note-meta">
+                {session.date ? new Date(session.date).toLocaleDateString() : 'Undated'}
+                {session.duration ? ` · ${formatElapsed(session.duration)}` : ''}
+              </div>
+            </div>
+            <span className="session-note-number">#{session.number ?? '—'}</span>
+          </div>
+          <div className="session-note-sections">
+            {sections.map(section => (
+              <div key={section.id} className="session-note-section">
+                <div className="session-note-label">{section.title}</div>
+                <div className="session-note-content">
+                  {section.content.split('\n').map((line, index) => (
+                    <p key={index}>{line || <br />}</p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function CampaignOptions({ options, onChange }) {
+  const rules = normalizeRuleSettings(options?.settings)
+
+  return (
+    <div className="campaign-options">
+      <div className="campaign-options-head">
+        <div>
+          <div className="campaign-options-kicker">Campaign Rules</div>
+          <div className="campaign-options-title">DM Options</div>
+        </div>
+        <div className="campaign-options-note">
+          These are saved to the campaign so players can import the table rules into their character options.
+        </div>
+      </div>
+
+      {RULE_GROUPS.map(group => (
+        <section key={group.title} className="campaign-rule-group">
+          <div className="campaign-rule-group-title">{group.title}</div>
+          <div className="campaign-rule-stack">
+            {group.rules.map(rule => rule.type === 'number' ? (
+              <div key={rule.key} className="campaign-rule campaign-rule--number">
+                <div className="campaign-rule-head">
+                  <div className="campaign-rule-label">{rule.label}</div>
+                  {rule.note && <div className="campaign-rule-note">{rule.note}</div>}
+                </div>
+                <input
+                  className="campaign-rule-number"
+                  type="number"
+                  min={rule.min}
+                  value={rules[rule.key]}
+                  onChange={event => {
+                    const value = Math.max(rule.min ?? 0, Math.floor(Number(event.target.value) || rule.min || 0))
+                    onChange(patchForRuleSetting(rule.key, value))
+                  }}
+                />
+              </div>
+            ) : (
+              <div key={rule.key} className="campaign-rule">
+                <div className="campaign-rule-head">
+                  <div className="campaign-rule-label">{rule.label}</div>
+                  {rule.note && <div className="campaign-rule-note">{rule.note}</div>}
+                </div>
+                <div className="campaign-rule-choice-row">
+                  {rule.options.map(option => (
+                    <button
+                      key={option.value}
+                      className={`campaign-rule-choice${rules[rule.key] === option.value ? ' campaign-rule-choice--active' : ''}`}
+                      type="button"
+                      onClick={() => onChange(patchForRuleSetting(rule.key, option.value))}
+                    >
+                      <span>{option.label}</span>
+                      {option.sub && <small>{option.sub}</small>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   )
 }
@@ -1221,6 +1373,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
   const [npcs, setNpcs]           = useState([])
   const [encounterBuilds, setEncounterBuilds] = useState([])
   const [notes, setNotes]         = useState(null)
+  const [options, setOptions]     = useState(null)
   const [loading, setLoading]     = useState(true)
   const [saving, setSaving]       = useState(false)
   const [nowMs, setNowMs]         = useState(() => Date.now())
@@ -1257,12 +1410,13 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
 
   const loadAll = async () => {
     setLoading(true)
-    const [s, p, n, e, no] = await Promise.all([
+    const [s, p, n, e, no, o] = await Promise.all([
       loadFile('sessions.json'),
       loadFile('party.json'),
       loadFile('npcs.json'),
       loadFile('encounters.json'),
       loadFile('notes.json'),
+      loadFile('options.json'),
     ])
     setSessions(s.data?.sessions ?? [])
     setParty(p.data?.players ?? [])
@@ -1275,6 +1429,7 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
         { id: 'dm',     title: 'DM Notes (Private)',  content: '', locked: true, private: true },
       ]
     })
+    setOptions(o.data ?? { settings: normalizeRuleSettings() })
     setLoading(false)
   }
 
@@ -1412,6 +1567,19 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
     saveFile('notes.json', updated)
   }
 
+  const updateCampaignOptions = (patch) => {
+    const updated = {
+      ...(options ?? {}),
+      settings: normalizeRuleSettings({
+        ...(options?.settings ?? {}),
+        ...patch,
+      }),
+      updatedAt: new Date().toISOString(),
+    }
+    setOptions(updated)
+    saveFile('options.json', updated)
+  }
+
   // ── Stats for sidebar ──
   const activePlayerCount = party.reduce((sum, p) =>
     sum + (p.characters?.filter(c => c.active).length ?? 0), 0
@@ -1486,6 +1654,11 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
 
       {/* ── Main panel ── */}
       <div className="cv-main">
+        <div className="cv-mobile-head">
+          <button className="cv-back-btn" onClick={onBack}>← Campaigns</button>
+          <div className="cv-mobile-title">{campaign.name}</div>
+        </div>
+
         {/* Tab bar */}
         <div className="cv-tab-bar">
           {[
@@ -1493,7 +1666,9 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
             { id: 'party',    label: 'Party' },
             { id: 'npcs',     label: 'NPCs' },
             { id: 'encounters', label: 'Encounters' },
+            { id: 'session-notes', label: 'Session Notes' },
             { id: 'notes',    label: 'Notes' },
+            { id: 'options',  label: 'Options' },
           ].map(t => (
             <button
               key={t.id}
@@ -1630,6 +1805,13 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                 </div>
               )}
 
+              {/* ── SESSION NOTES HISTORY TAB ── */}
+              {tab === 'session-notes' && (
+                <div className="cv-section">
+                  <SessionNotesHistory sessions={sessions} />
+                </div>
+              )}
+
               {/* ── NOTES TAB ── */}
               {tab === 'notes' && notes && (
                 <div className="cv-section">
@@ -1643,6 +1825,13 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
                     />
                   ))}
                   <button className="add-player-btn" onClick={addNoteSection}>+ Add Section</button>
+                </div>
+              )}
+
+              {/* ── OPTIONS TAB ── */}
+              {tab === 'options' && options && (
+                <div className="cv-section">
+                  <CampaignOptions options={options} onChange={updateCampaignOptions} />
                 </div>
               )}
             </>

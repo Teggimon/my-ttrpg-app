@@ -284,7 +284,7 @@ function normalizeRace(race) {
 function normalizeSubrace(subrace) {
   const raceName = subrace.raceName ?? subrace._baseName
   if (!raceName) return null
-  const { bonuses } = normalizeAbilityBonuses(subrace.ability)
+  const { bonuses, choice } = normalizeAbilityBonuses(subrace.ability)
   const isBaseRaceOption = !subrace.name
   const racialOptions = [draconicAncestryOptions(subrace.entries)].filter(Boolean)
   return {
@@ -294,6 +294,7 @@ function normalizeSubrace(subrace) {
     race: ref(raceName),
     isBaseRaceOption,
     ability_bonuses: bonuses,
+    ...(choice && { ability_bonus_options: choice }),
     racial_traits: normalizeEntriesToTraits(subrace.entries),
     racial_options: racialOptions,
   }

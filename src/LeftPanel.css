@@ -549,12 +549,46 @@
 .lp-tab-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Portrait strip overrides ────────────────────────────────── */
-.left-panel--portrait .lp-char-info { border-bottom: none; }
+.left-panel--portrait .lp-char-info {
+  border-bottom: none;
+  padding: 10px 12px 8px;
+}
+
+.left-panel--portrait .lp-char-info-row {
+  align-items: center;
+}
+
+.left-panel--portrait .lp-name-block {
+  align-items: center;
+  gap: 8px;
+}
+
 .left-panel--portrait .lp-portrait {
-  width: 46px;
+  width: 44px;
   margin: 0;
   border-radius: var(--radius-sm);
 }
+
+.left-panel--portrait .lp-char-name {
+  font-size: 18px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.left-panel--portrait .lp-char-meta {
+  font-size: 11px;
+  max-width: 48vw;
+}
+
+.left-panel--portrait .lp-char-actions {
+  align-items: center;
+  padding-top: 0;
+}
+
+.left-panel--portrait .lp-back {
+  margin-top: 0;
+}
+
 .left-panel--portrait .lp-hp-wrap   { display: none; }
 .left-panel--portrait .lp-stat-tiles { padding: 8px 14px; }
 .left-panel--portrait .lp-stat-tiles { grid-template-columns: repeat(3, auto); justify-content: flex-start; }
