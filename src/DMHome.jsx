@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Octokit } from '@octokit/rest'
 import AccountMenu from './AccountMenu'
 import { APP_META_PATH, CAMPAIGNS_PATH, DATA_REPO, repoDescription } from './githubStorage'
+import { RULES_EDITION_OPTIONS, normalizeAvailableRulesEdition, normalizeRuleSettings, normalizeRulesEdition, rulesSystemForEdition } from './ruleSettings'
 import './DMHome.css'
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -21,6 +22,10 @@ function decodeContent(b64) {
   return JSON.parse(atob(b64.replace(/\s/g, '')))
 }
 
+function rulesEditionLabel(value) {
+  return RULES_EDITION_OPTIONS.find(option => option.value === normalizeRulesEdition(value))?.label ?? 'D&D 5e (2014)'
+}
+
 // ── Campaign Card ─────────────────────────────────────────────
 function CampaignCard({ campaign, onClick, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -36,6 +41,7 @@ function CampaignCard({ campaign, onClick, onDelete }) {
   const sessionCount = campaign.sessions?.length ?? 0
   const playerCount  = campaign.players?.length ?? 0
   const nextSession  = sessionCount + 1
+  const rulesEdition = campaign.settings?.rulesEdition ?? campaign.rulesEdition
 
   const allLevels = (campaign.players ?? []).flatMap(p =>
     (p.characters ?? []).filter(c => c.active).map(c => c.level ?? 1)
@@ -89,8 +95,8 @@ function CampaignCard({ campaign, onClick, onDelete }) {
           {isLive
             ? `Session ${sessionCount} · In progress`
             : sessionCount === 0
-              ? 'Planning · Not started'
-              : `${sessionCount} session${sessionCount !== 1 ? 's' : ''} complete`
+              ? `Planning · ${rulesEditionLabel(rulesEdition)}`
+              : `${sessionCount} session${sessionCount !== 1 ? 's' : ''} complete · ${rulesEditionLabel(rulesEdition)}`
           }
         </div>
 
@@ -131,6 +137,7 @@ function NewCampaignCard({ onClick }) {
 // ── Create Campaign Modal ─────────────────────────────────────
 function CreateCampaignModal({ onClose, onCreate }) {
   const [name, setName]       = useState('')
+  const [rulesEdition, setRulesEdition] = useState('2014')
   const [image]               = useState('/uploads/placeholders/default-portrait.jpg')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState(null)
@@ -140,7 +147,7 @@ function CreateCampaignModal({ onClose, onCreate }) {
     setLoading(true)
     setError(null)
     try {
-      await onCreate({ name: name.trim(), image })
+      await onCreate({ name: name.trim(), image, rulesEdition: normalizeAvailableRulesEdition(rulesEdition) })
       onClose()
     } catch {
       setError('Failed to create campaign. Please try again.')
@@ -154,6 +161,27 @@ function CreateCampaignModal({ onClose, onCreate }) {
         <div className="dm-modal-handle" />
         <div className="dm-modal-title">New Campaign</div>
 
+        <div className="dm-field-label dm-field-label--first">Rules edition</div>
+        <div className="rules-edition-grid" role="radiogroup" aria-label="Rules edition">
+          {RULES_EDITION_OPTIONS.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              className={`rules-edition-choice${rulesEdition === option.value ? ' rules-edition-choice--active' : ''}${option.available === false ? ' rules-edition-choice--disabled' : ''}`}
+              onClick={() => option.available !== false && setRulesEdition(option.value)}
+              role="radio"
+              aria-checked={rulesEdition === option.value}
+              disabled={option.available === false}
+              autoFocus={option.value === '2014'}
+            >
+              <span className="rules-edition-title">{option.label}</span>
+              <span className="rules-edition-sub">
+                {option.sub}{option.available === false ? ` · ${option.unavailableLabel ?? 'Unavailable'}` : ''}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <img src={image} alt="" className="campaign-image-preview" />
 
         <label className="dm-field-label">Campaign name</label>
@@ -163,7 +191,6 @@ function CreateCampaignModal({ onClose, onCreate }) {
           value={name}
           onChange={e => setName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && submit()}
-          autoFocus
         />
 
         {error && <p className="dm-error">{error}</p>}
@@ -308,13 +335,17 @@ export default function DMHome({ token, user, onBack, onOpenCampaign, onLogout }
   }
 
   // ── Create a campaign ──
-  const createCampaign = async ({ name, image }) => {
+  const createCampaign = async ({ name, image, rulesEdition }) => {
+    const normalizedRulesEdition = normalizeAvailableRulesEdition(rulesEdition)
     const slug = slugify(name) + '-' + Math.random().toString(36).slice(2, 6)
     const campaign = {
       campaignId: generateId(),
       slug,
       name,
       image,
+      system: rulesSystemForEdition(normalizedRulesEdition),
+      rulesEdition: normalizedRulesEdition,
+      settings: normalizeRuleSettings({ rulesEdition: normalizedRulesEdition }),
       createdAt: new Date().toISOString(),
       status: 'planning',
       players: [],

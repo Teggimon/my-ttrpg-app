@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getClasses, getRaces, getBackgrounds } from '../srdContent'
 import { xpToLevel } from '../LevelUpModal'
+import { normalizeRulesEdition } from '../ruleSettings'
 import '../TabShared.css'
 import './BackgroundTab.css'
 
@@ -70,6 +71,47 @@ function FreeformCard({ label, value, isOwner, locked, onChange, tall }) {
       }
     </div>
   )
+}
+
+function formatFeatureOption(option) {
+  const parts = [option.name]
+  if (option.damageType) parts.push(`${option.damageType} damage`)
+  return parts.filter(Boolean).join(' - ')
+}
+
+function classLabel(index) {
+  return String(index ?? '')
+    .split('-')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function featureChoiceSummary(choice) {
+  const optionText = (choice.options ?? []).map(formatFeatureOption).filter(Boolean)
+  const spellText = (choice.spells ?? []).map(spell => {
+    const levelText = spell.level === 0 ? 'cantrip' : `level ${spell.level}`
+    return `${spell.name}${spell.level != null ? ` (${levelText})` : ''}`
+  })
+
+  return [
+    optionText.length ? `Chosen: ${optionText.join(', ')}` : null,
+    spellText.length ? `Spells: ${spellText.join(', ')}` : null,
+  ].filter(Boolean)
+}
+
+function featChoiceSummary(choice) {
+  return [
+    choice.ability ? `Ability: ${String(choice.ability).toUpperCase()}` : null,
+    choice.damageType ? `Damage type: ${choice.damageType}` : null,
+    choice.spellClass ? `Spell class: ${classLabel(choice.spellClass)}` : null,
+    choice.skills?.length ? `Skills: ${choice.skills.map(skill => skill.label ?? skill.name ?? skill.key).join(', ')}` : null,
+    choice.tools?.length ? `Tools: ${choice.tools.map(tool => tool.name).join(', ')}` : null,
+    choice.weapons?.length ? `Weapons: ${choice.weapons.map(weapon => weapon.name).join(', ')}` : null,
+    choice.cantrips?.length ? `Cantrips: ${choice.cantrips.map(spell => spell.name).join(', ')}` : null,
+    choice.spells?.length ? `Spells: ${choice.spells.map(spell => spell.name).join(', ')}` : null,
+    choice.maneuvers?.length ? `Maneuvers: ${choice.maneuvers.map(maneuver => maneuver.name).join(', ')}` : null,
+  ].filter(Boolean)
 }
 
 function AllyCard({ ally, isOwner, locked, onUpdate, onRemove }) {
@@ -179,9 +221,13 @@ function ClassCard({ cls, isPrimary, isOwner, locked, srdClass, storedFeatures, 
                             <div className="ability-name">{f.name}</div>
                             {storedChoices
                               ?.filter(choice => choice.featureIndex === f.index)
-                              .map(choice => (
-                                <div key={choice.choiceKey ?? choice.featureIndex} className="ability-desc">
-                                  Chosen: {(choice.options ?? []).map(option => option.name).join(', ')}
+                              .map(choice => ({ choice, summary: featureChoiceSummary(choice) }))
+                              .filter(({ summary }) => summary.length > 0)
+                              .map(({ choice, summary }) => (
+                                <div key={choice.choiceKey ?? choice.featureIndex} className="ability-choice">
+                                  {summary.map(line => (
+                                    <div key={line}>{line}</div>
+                                  ))}
                                 </div>
                               ))
                             }
@@ -401,9 +447,10 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
   const subrace     = char.identity.subrace ?? ''
   const totalLevel  = xpToLevel(char.identity?.xp ?? 0)
   const assignedLvl = classes.reduce((s, c) => s + (c.level ?? 0), 0)
+  const rulesEdition = normalizeRulesEdition(char.settings?.rulesEdition ?? char.meta?.rulesEdition)
 
   useEffect(() => {
-    getClasses().then(all => {
+    getClasses(rulesEdition).then(all => {
       const map = {}
       for (const c of all) {
         if (c.features_by_level) map[c.index] = c
@@ -413,7 +460,7 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
     }).catch(() => {})
 
     if (char.identity.race) {
-      getRaces().then(all => {
+      getRaces(rulesEdition).then(all => {
         const r = all.find(r => r.name?.toLowerCase() === char.identity.race?.toLowerCase()
           || r.index === char.identity.race?.toLowerCase().replace(/\s+/g,'-'))
         setSrdRace(r ?? null)
@@ -421,13 +468,13 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
     }
 
     if (char.identity.background) {
-      getBackgrounds().then(all => {
+      getBackgrounds(rulesEdition).then(all => {
         const b = all.find(b => b.name?.toLowerCase() === char.identity.background?.toLowerCase()
           || b.index === char.identity.background?.toLowerCase().replace(/\s+/g,'-'))
         setSrdBackground(b ?? null)
       }).catch(() => {})
     }
-  }, [char.identity.race, char.identity.background])
+  }, [char.identity.race, char.identity.background, rulesEdition])
 
   function patchIdentity(patch) {
     updateChar({ identity: { ...char.identity, ...patch } })
@@ -449,6 +496,8 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
   const classSummary = classes.map(c => `${c.name} ${c.level}`).join(' / ')
   const storedClassFeatures = char.customContent?.classFeatures ?? []
   const storedClassFeatureChoices = char.customContent?.classFeatureChoices ?? []
+  const storedFeatChoices = char.customContent?.featChoices ?? []
+  const feats = char.feats ?? []
   const backgroundFeature = char.customContent?.backgroundFeature ?? char.identity?.backgroundFeature ?? srdBackground?.feature ?? null
 
   return (
@@ -553,6 +602,35 @@ export default function BackgroundTab({ char, locked, isOwner, updateChar }) {
             ))}
           </div>
         </section>
+
+        {feats.length > 0 && (
+          <section>
+            <div className="sec-head">Feats</div>
+            <div className="feat-grid">
+              {feats.map(feat => {
+                const choice = storedFeatChoices.find(item => item.featName === feat.name) ?? feat.choices ?? null
+                const summary = choice ? featChoiceSummary(choice) : []
+                return (
+                  <div key={`${feat.name}-${feat.origin ?? ''}`} className="feat-card">
+                    <div className="feat-card-row">
+                      <div>
+                        <div className="feat-name">{feat.name}</div>
+                        {feat.origin && <div className="feat-origin">{feat.origin}</div>}
+                      </div>
+                      {feat.source && <span className="feat-source">{feat.source}</span>}
+                    </div>
+                    {summary.length > 0 && (
+                      <div className="feat-choice-list">
+                        {summary.map(line => <div key={line}>{line}</div>)}
+                      </div>
+                    )}
+                    {feat.desc && <div className="feat-desc">{feat.desc}</div>}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ── Background ── */}
         <section>

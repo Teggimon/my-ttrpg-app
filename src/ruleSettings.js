@@ -1,4 +1,5 @@
 export const DEFAULT_RULE_SETTINGS = {
+  rulesEdition: '2014',
   encumbranceMode: 'disabled',
   attunementLimit: 3,
   spellComponents: 'all',
@@ -13,7 +14,54 @@ export const DEFAULT_RULE_SETTINGS = {
   multiclassing: 'enabled',
 }
 
+export const RULES_EDITION_OPTIONS = [
+  {
+    value: '2014',
+    label: 'D&D 5e (2014)',
+    sub: "Player's Handbook 2014 rules",
+    system: 'dnd5e-2014',
+    available: true,
+  },
+  {
+    value: '2024',
+    label: 'D&D 5.5e (2024)',
+    sub: "Player's Handbook 2024 rules",
+    system: 'dnd5e-2024',
+    available: false,
+    unavailableLabel: 'Coming later',
+  },
+]
+
+export function normalizeRulesEdition(value) {
+  return RULES_EDITION_OPTIONS.some(option => option.value === value) ? value : DEFAULT_RULE_SETTINGS.rulesEdition
+}
+
+export function isRulesEditionAvailable(value) {
+  return RULES_EDITION_OPTIONS.find(option => option.value === normalizeRulesEdition(value))?.available !== false
+}
+
+export function normalizeAvailableRulesEdition(value) {
+  const normalized = normalizeRulesEdition(value)
+  return isRulesEditionAvailable(normalized) ? normalized : DEFAULT_RULE_SETTINGS.rulesEdition
+}
+
+export function rulesSystemForEdition(value) {
+  return RULES_EDITION_OPTIONS.find(option => option.value === normalizeRulesEdition(value))?.system ?? 'dnd5e'
+}
+
 export const RULE_GROUPS = [
+  {
+    title: 'Rules System',
+    rules: [
+      {
+        type: 'choice',
+        key: 'rulesEdition',
+        label: 'Rules edition',
+        note: 'Used by character creation and rules-specific feature handling.',
+        options: RULES_EDITION_OPTIONS.map(({ value, label, sub }) => ({ value, label, sub })),
+      },
+    ],
+  },
   {
     title: 'Encumbrance & Equipment',
     rules: [
@@ -156,9 +204,11 @@ export const RULE_GROUPS = [
 export function normalizeRuleSettings(settings = {}) {
   const levellingSystem = settings.levellingSystem ?? (settings.milestoneMode ? 'milestone' : 'xp')
   const encumbranceMode = settings.encumbranceMode ?? (settings.encumbranceTracking ? 'variant' : 'disabled')
+  const rulesEdition = normalizeRulesEdition(settings.rulesEdition ?? settings.edition)
   return {
     ...DEFAULT_RULE_SETTINGS,
     ...settings,
+    rulesEdition,
     levellingSystem,
     encumbranceMode,
     attunementLimit: settings.attunementLimit ?? DEFAULT_RULE_SETTINGS.attunementLimit,

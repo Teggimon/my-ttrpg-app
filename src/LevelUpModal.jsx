@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { getClasses, getOptionalFeatures, getSpells } from './srdContent'
+import { normalizeRulesEdition } from './ruleSettings'
 import './LevelUpModal.css'
 
 // ── D&D 5e data ───────────────────────────────────────────────
@@ -49,6 +50,73 @@ const MULTICLASS_SKILL_CHOICES = {
   ranger: { choose: 1, mode: 'proficiency', title: 'Ranger Multiclass Skill', desc: 'Choose one skill from the Ranger class skill list.' },
   rogue: { choose: 1, mode: 'proficiency', title: 'Rogue Multiclass Skill', desc: 'Choose one skill from the Rogue class skill list.' },
   artificer: { choose: 1, mode: 'proficiency', title: 'Artificer Multiclass Skill', desc: 'Choose one skill from the Artificer class skill list.' },
+}
+
+const INSTRUMENT_OPTIONS = ['Bagpipes', 'Drum', 'Dulcimer', 'Flute', 'Lute', 'Lyre', 'Horn', 'Pan flute', 'Shawm', 'Viol']
+  .map(name => ({ id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name }))
+const SKILLED_TOOL_OPTIONS = [
+  "Alchemist's supplies", "Brewer's supplies", "Calligrapher's supplies", "Carpenter's tools",
+  "Cartographer's tools", "Cobbler's tools", "Cook's utensils", 'Dice set', 'Disguise kit',
+  'Dragonchess set', 'Forgery kit', "Glassblower's tools", 'Herbalism kit', "Jeweler's tools",
+  "Leatherworker's tools", "Mason's tools", "Navigator's tools", "Painter's supplies",
+  'Playing card set', "Poisoner's kit", "Potter's tools", "Smith's tools", "Thieves' tools",
+  "Tinker's tools", 'Three-Dragon Ante set', 'Vehicles (land)', 'Vehicles (water)',
+  "Weaver's tools", "Woodcarver's tools", ...INSTRUMENT_OPTIONS.map(tool => tool.name),
+].map(name => ({ id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name }))
+
+const MULTICLASS_TOOL_CHOICES = {
+  bard: { choose: 1, title: 'Bard Multiclass Instrument', desc: 'Choose one musical instrument proficiency from multiclassing into Bard.', options: INSTRUMENT_OPTIONS },
+}
+
+const LAND_CIRCLE_SPELLS = {
+  arctic: {
+    3: ['hold person', 'spike growth'],
+    5: ['sleet storm', 'slow'],
+    7: ['freedom of movement', 'ice storm'],
+    9: ['commune with nature', 'cone of cold'],
+  },
+  coast: {
+    3: ['mirror image', 'misty step'],
+    5: ['water breathing', 'water walk'],
+    7: ['control water', 'freedom of movement'],
+    9: ['conjure elemental', 'scrying'],
+  },
+  desert: {
+    3: ['blur', 'silence'],
+    5: ['create food and water', 'protection from energy'],
+    7: ['blight', 'hallucinatory terrain'],
+    9: ['insect plague', 'wall of stone'],
+  },
+  forest: {
+    3: ['barkskin', 'spider climb'],
+    5: ['call lightning', 'plant growth'],
+    7: ['divination', 'freedom of movement'],
+    9: ['commune with nature', 'tree stride'],
+  },
+  grassland: {
+    3: ['invisibility', 'pass without trace'],
+    5: ['daylight', 'haste'],
+    7: ['divination', 'freedom of movement'],
+    9: ['dream', 'insect plague'],
+  },
+  mountain: {
+    3: ['spider climb', 'spike growth'],
+    5: ['lightning bolt', 'meld into stone'],
+    7: ['stone shape', 'stoneskin'],
+    9: ['passwall', 'wall of stone'],
+  },
+  swamp: {
+    3: ['darkness', "Melf's acid arrow"],
+    5: ['water walk', 'stinking cloud'],
+    7: ['freedom of movement', 'locate creature'],
+    9: ['insect plague', 'scrying'],
+  },
+  underdark: {
+    3: ['spider climb', 'web'],
+    5: ['gaseous form', 'stinking cloud'],
+    7: ['greater invisibility', 'stone shape'],
+    9: ['cloudkill', 'insect plague'],
+  },
 }
 
 // ASI levels per class
@@ -143,11 +211,20 @@ const ABILITY_LABEL_BY_KEY = { str:'STR', dex:'DEX', con:'CON', int:'INT', wis:'
 const DAMAGE_TYPES = ['Acid', 'Cold', 'Fire', 'Lightning', 'Thunder']
 const MAGIC_INITIATE_CLASSES = ['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard']
 const RITUAL_CASTER_CLASSES = ['bard', 'cleric', 'druid', 'sorcerer', 'warlock', 'wizard']
-const WEAPON_MASTER_OPTIONS = [
-  'Battleaxe', 'Blowgun', 'Flail', 'Glaive', 'Greataxe', 'Greatsword',
-  'Halberd', 'Hand Crossbow', 'Heavy Crossbow', 'Lance', 'Longbow',
-  'Longsword', 'Maul', 'Morningstar', 'Net', 'Pike', 'Rapier',
+const SIMPLE_WEAPON_MASTER_OPTIONS = [
+  'Club', 'Dagger', 'Greatclub', 'Handaxe', 'Javelin', 'Light Hammer',
+  'Mace', 'Quarterstaff', 'Sickle', 'Spear', 'Light Crossbow', 'Dart',
+  'Shortbow', 'Sling',
+]
+const MARTIAL_WEAPON_MASTER_OPTIONS = [
+  'Battleaxe', 'Flail', 'Glaive', 'Greataxe', 'Greatsword', 'Halberd',
+  'Lance', 'Longsword', 'Maul', 'Morningstar', 'Pike', 'Rapier',
   'Scimitar', 'Shortsword', 'Trident', 'War Pick', 'Warhammer', 'Whip',
+  'Blowgun', 'Hand Crossbow', 'Heavy Crossbow', 'Longbow', 'Net',
+]
+const WEAPON_MASTER_OPTIONS = [
+  ...SIMPLE_WEAPON_MASTER_OPTIONS,
+  ...MARTIAL_WEAPON_MASTER_OPTIONS,
 ]
 
 const FEAT_RULES = {
@@ -155,7 +232,7 @@ const FEAT_RULES = {
   Athlete: { abilityOptions: ['str', 'dex'], abilityIncrease: 1 },
   Actor: { abilityOptions: ['cha'], abilityIncrease: 1 },
   Durable: { abilityOptions: ['con'], abilityIncrease: 1 },
-  'Heavily Armoured': { abilityOptions: ['str'], abilityIncrease: 1 },
+  'Heavily Armoured': { abilityOptions: ['str'], abilityIncrease: 1, proficiencies: { Armour: ['Heavy armor proficiency'] } },
   'Heavy Armour Master': { abilityOptions: ['str'], abilityIncrease: 1 },
   'Keen Mind': { abilityOptions: ['int'], abilityIncrease: 1 },
   'Lightly Armoured': { abilityOptions: ['str', 'dex'], abilityIncrease: 1, proficiencies: { Armour: ['Light armor proficiency'] } },
@@ -167,9 +244,9 @@ const FEAT_RULES = {
   'Magic Initiate': { spellClassChoice: true, cantripsKnown: 2, spellsKnown: 1 },
   'Martial Adept': { maneuverChoices: 2 },
   'Ritual Caster': { ritualClassChoice: true, ritualSpellsKnown: 2 },
-  Skilled: { skillProficiencies: 3 },
+  Skilled: { skillOrToolProficiencies: 3 },
   'Spell Sniper': { cantripFromAnyClass: 1 },
-  'Tavern Brawler': { abilityOptions: ['str', 'con'], abilityIncrease: 1 },
+  'Tavern Brawler': { abilityOptions: ['str', 'con'], abilityIncrease: 1, proficiencies: { Weapons: ['Improvised weapon proficiency'] } },
   Tough: { hpPerLevel: 2 },
   'Weapon Master': { abilityOptions: ['str', 'dex'], abilityIncrease: 1, weaponProficiencies: 4 },
 }
@@ -242,13 +319,32 @@ function meetsFeatPrereq(feat, char) {
   return true
 }
 
-function featRule(feat) {
+export function featRule(feat) {
   return FEAT_RULES[feat?.name] ?? {}
 }
 
 function classLabel(index) {
   return String(index ?? '')
     .split('-')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function spellIndexFromName(name) {
+  return String(name ?? '')
+    .replace(/\|.*$/, '')
+    .replace(/#.*$/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function spellNameFromIndex(index) {
+  return String(index ?? '')
+    .split('-')
+    .filter(Boolean)
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ')
 }
@@ -330,6 +426,7 @@ const SUBCLASS_SPELLCASTING = {
     spellsKnown: { 3: 3, 4: 4, 7: 5, 8: 6, 10: 7, 11: 8, 13: 9, 14: 10, 16: 11, 19: 12, 20: 13 },
     spellLevels: [1],
     preferredSchools: ['Abjuration', 'Evocation'],
+    allowReplacement: true,
   },
   'rogue:arcane trickster': {
     key: 'arcaneTrickster',
@@ -339,6 +436,7 @@ const SUBCLASS_SPELLCASTING = {
     spellLevels: [1],
     preferredSchools: ['Enchantment', 'Illusion'],
     requiredCantrip: 'mage-hand',
+    allowReplacement: true,
   },
 }
 
@@ -541,6 +639,144 @@ function classFeaturesForLevel(srdClasses, cls, level, subclassOverride = null) 
   return [...classFeatures, ...subclassFeatures]
 }
 
+function subclassDataForClass(srdClasses, cls, subclassOverride = null) {
+  const idx = getClassIndex(cls)
+  const srdClass = srdClasses[idx]
+  const subclassName = String(subclassOverride ?? cls?.subclass ?? '').toLowerCase()
+  if (!subclassName) return null
+  return (srdClass?.subclasses ?? []).find(option =>
+    String(option.name ?? '').toLowerCase() === subclassName ||
+    String(option.fullName ?? '').toLowerCase() === subclassName
+  ) ?? null
+}
+
+function highestSpellLevelForClassAtLevel(classIndex, classLevel) {
+  const slots = getSlotsForClass(classIndex, classLevel)
+  return Math.max(0, ...Object.entries(slots)
+    .filter(([, slot]) => (slot?.total ?? 0) > 0)
+    .map(([level]) => Number(level)))
+}
+
+function landTerrainFromChoices(char, results = []) {
+  const resultOption = results.flatMap(result => result?.options ?? [])
+    .find(option => (option.featureType ?? []).includes('DRUID:LAND_TERRAIN'))
+  const storedOption = (char.customContent?.classFeatureChoices ?? []).flatMap(choice => choice.options ?? [])
+    .find(option => (option.featureType ?? []).includes('DRUID:LAND_TERRAIN'))
+  return spellIndexFromName(resultOption?.name ?? storedOption?.name)
+}
+
+function landCirclePreparedSpells(cls, subclassData, classLevel, terrain) {
+  const classIndex = getClassIndex(cls)
+  if (classIndex !== 'druid' || !/^land$/i.test(subclassData?.name ?? '') || !terrain) return []
+  return Object.entries(LAND_CIRCLE_SPELLS[terrain] ?? {})
+    .filter(([unlockLevel]) => Number(unlockLevel) <= classLevel)
+    .flatMap(([unlockLevel, spells]) => spells.map(spellName => {
+      const index = spellIndexFromName(spellName)
+      return {
+        id: index,
+        index,
+        name: spellNameFromIndex(index),
+        source: subclassData.source ?? cls?.source ?? 'PHB',
+        level: highestSpellLevelForClassAtLevel(classIndex, Number(unlockLevel)),
+        classIndex,
+        castingAbility: SPELLCASTING_ABILITY[classIndex] ?? null,
+        origin: `${subclassData.name ?? 'Land'} Circle (${classLabel(terrain)})`,
+        alwaysPrepared: true,
+      }
+    }))
+}
+
+function subclassPreparedSpellsForLevel(cls, subclassData, classLevel, terrain = null) {
+  const classIndex = getClassIndex(cls)
+  const additionalPrepared = (subclassData?.additionalSpells ?? []).flatMap(entry =>
+    Object.entries(entry?.prepared ?? {})
+      .filter(([unlockLevel]) => Number(unlockLevel) <= classLevel)
+      .flatMap(([unlockLevel, spells]) => (spells ?? []).map(spellName => {
+        const index = spellIndexFromName(spellName)
+        return {
+          id: index,
+          index,
+          name: spellNameFromIndex(index),
+          source: subclassData.source ?? cls?.source ?? 'PHB',
+          level: highestSpellLevelForClassAtLevel(classIndex, Number(unlockLevel)),
+          classIndex,
+          castingAbility: SPELLCASTING_ABILITY[classIndex] ?? null,
+          origin: `${subclassData.name ?? 'Subclass'} ${classLabel(classIndex)} Spells`,
+          alwaysPrepared: true,
+          ...(classIndex === 'cleric' && { domainSpell: true }),
+          ...(classIndex === 'paladin' && { oathSpell: true }),
+        }
+      }))
+  )
+  return [
+    ...additionalPrepared,
+    ...landCirclePreparedSpells(cls, subclassData, classLevel, terrain),
+  ]
+}
+
+function subclassKnownSpellsForLevel(cls, subclassData, classLevel) {
+  const classIndex = getClassIndex(cls)
+  if (!subclassData?.additionalSpells?.length) return []
+  return subclassData.additionalSpells.flatMap(entry =>
+    Object.entries(entry?.known ?? {})
+      .filter(([unlockLevel]) => Number(unlockLevel) <= classLevel)
+      .flatMap(([unlockLevel, spells]) => (spells ?? [])
+        .filter(spellName => typeof spellName === 'string')
+        .map(spellName => {
+          const index = spellIndexFromName(spellName)
+          const isCantrip = /#c\b/i.test(spellName)
+          return {
+            id: index,
+            index,
+            name: spellNameFromIndex(index),
+            source: subclassData.source ?? cls?.source ?? 'PHB',
+            level: isCantrip ? 0 : highestSpellLevelForClassAtLevel(classIndex, Number(unlockLevel)),
+            classIndex,
+            castingAbility: SPELLCASTING_ABILITY[classIndex] ?? null,
+            origin: `${subclassData.name ?? 'Subclass'} Bonus Spells`,
+            bonusKnown: true,
+          }
+        }))
+  )
+}
+
+function fixedBonusCantripsFromFeatures(features = [], cls = {}, existingSpells = []) {
+  const classIndex = getClassIndex(cls)
+  const existingIndexes = new Set(existingSpells.map(spell => spell.index))
+  return features.flatMap(feature => {
+    const text = (feature?.desc ?? []).join(' ')
+    if (!/cantrips?/i.test(text) || !/does(?:n'?t| not) count/i.test(text) || /\bchoice\b/i.test(text)) return []
+    return [...text.matchAll(/{@spell ([^}|#]+)(?:\|[^}#]+)?(?:#[^}]*)?}/gi)]
+      .map(match => {
+        const index = spellIndexFromName(match[1])
+        return {
+          id: index,
+          index,
+          name: spellNameFromIndex(index),
+          source: feature.source ?? cls?.source ?? 'PHB',
+          level: 0,
+          classIndex,
+          castingAbility: SPELLCASTING_ABILITY[classIndex] ?? null,
+          origin: feature.name ?? 'Bonus Cantrip',
+          bonusKnown: true,
+        }
+      })
+      .filter(spell => !existingIndexes.has(spell.index))
+  })
+}
+
+function expandedSpellIndexesForSpellLevels(subclassData, spellLevels = []) {
+  if (!subclassData?.additionalSpells?.length) return new Set()
+  const spellLevelSet = new Set(spellLevels.map(Number))
+  return new Set(subclassData.additionalSpells.flatMap(entry =>
+    Object.entries(entry?.expanded ?? {})
+      .filter(([key]) => spellLevelSet.has(Number(String(key).replace(/^s/i, ''))))
+      .flatMap(([, spells]) => (spells ?? [])
+        .filter(spell => typeof spell === 'string')
+        .map(spellIndexFromName))
+  ))
+}
+
 function subclassSpellcastingSpec(cls, subclass) {
   const idx = getClassIndex(cls)
   const subclassIndex = String(subclass ?? cls?.subclass ?? '').toLowerCase().replace(/\s+/g, ' ')
@@ -563,6 +799,7 @@ function knownValueAt(table, classLevel) {
 }
 
 function spellKnownForClass(spell, classIndex, allowUntagged = true) {
+  if (spell.bonusKnown) return false
   if (spell.classIndex) return spell.classIndex === classIndex
   return allowUntagged && !spell.origin
 }
@@ -579,11 +816,12 @@ function spellLevelsForSpec(spec, classLevel) {
   return levels.length ? levels : spec?.spellLevels ?? []
 }
 
-function classSpellPickNeeds(char, cls, level) {
+function classSpellPickNeeds(char, cls, level, subclassData = null) {
   const classIndex = getClassIndex(cls)
   const cantripsKnown = CANTRIPS_KNOWN_BY_LEVEL[classIndex]
   const spellsKnown = SPELLS_KNOWN_BY_LEVEL[classIndex]
   if (!cantripsKnown && !spellsKnown) return null
+  const spellLevels = spellLevelsForClass(classIndex, level)
 
   const known = char.spells?.known ?? []
   const existingClass = (char.identity?.class ?? []).some(existing => getClassIndex(existing) === classIndex)
@@ -602,9 +840,11 @@ function classSpellPickNeeds(char, cls, level) {
     spec: {
       key: classIndex,
       sourceClass: classIndex,
-      spellLevels: spellLevelsForClass(classIndex, level),
+      spellLevels,
       autoPrepare: classIndex !== 'wizard',
       allowReplacement: canReplace,
+      expandedSpellIndexes: expandedSpellIndexesForSpellLevels(subclassData, spellLevels),
+      expandedOrigin: subclassData ? `${subclassData.name ?? 'Subclass'} Expanded Spells` : null,
       title: `${cls?.name ?? classLabel(classIndex)} Spell Choices`,
     },
     cantripNeed,
@@ -624,8 +864,9 @@ function spellPickNeeds(char, cls, level, subclass) {
   )
   const cantripNeed = Math.max(0, cantripsKnownAt(spec, level) - knownForSubclass.filter(spell => spell.level === 0).length)
   const spellNeed = Math.max(0, spellsKnownAt(spec, level) - knownForSubclass.filter(spell => spell.level > 0).length)
-  if (cantripNeed <= 0 && spellNeed <= 0) return null
-  return { spec: { ...spec, spellLevels: spellLevelsForSpec(spec, level) }, cantripNeed, spellNeed }
+  const canReplace = spec.allowReplacement && level > 3 && knownForSubclass.some(spell => spell.level > 0)
+  if (cantripNeed <= 0 && spellNeed <= 0 && !canReplace) return null
+  return { spec: { ...spec, spellLevels: spellLevelsForSpec(spec, level), allowReplacement: canReplace }, cantripNeed, spellNeed }
 }
 
 function needsSubclassSpellChoice(char, classIdx, subclass) {
@@ -674,10 +915,13 @@ function optionChoicesForFeatures(features) {
     }
     const optionMap = new Map((previous.options ?? []).map(option => [option.id ?? option.name, option]))
     for (const option of choice.options ?? []) optionMap.set(option.id ?? option.name, option)
+    const autoOptionMap = new Map((previous.autoOptions ?? []).map(option => [option.id ?? option.name, option]))
+    for (const option of choice.autoOptions ?? []) autoOptionMap.set(option.id ?? option.name, option)
     merged.set(key, {
       ...previous,
       choose: Math.max(previous.choose ?? 1, choice.choose ?? 1),
       options: [...optionMap.values()],
+      autoOptions: [...autoOptionMap.values()],
     })
   }
   return [...merged.values()]
@@ -721,6 +965,8 @@ function progressionOptionChoices(cls, level, srdClasses) {
   if (classIndex === 'ranger' && RANGER_FAVORED_ENEMY_GAIN_LEVELS.has(level)) {
     const choice = reusableOptionChoice(srdClasses, 'ranger', /^favored enemy/i, 'RANGER:FAVORED_ENEMY', level, 1)
     if (choice) choices.push(choice)
+    const languageChoice = reusableOptionChoice(srdClasses, 'ranger', /^favored enemy/i, 'RANGER:FAVORED_ENEMY_LANGUAGE', level, 1)
+    if (languageChoice) choices.push(languageChoice)
   }
   if (classIndex === 'ranger' && RANGER_NATURAL_EXPLORER_GAIN_LEVELS.has(level)) {
     const choice = reusableOptionChoice(srdClasses, 'ranger', /natural explorer/i, 'RANGER:NATURAL_EXPLORER', level, 1)
@@ -751,6 +997,10 @@ function classSkillChoiceForMulticlass(cls) {
   return { ...base, options: srdOptions.length ? srdOptions : undefined }
 }
 
+function classToolChoiceForMulticlass(cls) {
+  return MULTICLASS_TOOL_CHOICES[getClassIndex(cls)] ?? null
+}
+
 // Build step list once class is chosen
 function buildSteps(char, classIdx, selectedSubclass, srdClasses, newClassData = null) {
   const steps = []
@@ -764,11 +1014,12 @@ function buildSteps(char, classIdx, selectedSubclass, srdClasses, newClassData =
   const cls = isNewClass ? newClassData : char.identity?.class?.[idx]
   if (!cls) return [{ type: 'classChoice' }]
   const subclass = selectedSubclass ?? cls?.subclass
+  const subclassData = subclassDataForClass(srdClasses, cls, subclass)
   const gainedFeatures = classFeaturesForLevel(srdClasses, cls, lvl, subclass)
   steps.push({ type: 'features' })
   if (!isNewClass && hasASI(char, idx))           steps.push({ type: 'asi' })
   if (SUBCLASS_LEVELS[getClassIndex(cls)]?.includes(lvl) && !cls.subclass) steps.push({ type: 'subclass' })
-  const classSpellNeeds = classSpellPickNeeds(char, cls, lvl)
+  const classSpellNeeds = classSpellPickNeeds(char, cls, lvl, subclassData)
   if (classSpellNeeds) steps.push({ type: 'spells', spellChoice: classSpellNeeds })
   if (!isNewClass && subclass && needsSubclassSpellChoice(char, idx, subclass)) {
     steps.push({ type: 'spells', spellChoice: spellPickNeeds(char, cls, lvl, subclass) })
@@ -781,6 +1032,10 @@ function buildSteps(char, classIdx, selectedSubclass, srdClasses, newClassData =
     skillChoiceForFeatures(gainedFeatures),
   ].filter(Boolean)
   skillChoices.forEach(skillChoice => steps.push({ type: 'skills', skillChoice }))
+  if (isNewClass) {
+    const toolChoice = classToolChoiceForMulticlass(cls)
+    if (toolChoice) steps.push({ type: 'tools', toolChoice })
+  }
   return steps
 }
 
@@ -981,6 +1236,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   const [selectedFeat, setSelectedFeat] = useState(null)
   const [featAbility, setFeatAbility] = useState(null)
   const [featSkills, setFeatSkills] = useState([])
+  const [featTools, setFeatTools] = useState([])
   const [featDamageType, setFeatDamageType] = useState(null)
   const [featSpellClass, setFeatSpellClass] = useState(null)
   const [featCantrips, setFeatCantrips] = useState([])
@@ -1021,12 +1277,9 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
     }
   }
 
-  const filteredFeats = FEATS.filter(f =>
-    f.name.toLowerCase().includes(featSearch.toLowerCase()) ||
-    f.desc.toLowerCase().includes(featSearch.toLowerCase())
-  )
   const selectedFeatRule = featRule(selectedFeat)
   const knownSpellIds = new Set((char.spells?.known ?? []).map(spell => spell.index))
+  const knownFeatNames = new Set((char.feats ?? []).map(feat => feat.name))
   const featClassSpells = featSpellClass ? spellListForClass(allSpells, featSpellClass) : []
   const featCantripOptions = selectedFeatRule.cantripFromAnyClass
     ? allSpells.filter(spell => spell.level === 0 && !knownSpellIds.has(spell.index))
@@ -1034,14 +1287,55 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   const featSpellOptions = selectedFeatRule.ritualSpellsKnown
     ? featClassSpells.filter(spell => spell.level === 1 && spell.ritual && !knownSpellIds.has(spell.index))
     : featClassSpells.filter(spell => spell.level === 1 && !knownSpellIds.has(spell.index))
-  const maneuverOptions = optionalFeatures.filter(feature => (feature.featureType ?? []).includes('MV:B'))
+  const existingManeuverNames = new Set([
+    ...(char.customContent?.featChoices ?? []).flatMap(choice => choice.maneuvers ?? []),
+    ...(char.customContent?.featureChoices ?? []).flatMap(choice => choice.options ?? []),
+  ].map(option => option.name).filter(Boolean))
+  const maneuverOptions = optionalFeatures
+    .filter(feature => (feature.featureType ?? []).includes('MV:B'))
+    .filter(feature => !existingManeuverNames.has(feature.name))
+    .filter((feature, index, list) => list.findIndex(other => other.name === feature.name) === index)
   const availableFeatSkills = SKILL_OPTIONS.filter(skill => {
     const current = char.stats?.skills?.[skill.key]
     const level = typeof current === 'number' ? current : current?.proficient ? 1 : 0
     return level === 0
   })
+  const existingToolProficiencies = new Set(proficiencyList(char, 'Tools').map(tool => tool.toLowerCase()))
+  const availableFeatTools = SKILLED_TOOL_OPTIONS.filter(tool => !existingToolProficiencies.has(tool.name.toLowerCase()))
+  const existingWeaponProficiencies = new Set(proficiencyList(char, 'Weapons').map(weapon => weapon.toLowerCase()))
+  const hasSimpleWeaponProficiency = [...existingWeaponProficiencies].some(weapon => weapon.includes('simple weapon'))
+  const hasMartialWeaponProficiency = [...existingWeaponProficiencies].some(weapon => weapon.includes('martial weapon'))
+  const availableFeatWeapons = WEAPON_MASTER_OPTIONS.filter(weapon => {
+    const lower = weapon.toLowerCase()
+    const isSimple = SIMPLE_WEAPON_MASTER_OPTIONS.includes(weapon)
+    const isMartial = MARTIAL_WEAPON_MASTER_OPTIONS.includes(weapon)
+    return !(isSimple && hasSimpleWeaponProficiency) &&
+      !(isMartial && hasMartialWeaponProficiency) &&
+      !existingWeaponProficiencies.has(lower) &&
+      !existingWeaponProficiencies.has(`${lower} proficiency`)
+  })
+  const featAbilityOptions = (selectedFeatRule.abilityOptions ?? [])
+    .filter(key => (currentScores[ABILITY_LABEL_BY_KEY[key]] ?? 10) < 20)
+  const featSkillOrToolCount = selectedFeatRule.skillOrToolProficiencies ?? 0
+  const featSkillOrToolChoiceCount = Math.min(featSkillOrToolCount, availableFeatSkills.length + availableFeatTools.length)
+  const featCantripChoiceCount = Math.min(
+    selectedFeatRule.cantripsKnown ?? selectedFeatRule.cantripFromAnyClass ?? 0,
+    featCantripOptions.length
+  )
+  const featSpellChoiceCount = Math.min(
+    selectedFeatRule.spellsKnown ?? selectedFeatRule.ritualSpellsKnown ?? 0,
+    featSpellOptions.length
+  )
+  const featManeuverChoiceCount = Math.min(selectedFeatRule.maneuverChoices ?? 0, maneuverOptions.length)
+  const featWeaponChoiceCount = Math.min(selectedFeatRule.weaponProficiencies ?? 0, availableFeatWeapons.length)
+  const filteredFeats = FEATS.filter(f =>
+    !knownFeatNames.has(f.name) &&
+    (f.name.toLowerCase().includes(featSearch.toLowerCase()) ||
+      f.desc.toLowerCase().includes(featSearch.toLowerCase()))
+  )
   const featNeedsAbility = (selectedFeatRule.abilityOptions ?? []).length > 0
-  const featNeedsSkills = (selectedFeatRule.skillProficiencies ?? 0) > 0
+  const featNeedsSkillOrTool = featSkillOrToolCount > 0
+  const featSkillOrToolTotal = featSkills.length + featTools.length
   const featNeedsDamageType = !!selectedFeatRule.damageTypeChoice
   const featNeedsSpellClass = !!selectedFeatRule.spellClassChoice || !!selectedFeatRule.ritualClassChoice
   const featNeedsCantrips = !!(selectedFeatRule.cantripsKnown || selectedFeatRule.cantripFromAnyClass)
@@ -1052,14 +1346,14 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   const canConfirm =
     (choice === 'asi' && pointsUsed === 2) ||
     (choice === 'feat' && selectedFeat
-      && (!featNeedsAbility || featAbility)
-      && (!featNeedsSkills || featSkills.length === selectedFeatRule.skillProficiencies)
+      && (!featNeedsAbility || (featAbilityOptions.length > 0 && featAbility))
+      && (!featNeedsSkillOrTool || (featSkillOrToolChoiceCount > 0 && featSkillOrToolTotal === featSkillOrToolChoiceCount))
       && (!featNeedsDamageType || featDamageType)
       && (!featNeedsSpellClass || featSpellClass)
-      && (!featNeedsCantrips || featCantrips.length === (selectedFeatRule.cantripsKnown ?? selectedFeatRule.cantripFromAnyClass))
-      && (!featNeedsSpells || featSpells.length === (selectedFeatRule.spellsKnown ?? selectedFeatRule.ritualSpellsKnown))
-      && (!featNeedsManeuvers || featManeuvers.length === selectedFeatRule.maneuverChoices)
-      && (!featNeedsWeapons || featWeapons.length === selectedFeatRule.weaponProficiencies))
+      && (!featNeedsCantrips || (featCantripChoiceCount > 0 && featCantrips.length === featCantripChoiceCount))
+      && (!featNeedsSpells || (featSpellChoiceCount > 0 && featSpells.length === featSpellChoiceCount))
+      && (!featNeedsManeuvers || (featManeuverChoiceCount > 0 && featManeuvers.length === featManeuverChoiceCount))
+      && (!featNeedsWeapons || (featWeaponChoiceCount > 0 && featWeapons.length === featWeaponChoiceCount)))
 
   const handleConfirm = () => {
     onNext({
@@ -1071,6 +1365,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
         ? {
             ability: featAbility,
             skills: featSkills,
+            tools: featTools,
             damageType: featDamageType,
             spellClass: featSpellClass,
             cantrips: featCantrips,
@@ -1087,6 +1382,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
     setSelectedFeat(feat)
     setFeatAbility(null)
     setFeatSkills([])
+    setFeatTools([])
     setFeatDamageType(null)
     setFeatSpellClass(null)
     setFeatCantrips([])
@@ -1096,11 +1392,20 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   }
 
   const toggleFeatSkill = (skill) => {
-    const max = selectedFeatRule.skillProficiencies ?? 0
+    const max = featSkillOrToolChoiceCount
     setFeatSkills(prev => {
       if (prev.some(item => item.key === skill.key)) return prev.filter(item => item.key !== skill.key)
-      if (prev.length >= max) return prev
+      if (prev.length + featTools.length >= max) return prev
       return [...prev, skill]
+    })
+  }
+
+  const toggleFeatTool = (tool) => {
+    const max = featSkillOrToolChoiceCount
+    setFeatTools(prev => {
+      if (prev.some(item => item.id === tool.id)) return prev.filter(item => item.id !== tool.id)
+      if (featSkills.length + prev.length >= max) return prev
+      return [...prev, tool]
     })
   }
 
@@ -1111,7 +1416,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   }
 
   const toggleFeatCantrip = (spell) => {
-    const max = selectedFeatRule.cantripsKnown ?? selectedFeatRule.cantripFromAnyClass ?? 0
+    const max = featCantripChoiceCount
     const classIndex = featSpellClass ?? spell.classes?.find(cls => SPELLCASTING_ABILITY[cls.index])?.index
     setFeatCantrips(prev => toggleLimitedOption(prev, toKnownSpell({
       ...spell,
@@ -1122,7 +1427,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   }
 
   const toggleFeatSpell = (spell) => {
-    const max = selectedFeatRule.spellsKnown ?? selectedFeatRule.ritualSpellsKnown ?? 0
+    const max = featSpellChoiceCount
     setFeatSpells(prev => toggleLimitedOption(prev, toKnownSpell({
       ...spell,
       origin: selectedFeat?.name,
@@ -1132,11 +1437,11 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
   }
 
   const toggleFeatManeuver = (maneuver) => {
-    setFeatManeuvers(prev => toggleLimitedOption(prev, maneuver, selectedFeatRule.maneuverChoices ?? 0, 'id'))
+    setFeatManeuvers(prev => toggleLimitedOption(prev, maneuver, featManeuverChoiceCount, 'id'))
   }
 
   const toggleFeatWeapon = (weapon) => {
-    setFeatWeapons(prev => toggleLimitedOption(prev, { name: weapon }, selectedFeatRule.weaponProficiencies ?? 0, 'name'))
+    setFeatWeapons(prev => toggleLimitedOption(prev, { name: weapon }, featWeaponChoiceCount, 'name'))
   }
 
   return (
@@ -1213,6 +1518,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
               setSelectedFeat(null)
               setFeatAbility(null)
               setFeatSkills([])
+              setFeatTools([])
               setFeatDamageType(null)
               setFeatSpellClass(null)
               setFeatCantrips([])
@@ -1248,32 +1554,37 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
                 )
               })()
             ))}
+            {filteredFeats.length === 0 && (
+              <div className="lu-empty">No available feats match that search.</div>
+            )}
           </div>
           {selectedFeat && featNeedsAbility && (
             <div className="lu-choice-block">
               <div className="lu-choice-head">
                 <span>Ability Increase</span>
-                <span className="lu-choice-hint">choose one</span>
+                <span className="lu-choice-hint">{featAbilityOptions.length ? 'choose one' : 'no eligible scores'}</span>
               </div>
               <div className="lu-skill-grid">
-                {selectedFeatRule.abilityOptions.map(key => (
+                {featAbilityOptions.map(key => (
                   <button
                     key={key}
                     className={`lu-skill-chip${featAbility === key ? ' lu-skill-chip--selected' : ''}`}
                     onClick={() => setFeatAbility(key)}
-                    disabled={(currentScores[ABILITY_LABEL_BY_KEY[key]] ?? 10) >= 20}
                   >
                     {ABILITY_LABEL_BY_KEY[key]}
                   </button>
                 ))}
+                {featAbilityOptions.length === 0 && (
+                  <div className="lu-empty">All eligible ability scores are already 20.</div>
+                )}
               </div>
             </div>
           )}
-          {selectedFeat && featNeedsSkills && (
+          {selectedFeat && featNeedsSkillOrTool && (
             <div className="lu-choice-block">
               <div className="lu-choice-head">
-                <span>Skill Proficiencies</span>
-                <span className="lu-choice-hint">{featSkills.length}/{selectedFeatRule.skillProficiencies}</span>
+                <span>Skill or Tool Proficiencies</span>
+                <span className="lu-choice-hint">{featSkillOrToolTotal}/{featSkillOrToolChoiceCount}</span>
               </div>
               <div className="lu-skill-grid">
                 {availableFeatSkills.map(skill => {
@@ -1288,6 +1599,21 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
                     </button>
                   )
                 })}
+                {availableFeatTools.map(tool => {
+                  const active = featTools.some(item => item.id === tool.id)
+                  return (
+                    <button
+                      key={tool.id}
+                      className={`lu-skill-chip${active ? ' lu-skill-chip--selected' : ''}`}
+                      onClick={() => toggleFeatTool(tool)}
+                    >
+                      {tool.name}
+                    </button>
+                  )
+                })}
+                {availableFeatSkills.length + availableFeatTools.length === 0 && (
+                  <div className="lu-empty">No new skill or tool proficiencies are available.</div>
+                )}
               </div>
             </div>
           )}
@@ -1333,7 +1659,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
             <div className="lu-choice-block">
               <div className="lu-choice-head">
                 <span>Cantrips</span>
-                <span className="lu-choice-hint">{featCantrips.length}/{selectedFeatRule.cantripsKnown ?? selectedFeatRule.cantripFromAnyClass}</span>
+                <span className="lu-choice-hint">{featCantrips.length}/{featCantripChoiceCount}</span>
               </div>
               <div className="lu-picker-list">
                 {featCantripOptions.slice(0, 80).map(spell => {
@@ -1350,6 +1676,9 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
                     </button>
                   )
                 })}
+                {featCantripOptions.length === 0 && (
+                  <div className="lu-empty">No new cantrips are available for this choice.</div>
+                )}
               </div>
             </div>
           )}
@@ -1357,7 +1686,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
             <div className="lu-choice-block">
               <div className="lu-choice-head">
                 <span>{selectedFeatRule.ritualSpellsKnown ? 'Ritual Spells' : '1st-Level Spell'}</span>
-                <span className="lu-choice-hint">{featSpells.length}/{selectedFeatRule.spellsKnown ?? selectedFeatRule.ritualSpellsKnown}</span>
+                <span className="lu-choice-hint">{featSpells.length}/{featSpellChoiceCount}</span>
               </div>
               <div className="lu-picker-list">
                 {featSpellOptions.slice(0, 80).map(spell => {
@@ -1374,6 +1703,9 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
                     </button>
                   )
                 })}
+                {featSpellOptions.length === 0 && (
+                  <div className="lu-empty">No new spells are available for this choice.</div>
+                )}
               </div>
             </div>
           )}
@@ -1381,7 +1713,7 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
             <div className="lu-choice-block">
               <div className="lu-choice-head">
                 <span>Maneuvers</span>
-                <span className="lu-choice-hint">{featManeuvers.length}/{selectedFeatRule.maneuverChoices}</span>
+                <span className="lu-choice-hint">{featManeuvers.length}/{featManeuverChoiceCount}</span>
               </div>
               <div className="lu-picker-list">
                 {maneuverOptions.slice(0, 80).map(maneuver => {
@@ -1398,6 +1730,9 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
                     </button>
                   )
                 })}
+                {maneuverOptions.length === 0 && (
+                  <div className="lu-empty">No new maneuvers are available.</div>
+                )}
               </div>
             </div>
           )}
@@ -1405,10 +1740,10 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
             <div className="lu-choice-block">
               <div className="lu-choice-head">
                 <span>Weapon Proficiencies</span>
-                <span className="lu-choice-hint">{featWeapons.length}/{selectedFeatRule.weaponProficiencies}</span>
+                <span className="lu-choice-hint">{featWeapons.length}/{featWeaponChoiceCount}</span>
               </div>
               <div className="lu-skill-grid">
-                {WEAPON_MASTER_OPTIONS.map(weapon => {
+                {availableFeatWeapons.map(weapon => {
                   const active = featWeapons.some(item => item.name === weapon)
                   return (
                     <button
@@ -1420,6 +1755,9 @@ function ASIStep({ char, classIdx, onNext, onBack }) {
                     </button>
                   )
                 })}
+                {availableFeatWeapons.length === 0 && (
+                  <div className="lu-empty">No new weapon proficiencies are available.</div>
+                )}
               </div>
             </div>
           )}
@@ -1541,7 +1879,12 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
   const sourceClass = spec.sourceClass
   const spellClassIndex = spec.key ?? sourceClass
   const originKey = spec.key !== sourceClass ? spec.key : null
-  const sourceSpells = allSpells.filter(spell => spell.classes?.some(c => c.index === sourceClass))
+  const sourceClassExists = (char.identity?.class ?? []).some(existing => getClassIndex(existing) === sourceClass)
+  const expandedSpellIndexes = spec.expandedSpellIndexes ?? new Set()
+  const sourceSpells = allSpells.filter(spell =>
+    spell.classes?.some(c => c.index === sourceClass) ||
+    expandedSpellIndexes.has(spell.index)
+  )
   const cantrips = sourceSpells.filter(spell => spell.level === 0 && !knownIds.has(spell.index))
   const leveledSpells = sourceSpells.filter(spell =>
     spec.spellLevels.includes(spell.level) &&
@@ -1550,7 +1893,11 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
   const replaceableSpells = (char.spells?.known ?? []).filter(spell =>
     spec.allowReplacement &&
     spell.level > 0 &&
-    spellKnownForClass(spell, sourceClass)
+    (
+      spellKnownForClass(spell, spellClassIndex, false) ||
+      spell.origin === spec.key ||
+      (!sourceClassExists && spell.classIndex === sourceClass && spell.castingAbility === SPELLCASTING_ABILITY[spec.key] && !spell.origin)
+    )
   )
   const replacementOptions = sourceSpells.filter(spell =>
     spec.allowReplacement &&
@@ -1581,6 +1928,7 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
       return [...prev, toKnownSpell({
         ...spell,
         ...(originKey && { origin: originKey }),
+        ...(!originKey && expandedSpellIndexes.has(spell.index) && spec.expandedOrigin ? { origin: spec.expandedOrigin } : {}),
         classIndex: spellClassIndex,
         castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[sourceClass] ?? null,
       })]
@@ -1599,6 +1947,7 @@ function SpellUnlockStep({ char, classIdx, subclass, spellChoice, onNext, onBack
     setReplaceTo(prev => prev?.index === spell.index ? null : toKnownSpell({
       ...spell,
       ...(originKey && { origin: originKey }),
+      ...(!originKey && expandedSpellIndexes.has(spell.index) && spec.expandedOrigin ? { origin: spec.expandedOrigin } : {}),
       classIndex: spellClassIndex,
       castingAbility: SPELLCASTING_ABILITY[spec.key] ?? SPELLCASTING_ABILITY[sourceClass] ?? null,
     }))
@@ -1732,6 +2081,7 @@ function toKnownSpell(spell) {
     ...(spell.ritual && { ritual: true }),
     ...(spell.classIndex && { classIndex: spell.classIndex }),
     ...(spell.castingAbility && { castingAbility: spell.castingAbility }),
+    ...(spell.bonusKnown && { bonusKnown: true }),
   }
 }
 
@@ -1746,6 +2096,176 @@ function addProficiencies(existing, additions = {}) {
   return next
 }
 
+function classGrantedLanguages(classIndex) {
+  return [
+    classIndex === 'druid' ? 'Druidic' : null,
+    classIndex === 'rogue' ? "Thieves' Cant" : null,
+  ].filter(Boolean)
+}
+
+function applyClassGrantedLanguages(char, classIndex) {
+  const languages = classGrantedLanguages(classIndex)
+  if (!languages.length) return char
+  return {
+    ...char,
+    identity: {
+      ...(char.identity ?? {}),
+      languages: [...new Set([...(char.identity?.languages ?? []), ...languages])],
+    },
+    stats: {
+      ...(char.stats ?? {}),
+      proficiencies: addProficiencies(char.stats?.proficiencies, { Languages: languages }),
+    },
+  }
+}
+
+function applyFeatureOptionEffects(char, options = []) {
+  let updated = char
+  const nextSkills = { ...(updated.stats?.skills ?? {}) }
+  const languages = []
+  const tools = []
+  const knownSpells = []
+
+  for (const option of options) {
+    const featureTypes = option.featureType ?? []
+    if (featureTypes.includes('LANGUAGE')) languages.push(option.name)
+    if (featureTypes.includes('TOOL')) {
+      tools.push(featureTypes.includes('EXPERTISE') ? `${option.name} expertise` : option.name)
+    }
+    if (featureTypes.includes('SKILL')) {
+      const key = skillKeyFromIndex(option.id)
+      nextSkills[key] = { ...(nextSkills[key] ?? {}), proficient: true }
+    }
+    if (featureTypes.includes('EXPERTISE') && option.id?.startsWith('skill-')) {
+      const key = skillKeyFromIndex(option.id)
+      nextSkills[key] = { ...(nextSkills[key] ?? {}), proficient: true, expertise: true }
+    }
+    if (featureTypes.includes('PB') && /^pact of the chain$/i.test(option.name ?? '')) {
+      knownSpells.push({
+        id: 'find-familiar',
+        index: 'find-familiar',
+        name: 'Find Familiar',
+        source: 'PHB',
+        level: 1,
+        ritual: true,
+        origin: 'Pact of the Chain',
+        classIndex: 'warlock',
+        castingAbility: 'cha',
+      })
+    }
+  }
+
+  if (options.some(option => (option.featureType ?? []).some(type => ['SKILL', 'EXPERTISE'].includes(type)))) {
+    updated = {
+      ...updated,
+      stats: { ...(updated.stats ?? {}), skills: nextSkills },
+    }
+  }
+  if (languages.length) {
+    updated = {
+      ...updated,
+      identity: {
+        ...(updated.identity ?? {}),
+        languages: [...new Set([...(updated.identity?.languages ?? []), ...languages])],
+      },
+      stats: {
+        ...(updated.stats ?? {}),
+        proficiencies: addProficiencies(updated.stats?.proficiencies, { Languages: languages }),
+      },
+    }
+  }
+  if (tools.length) {
+    updated = {
+      ...updated,
+      stats: {
+        ...(updated.stats ?? {}),
+        proficiencies: addProficiencies(updated.stats?.proficiencies, { Tools: tools }),
+      },
+    }
+  }
+  if (knownSpells.length) {
+    const existingKnown = updated.spells?.known ?? []
+    const existingIds = new Set(existingKnown.map(spell => spell.index))
+    updated = {
+      ...updated,
+      spells: {
+        ...(updated.spells ?? {}),
+        known: [
+          ...existingKnown,
+          ...knownSpells.filter(spell => !existingIds.has(spell.index)),
+        ],
+      },
+    }
+  }
+  return updated
+}
+
+function proficienciesFromFeatureText(feature) {
+  const text = (feature?.desc ?? []).join(' ').toLowerCase()
+  const grantsProficiency = /gain(?:s)? proficiency|become proficient|are proficient/.test(text)
+  if (!grantsProficiency) return {}
+  return {
+    ...(grantsProficiency && /\bheavy (?:armor|armour)\b/.test(text) ? { Armour: ['Heavy armor proficiency'] } : {}),
+    ...(grantsProficiency && /\bmartial weapons?\b/.test(text) ? { Weapons: ['Martial weapon proficiency'] } : {}),
+    ...(grantsProficiency && /\bshields?\b/.test(text) ? { Armour: ['Shield proficiency'] } : {}),
+  }
+}
+
+function applyFeatureGrantedProficiencies(char, features = []) {
+  const additions = features.reduce((next, feature) => {
+    const featureProficiencies = proficienciesFromFeatureText(feature)
+    for (const [category, values] of Object.entries(featureProficiencies)) {
+      next[category] = [...(next[category] ?? []), ...values]
+    }
+    return next
+  }, {})
+  if (!Object.keys(additions).length) return char
+  return {
+    ...char,
+    stats: {
+      ...(char.stats ?? {}),
+      proficiencies: addProficiencies(char.stats?.proficiencies, additions),
+    },
+  }
+}
+
+function applyAlwaysPreparedSpells(char, spells = []) {
+  if (!spells.length) return char
+  const existingKnown = char.spells?.known ?? []
+  const existingIds = new Set(existingKnown.map(spell => spell.index))
+  const nextPrepared = [...new Set([
+    ...(char.spells?.prepared ?? []),
+    ...spells.map(spell => spell.id),
+  ])]
+  return {
+    ...char,
+    spells: {
+      ...(char.spells ?? {}),
+      known: [
+        ...existingKnown,
+        ...spells.filter(spell => !existingIds.has(spell.index)),
+      ],
+      prepared: nextPrepared,
+    },
+  }
+}
+
+function applyKnownSpells(char, spells = []) {
+  if (!spells.length) return char
+  const existingKnown = char.spells?.known ?? []
+  const existingIds = new Set(existingKnown.map(spell => spell.index))
+  return {
+    ...char,
+    spells: {
+      ...(char.spells ?? {}),
+      known: [
+        ...existingKnown,
+        ...spells.filter(spell => !existingIds.has(spell.index)),
+      ],
+    },
+  }
+}
+
 function applyMulticlassProficiencies(char, classIndex) {
   const additions = MULTICLASS_PROFICIENCIES[classIndex]
   if (!additions) return char
@@ -1756,6 +2276,26 @@ function applyMulticlassProficiencies(char, classIndex) {
       proficiencies: addProficiencies(char.stats?.proficiencies, additions),
     },
   }
+}
+
+function equippedOneHandedMeleeWeapons(char) {
+  return (char.inventory ?? [])
+    .filter(item => item.equipped || item.attuned)
+    .filter(item => {
+      if (!item.damage) return false
+      const props = item.properties ?? []
+      const propsLower = props.map(prop => (typeof prop === 'string' ? prop : prop.name ?? '').toLowerCase())
+      return !propsLower.includes('ammunition') && !propsLower.includes('two-handed')
+    })
+}
+
+function mediumArmorDexCapIncreaseApplies(char) {
+  const dexMod = Math.floor(((char.stats?.abilityScores?.dex ?? 10) - 10) / 2)
+  return dexMod >= 3 && (char.inventory ?? []).some(item =>
+    (item.equipped || item.attuned) &&
+    item.armor_category === 'Medium' &&
+    item.armor_class
+  )
 }
 
 function applyFeatRules(char, feat, choices = {}) {
@@ -1791,7 +2331,7 @@ function applyFeatRules(char, feat, choices = {}) {
     }
   }
 
-  if (rule.skillProficiencies && choices.skills?.length) {
+  if (rule.skillOrToolProficiencies && choices.skills?.length) {
     const skills = { ...(updated.stats?.skills ?? {}) }
     for (const skill of choices.skills) {
       skills[skill.key] = typeof skills[skill.key] === 'number'
@@ -1799,6 +2339,18 @@ function applyFeatRules(char, feat, choices = {}) {
         : { ...(skills[skill.key] ?? {}), proficient: true }
     }
     updated = { ...updated, stats: { ...(updated.stats ?? {}), skills } }
+  }
+
+  if (rule.skillOrToolProficiencies && choices.tools?.length) {
+    updated = {
+      ...updated,
+      stats: {
+        ...(updated.stats ?? {}),
+        proficiencies: addProficiencies(updated.stats?.proficiencies, {
+          Tools: choices.tools.map(tool => tool.name),
+        }),
+      },
+    }
   }
 
   if (choices.cantrips?.length || choices.spells?.length) {
@@ -1885,12 +2437,41 @@ function applyFeatRules(char, feat, choices = {}) {
     }
   }
 
-  if (choices.damageType || choices.maneuvers?.length || choices.spellClass || choices.weapons?.length) {
+  const acBonus = [
+    feat.name === 'Dual Wielder' && equippedOneHandedMeleeWeapons(updated).length >= 2 ? 1 : 0,
+    feat.name === 'Medium Armour Master' && mediumArmorDexCapIncreaseApplies(updated) ? 1 : 0,
+  ].reduce((sum, value) => sum + value, 0)
+  if (acBonus) {
+    updated = {
+      ...updated,
+      combat: {
+        ...(updated.combat ?? {}),
+        ac: (updated.combat?.ac ?? 10) + acBonus,
+      },
+    }
+  }
+
+  const hasFeatChoices = !!(
+    choices.ability ||
+    choices.skills?.length ||
+    choices.tools?.length ||
+    choices.damageType ||
+    choices.spellClass ||
+    choices.cantrips?.length ||
+    choices.spells?.length ||
+    choices.maneuvers?.length ||
+    choices.weapons?.length
+  )
+
+  if (hasFeatChoices) {
     const currentChoices = updated.customContent?.featChoices ?? []
     const nextChoices = [
       ...currentChoices.filter(choice => choice.featName !== feat.name),
       {
         featName: feat.name,
+        ability: choices.ability ?? null,
+        skills: choices.skills ?? [],
+        tools: choices.tools ?? [],
         damageType: choices.damageType ?? null,
         spellClass: choices.spellClass ?? null,
         cantrips: choices.cantrips ?? [],
@@ -1915,6 +2496,9 @@ function applyFeatRules(char, feat, choices = {}) {
 function FeatureOptionStep({ char, choice, onNext, onBack }) {
   const [selected, setSelected] = useState([])
   const [dynamicOptions, setDynamicOptions] = useState(null)
+  const [allSpells, setAllSpells] = useState([])
+  const [pactCantrips, setPactCantrips] = useState([])
+  const [featureCantrips, setFeatureCantrips] = useState([])
   const choose = choice?.choose ?? 1
 
   useEffect(() => {
@@ -1939,6 +2523,7 @@ function FeatureOptionStep({ char, choice, onNext, onBack }) {
   }, [choice?.dynamicOptionLevel, choice?.dynamicOptionType])
 
   const choiceOptions = dynamicOptions ?? choice?.options ?? []
+  const autoOptions = choice?.autoOptions ?? []
   const optionTypes = new Set(choiceOptions.flatMap(option => option.featureType ?? []))
   const previouslySelected = new Set(
     (char.customContent?.classFeatureChoices ?? [])
@@ -1950,6 +2535,19 @@ function FeatureOptionStep({ char, choice, onNext, onBack }) {
   const availableOptions = optionTypes.size
     ? choiceOptions.filter(option => !previouslySelected.has(option.name))
     : choiceOptions
+  const needsPactTomeCantrips = selected.some(option => /^pact of the tome$/i.test(option.name ?? ''))
+  const needsAcolyteDruidCantrip = /acolyte of nature/i.test(choice?.feature?.name ?? '')
+  const needsCircleDruidCantrip = /^circle spells$/i.test(choice?.feature?.name ?? '') && /druid/i.test(choice?.feature?.className ?? '')
+  const needsDruidFeatureCantrip = needsAcolyteDruidCantrip || needsCircleDruidCantrip
+  const knownSpellIds = new Set((char.spells?.known ?? []).map(spell => spell.index))
+  const pactTomeCantrips = allSpells
+    .filter(spell => spell.level === 0 && !knownSpellIds.has(spell.index))
+    .filter((spell, index, list) => list.findIndex(other => other.index === spell.index) === index)
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const druidCantrips = allSpells
+    .filter(spell => spell.level === 0 && spell.classes?.some(cls => cls.index === 'druid') && !knownSpellIds.has(spell.index))
+    .filter((spell, index, list) => list.findIndex(other => other.index === spell.index) === index)
+    .sort((a, b) => a.name.localeCompare(b.name))
 
   const toggle = (option) => {
     setSelected(prev => {
@@ -1959,12 +2557,63 @@ function FeatureOptionStep({ char, choice, onNext, onBack }) {
     })
   }
 
+  const togglePactCantrip = (spell) => {
+    setPactCantrips(prev => {
+      if (prev.some(item => item.index === spell.index)) return prev.filter(item => item.index !== spell.index)
+      if (prev.length >= 3) return prev
+      return [...prev, toKnownSpell({
+        ...spell,
+        origin: 'Pact of the Tome',
+        classIndex: 'warlock',
+        castingAbility: 'cha',
+      })]
+    })
+  }
+
+  const toggleFeatureCantrip = (spell) => {
+    setFeatureCantrips(prev => {
+      if (prev.some(item => item.index === spell.index)) return prev.filter(item => item.index !== spell.index)
+      if (prev.length >= 1) return prev
+      return [...prev, toKnownSpell({
+        ...spell,
+        origin: choice?.feature?.name ?? 'Feature',
+        classIndex: needsCircleDruidCantrip ? 'druid' : 'cleric',
+        castingAbility: 'wis',
+        bonusKnown: true,
+      })]
+    })
+  }
+
+  useEffect(() => {
+    if (!needsPactTomeCantrips && !needsDruidFeatureCantrip) {
+      setPactCantrips([])
+      setFeatureCantrips([])
+      return
+    }
+    getSpells().then(setAllSpells).catch(() => setAllSpells([]))
+  }, [needsDruidFeatureCantrip, needsPactTomeCantrips])
+
+  const canConfirm = selected.length === choose &&
+    availableOptions.length >= choose &&
+    (!needsPactTomeCantrips || pactCantrips.length === 3) &&
+    (!needsDruidFeatureCantrip || featureCantrips.length === 1)
+
   return (
     <div className="lu-step">
       <div className="lu-title lu-title--gold">{choice?.feature?.name ?? 'Feature Choice'}</div>
       <div className="lu-sub">Choose {choose} {choose === 1 ? 'option' : 'options'} for this feature.</div>
 
       <div className="lu-feature-option-list">
+        {autoOptions.map(option => (
+          <div key={`auto-${option.id ?? option.name}`} className="lu-feature-option-card lu-feature-option-card--selected">
+            <span className="lu-feature-option-radio">●</span>
+            <span className="lu-feature-option-body">
+              <span className="lu-feature-option-name">{option.name}</span>
+              {option.desc?.[0] && <span className="lu-feature-option-desc">{option.desc[0].slice(0, 220)}{option.desc[0].length > 220 ? '…' : ''}</span>}
+            </span>
+            <span className="lu-feature-option-source">automatic</span>
+          </div>
+        ))}
         {availableOptions.map(option => {
           const active = selected.some(item => item.id === option.id)
           return (
@@ -1987,12 +2636,60 @@ function FeatureOptionStep({ char, choice, onNext, onBack }) {
         )}
       </div>
 
+      {needsPactTomeCantrips && (
+        <div className="lu-spell-section">
+          <div className="lu-section-title">Pact of the Tome Cantrips</div>
+          <div className="lu-sub">Choose 3 cantrips from any class spell list.</div>
+          <div className="lu-picker-list">
+            {pactTomeCantrips.map(spell => {
+              const active = pactCantrips.some(item => item.index === spell.index)
+              return (
+                <button
+                  key={spell.index}
+                  type="button"
+                  className={`lu-picker-row${active ? ' lu-picker-row--selected' : ''}`}
+                  onClick={() => togglePactCantrip(spell)}
+                >
+                  <span className="lu-picker-radio">{active ? '●' : '○'}</span>
+                  <span className="lu-picker-name">{spell.name}</span>
+                  <span className="lu-picker-meta">{spell.school?.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {needsDruidFeatureCantrip && (
+        <div className="lu-spell-section">
+          <div className="lu-section-title">{needsCircleDruidCantrip ? 'Circle Spells Cantrip' : 'Acolyte of Nature Cantrip'}</div>
+          <div className="lu-sub">Choose 1 Druid cantrip. It does not count against cantrips known.</div>
+          <div className="lu-picker-list">
+            {druidCantrips.map(spell => {
+              const active = featureCantrips.some(item => item.index === spell.index)
+              return (
+                <button
+                  key={spell.index}
+                  type="button"
+                  className={`lu-picker-row${active ? ' lu-picker-row--selected' : ''}`}
+                  onClick={() => toggleFeatureCantrip(spell)}
+                >
+                  <span className="lu-picker-radio">{active ? '●' : '○'}</span>
+                  <span className="lu-picker-name">{spell.name}</span>
+                  <span className="lu-picker-meta">{spell.school?.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="lu-actions">
         <button className="lu-btn lu-btn--ghost" onClick={onBack}>← Back</button>
         <button
           className="lu-btn lu-btn--gold"
-          onClick={() => onNext({ type: 'featureOption', choiceKey: choice.choiceKey, feature: choice.feature, options: selected })}
-          disabled={selected.length !== choose || availableOptions.length < choose}
+          onClick={() => onNext({ type: 'featureOption', choiceKey: choice.choiceKey, feature: choice.feature, options: [...autoOptions, ...selected], spells: [...pactCantrips, ...featureCantrips] })}
+          disabled={!canConfirm}
         >
           Confirm Choice →
         </button>
@@ -2067,6 +2764,51 @@ function SkillChoiceStep({ char, skillChoice, onNext, onBack }) {
   )
 }
 
+function ToolChoiceStep({ toolChoice, onNext, onBack }) {
+  const [selected, setSelected] = useState([])
+  const choose = toolChoice?.choose ?? 1
+  const toggle = (tool) => {
+    setSelected(prev => {
+      if (prev.some(item => item.id === tool.id)) return prev.filter(item => item.id !== tool.id)
+      if (prev.length >= choose) return prev
+      return [...prev, tool]
+    })
+  }
+
+  return (
+    <div className="lu-step">
+      <div className="lu-title lu-title--gold">{toolChoice?.title ?? 'Tool Proficiency'}</div>
+      <div className="lu-sub">{toolChoice?.desc ?? `Choose ${choose} tool ${choose === 1 ? 'proficiency' : 'proficiencies'}.`}</div>
+
+      <div className="lu-skill-grid">
+        {(toolChoice?.options ?? []).map(tool => {
+          const active = selected.some(item => item.id === tool.id)
+          return (
+            <button
+              key={tool.id}
+              className={`lu-skill-chip${active ? ' lu-skill-chip--selected' : ''}`}
+              onClick={() => toggle(tool)}
+            >
+              {tool.name}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="lu-actions">
+        <button className="lu-btn lu-btn--ghost" onClick={onBack}>← Back</button>
+        <button
+          className="lu-btn lu-btn--gold"
+          onClick={() => onNext({ type: 'tools', tools: selected })}
+          disabled={selected.length !== choose}
+        >
+          Confirm Tools →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ════════════════════════════════════════════════════════════════
 //  Main LevelUpModal
 // ════════════════════════════════════════════════════════════════
@@ -2081,16 +2823,17 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
   const [hpMode, setHpMode] = useState('roll')
   const [manualHp, setManualHp] = useState('1')
   const selectedSubclass = results.find(result => result?.type === 'subclass')?.subclass
+  const rulesEdition = normalizeRulesEdition(char.settings?.rulesEdition ?? char.meta?.rulesEdition)
   const steps = useMemo(
     () => buildSteps(char, chosenClassIdx, selectedSubclass, srdClasses, newClassData),
     [char, chosenClassIdx, selectedSubclass, srdClasses, newClassData]
   )
 
   useEffect(() => {
-    getClasses()
+    getClasses(rulesEdition)
       .then(classes => setSrdClasses(Object.fromEntries(classes.map(cls => [cls.index, cls]))))
       .catch(() => setSrdClasses({}))
-  }, [])
+  }, [rulesEdition])
 
   // Pre-roll HP increase for the chosen class
   const rolledHpResult = useMemo(() => {
@@ -2147,13 +2890,20 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
     const nextLevel = isNewClass ? 1 : (previousCls?.level ?? 0) + 1
     const chosenSubclass = allResults.find(r => r.type === 'subclass')?.subclass ?? previousCls?.subclass
     const newClassEntry = isNewClass && newClassData
-      ? { name: newClassData.name, index: newClassData.index, level: 1, subclass: chosenSubclass ?? null }
+      ? { name: newClassData.name, index: newClassData.index, source: newClassData.source ?? null, level: 1, subclass: chosenSubclass ?? null }
       : null
     const newCls = isNewClass
       ? [...cls, newClassEntry].filter(Boolean)
       : cls.map((c, i) => i === classIdx ? { ...c, level: (c.level ?? 0) + 1 } : c)
     const existingFeatures = char.customContent?.classFeatures ?? []
     const gainedFeatures = classFeaturesForLevel(srdClasses, previousCls, nextLevel, chosenSubclass)
+    const subclassData = subclassDataForClass(srdClasses, previousCls, chosenSubclass)
+    const landTerrain = landTerrainFromChoices(char, allResults)
+    const alwaysPreparedSpells = subclassPreparedSpellsForLevel(previousCls, subclassData, nextLevel, landTerrain)
+    const bonusKnownSpells = [
+      ...subclassKnownSpellsForLevel(previousCls, subclassData, nextLevel),
+      ...fixedBonusCantripsFromFeatures(gainedFeatures, previousCls, char.spells?.known ?? []),
+    ]
     const featureKeys = new Set(existingFeatures.map(featureKey))
     const classFeatures = [
       ...existingFeatures,
@@ -2173,8 +2923,12 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
         hpCurrent: (char.combat?.hpCurrent ?? 10) + hpResult.total,
       },
     }
+    updatedChar = applyFeatureGrantedProficiencies(updatedChar, gainedFeatures)
+    updatedChar = applyAlwaysPreparedSpells(updatedChar, alwaysPreparedSpells)
+    updatedChar = applyKnownSpells(updatedChar, bonusKnownSpells)
     if (isNewClass && newClassData) {
       updatedChar = applyMulticlassProficiencies(updatedChar, newClassData.index)
+      updatedChar = applyClassGrantedLanguages(updatedChar, newClassData.index)
       if (SPELLCASTING_ABILITY[newClassData.index] && !updatedChar.spells?.spellcastingAbility) {
         updatedChar = {
           ...updatedChar,
@@ -2263,7 +3017,33 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
           stats: { ...(updatedChar.stats ?? {}), skills: nextSkills },
         }
       }
+      if (r.type === 'tools') {
+        updatedChar = {
+          ...updatedChar,
+          stats: {
+            ...(updatedChar.stats ?? {}),
+            proficiencies: addProficiencies(updatedChar.stats?.proficiencies, {
+              Tools: (r.tools ?? []).map(tool => tool.name),
+            }),
+          },
+        }
+      }
       if (r.type === 'featureOption') {
+        updatedChar = applyFeatureOptionEffects(updatedChar, r.options ?? [])
+        if (r.spells?.length) {
+          const existingKnown = updatedChar.spells?.known ?? []
+          const existingIds = new Set(existingKnown.map(spell => spell.index))
+          updatedChar = {
+            ...updatedChar,
+            spells: {
+              ...(updatedChar.spells ?? {}),
+              known: [
+                ...existingKnown,
+                ...r.spells.filter(spell => !existingIds.has(spell.index)),
+              ],
+            },
+          }
+        }
         const currentChoices = updatedChar.customContent?.classFeatureChoices ?? []
         const nextChoices = [
           ...currentChoices.filter(choice => (choice.choiceKey ?? choice.featureIndex) !== (r.choiceKey ?? r.feature?.index)),
@@ -2280,6 +3060,14 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
               source: option.source,
               desc: option.desc,
               featureType: option.featureType,
+              damageType: option.damageType,
+            })),
+            spells: (r.spells ?? []).map(spell => ({
+              index: spell.index,
+              name: spell.name,
+              level: spell.level,
+              origin: spell.origin,
+              school: spell.school?.name ?? spell.school,
             })),
           },
         ]
@@ -2386,6 +3174,14 @@ export default function LevelUpModal({ char, onConfirm, onClose }) {
           <SkillChoiceStep
             char={char}
             skillChoice={currentStep.skillChoice}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+
+        {currentStep?.type === 'tools' && chosenClassIdx != null && (
+          <ToolChoiceStep
+            toolChoice={currentStep.toolChoice}
             onNext={handleNext}
             onBack={handleBack}
           />

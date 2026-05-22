@@ -41,6 +41,30 @@ const SKILL_NAMES = {
   survival: 'Survival',
 }
 
+const TOOL_CHOICE_POOLS = {
+  anyGamingSet: ['Dice set', 'Dragonchess set', 'Playing card set', 'Three-Dragon Ante set'],
+  anyMusicalInstrument: ['Bagpipes', 'Drum', 'Dulcimer', 'Flute', 'Lute', 'Lyre', 'Horn', 'Pan flute', 'Shawm', 'Viol'],
+  anyArtisansTool: [
+    "Alchemist's supplies",
+    "Brewer's supplies",
+    "Calligrapher's supplies",
+    "Carpenter's tools",
+    "Cartographer's tools",
+    "Cobbler's tools",
+    "Cook's utensils",
+    "Glassblower's tools",
+    "Jeweler's tools",
+    "Leatherworker's tools",
+    "Mason's tools",
+    "Painter's supplies",
+    "Potter's tools",
+    "Smith's tools",
+    "Tinker's tools",
+    "Weaver's tools",
+    "Woodcarver's tools",
+  ],
+}
+
 const SCHOOL_NAMES = {
   A: 'Abjuration',
   C: 'Conjuration',
@@ -262,19 +286,84 @@ function draconicAncestryOptions(entries = []) {
   }
 }
 
+function fixedLanguagesFromProficiencies(languageProficiencies = []) {
+  return languageProficiencies.flatMap(group =>
+    Object.entries(group ?? {})
+      .filter(([key, value]) => value === true && !['any', 'anyStandard', 'other', 'choose'].includes(key))
+      .map(([name]) => ref(name))
+  )
+}
+
+function racialLanguageOptions(languageProficiencies = []) {
+  const options = languageProficiencies.flatMap(group => {
+    const choose = group?.choose
+    if (choose?.from?.length) {
+      return [{ choose: choose.count ?? 1, options: choose.from.map(name => ref(name)), desc: 'Choose a racial language' }]
+    }
+    const count = (group?.anyStandard ?? 0) + (group?.other === true ? 1 : 0)
+    return count > 0 ? [{ choose: count, options: null, desc: 'Choose a racial language' }] : []
+  })
+  return options.length ? options : null
+}
+
+function racialSkillOptions(skillProficiencies = []) {
+  const options = skillProficiencies.flatMap(group => {
+    const choose = group?.choose
+    if (choose?.from?.length) {
+      return [{ choose: choose.count ?? 1, options: choose.from.map(skill => skillRef(skill)), desc: 'Choose racial skills' }]
+    }
+    if (group?.any) return [{ choose: group.any, options: null, desc: 'Choose racial skills' }]
+    return []
+  })
+  return options.length ? options : null
+}
+
+function racialToolOptions(toolProficiencies = []) {
+  return toolChoiceOptions(toolProficiencies, 'Choose a racial tool proficiency')
+}
+
+function classToolOptions(startingProficiencies = {}) {
+  const toolProficiencies = startingProficiencies.toolProficiencies ?? []
+  const toolText = stripTags(startingProficiencies.tools ?? []).toLowerCase()
+  if (/\bor\b/.test(toolText) && toolProficiencies.length > 1) {
+    const options = toolProficiencies.flatMap(group =>
+      Object.entries(group ?? {})
+        .filter(([key, count]) => TOOL_CHOICE_POOLS[key] && Number(count) > 0)
+        .flatMap(([key]) => toolOptionsFromKey(key))
+    )
+    if (options.length) {
+      return [{
+        choose: 1,
+        options: options.filter((option, index, list) => list.findIndex(other => other.index === option.index) === index),
+        desc: 'Choose a class tool proficiency',
+      }]
+    }
+  }
+  return toolChoiceOptions(toolProficiencies, 'Choose a class tool proficiency')
+}
+
 function normalizeRace(race) {
   const { bonuses, choice } = normalizeAbilityBonuses(race.ability)
   const racialOptions = [draconicAncestryOptions(race.entries)].filter(Boolean)
+  const fixedProficiencies = [
+    ...proficienciesFromObject(race.skillProficiencies?.[0] ?? {}),
+    ...fixedToolProficiencies(race.toolProficiencies),
+  ]
   return {
     index: slug(race.name),
     name: race.name,
     source: race.source,
+    edition: race.edition,
     speed: normalizeSpeed(race.speed),
     size: normalizeSize(race.size),
     ability_bonuses: bonuses,
     ...(choice && { ability_bonus_options: choice }),
     alignment: stripTags(race.entries?.find(e => e?.name === 'Alignment')?.entries),
-    languages: Object.keys(race.languageProficiencies?.[0] ?? {}).map(name => ref(name)),
+    languages: fixedLanguagesFromProficiencies(race.languageProficiencies),
+    starting_proficiencies: fixedProficiencies,
+    racial_language_options: racialLanguageOptions(race.languageProficiencies),
+    racial_skill_options: racialSkillOptions(race.skillProficiencies),
+    racial_tool_options: racialToolOptions(race.toolProficiencies),
     traits: normalizeEntriesToTraits(race.entries),
     racial_options: racialOptions,
     subraces: [],
@@ -287,15 +376,25 @@ function normalizeSubrace(subrace) {
   const { bonuses, choice } = normalizeAbilityBonuses(subrace.ability)
   const isBaseRaceOption = !subrace.name
   const racialOptions = [draconicAncestryOptions(subrace.entries)].filter(Boolean)
+  const fixedProficiencies = [
+    ...proficienciesFromObject(subrace.skillProficiencies?.[0] ?? {}),
+    ...fixedToolProficiencies(subrace.toolProficiencies),
+  ]
   return {
     index: isBaseRaceOption ? `${slug(raceName)}-base-${slug(subrace.source)}` : slug(`${raceName ?? ''} ${subrace.name}`),
     name: isBaseRaceOption ? `${subrace.source ?? 'Base'} / Base-Only` : subrace.name,
     source: subrace.source,
+    edition: subrace.edition,
     race: ref(raceName),
     isBaseRaceOption,
     ability_bonuses: bonuses,
     ...(choice && { ability_bonus_options: choice }),
     racial_traits: normalizeEntriesToTraits(subrace.entries),
+    languages: fixedLanguagesFromProficiencies(subrace.languageProficiencies),
+    starting_proficiencies: fixedProficiencies,
+    racial_language_options: racialLanguageOptions(subrace.languageProficiencies),
+    racial_skill_options: racialSkillOptions(subrace.skillProficiencies),
+    racial_tool_options: racialToolOptions(subrace.toolProficiencies),
     racial_options: racialOptions,
   }
 }
@@ -318,6 +417,57 @@ function skillRef(skill) {
   const key = String(skill).toLowerCase()
   const name = SKILL_NAMES[key] ?? stripTags(skill)
   return { index: `skill-${slug(name)}`, name: `Skill: ${name}` }
+}
+
+function allSkillRefs() {
+  return Object.keys(SKILL_NAMES).map(skillRef)
+}
+
+function toolRef(tool) {
+  const name = stripTags(tool)
+  return { index: slug(name), name }
+}
+
+function toolOptionsFromKey(tool) {
+  const pool = TOOL_CHOICE_POOLS[tool]
+  return (pool ?? [tool]).map(toolRef)
+}
+
+function fixedToolProficiencies(toolProficiencies = []) {
+  return toolProficiencies.flatMap(group =>
+    Object.entries(group ?? {})
+      .filter(([key, enabled]) => enabled === true && key !== 'choose')
+      .flatMap(([tool]) => toolOptionsFromKey(tool))
+  )
+}
+
+function toolChoiceOptions(toolProficiencies = [], desc = 'Choose a tool proficiency') {
+  const options = toolProficiencies.flatMap(group => {
+    const choose = group?.choose
+    if (choose?.from?.length) {
+      return [{
+        choose: choose.count ?? 1,
+        options: choose.from.flatMap(toolOptionsFromKey),
+        desc,
+      }]
+    }
+    if (group?.any) {
+      return [{
+        choose: group.any,
+        options: Object.keys(TOOL_CHOICE_POOLS).flatMap(toolOptionsFromKey),
+        desc,
+      }]
+    }
+
+    return Object.entries(group ?? {})
+      .filter(([key, count]) => TOOL_CHOICE_POOLS[key] && Number(count) > 0)
+      .map(([key, count]) => ({
+        choose: Number(count),
+        options: toolOptionsFromKey(key),
+        desc,
+      }))
+  })
+  return options.length ? options : null
 }
 
 function proficienciesFromObject(value = {}) {
@@ -380,6 +530,112 @@ function manualFeatureChoices(feature, optionalFeatures = {}) {
   const lowerName = name.toLowerCase()
   const choices = []
 
+  if (/blessings of knowledge/i.test(lowerName)) {
+    choices.push({
+      type: 'option',
+      choose: 2,
+      choiceIndex: 200,
+      options: ['Celestial', 'Draconic', 'Deep Speech', 'Infernal', 'Primordial', 'Sylvan', 'Undercommon']
+        .map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [], featureType: ['LANGUAGE'] })),
+    })
+    choices.push({
+      type: 'option',
+      choose: 2,
+      choiceIndex: 201,
+      options: ['Arcana', 'History', 'Nature', 'Religion']
+        .map(option => ({ id: `skill-${slug(option)}`, name: `Skill: ${option}`, optionType: 'manual', desc: [], featureType: ['SKILL', 'EXPERTISE'] })),
+    })
+  }
+
+  if (/dragon ancestor/i.test(lowerName)) {
+    const dragons = [
+      ['Black', 'Acid'], ['Blue', 'Lightning'], ['Brass', 'Fire'], ['Bronze', 'Lightning'], ['Copper', 'Acid'],
+      ['Gold', 'Fire'], ['Green', 'Poison'], ['Red', 'Fire'], ['Silver', 'Cold'], ['White', 'Cold'],
+    ]
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 202,
+      options: dragons.map(([dragon, damageType]) => ({
+        id: slug(dragon),
+        name: dragon,
+        damageType: damageType.toLowerCase(),
+        optionType: 'manual',
+        desc: [`${damageType} damage`],
+        featureType: ['SORCERER:DRACONIC_ANCESTRY'],
+      })),
+    })
+  }
+
+  if (/acolyte of nature/i.test(lowerName)) {
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 203,
+      options: ['Animal Handling', 'Nature', 'Survival']
+        .map(option => ({ id: `skill-${slug(option)}`, name: `Skill: ${option}`, optionType: 'manual', desc: [], featureType: ['SKILL'] })),
+    })
+  }
+
+  if (/^circle spells$/i.test(name) && /land/i.test(feature.subclassShortName ?? '')) {
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 204,
+      options: ['Arctic', 'Coast', 'Desert', 'Forest', 'Grassland', 'Mountain', 'Swamp', 'Underdark']
+        .map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [], featureType: ['DRUID:LAND_TERRAIN'] })),
+    })
+  }
+
+  if (/^expertise$/i.test(name) && /rogue/i.test(feature.className ?? '')) {
+    choices.push({
+      type: 'option',
+      choose: 2,
+      choiceIndex: 107,
+      options: [
+        'Acrobatics', 'Animal Handling', 'Arcana', 'Athletics', 'Deception', 'History',
+        'Insight', 'Intimidation', 'Investigation', 'Medicine', 'Nature', 'Perception',
+        'Performance', 'Persuasion', 'Religion', 'Sleight of Hand', 'Stealth', 'Survival',
+      ].map(option => ({
+        id: `skill-${slug(option)}`,
+        name: `Skill: ${option}`,
+        optionType: 'manual',
+        desc: ['Double your proficiency bonus for checks with this skill if proficient.'],
+        featureType: ['EXPERTISE'],
+      })).concat({
+        id: 'thieves-tools',
+        name: "Thieves' Tools",
+        optionType: 'manual',
+        desc: ["Double your proficiency bonus for checks with thieves' tools."],
+        featureType: ['EXPERTISE', 'TOOL'],
+      }),
+    })
+  }
+
+  if (/^combat superiority$/i.test(name) && /battle master/i.test(feature.subclassShortName ?? '')) {
+    choices.push({
+      type: 'option',
+      choose: 3,
+      choiceIndex: 108,
+      options: optionalFeaturesForType(optionalFeatures, 'MV:B', feature.level),
+    })
+  }
+
+  if (/^student of war$/i.test(name) && /battle master/i.test(feature.subclassShortName ?? '')) {
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 109,
+      options: toolOptionsFromKey('anyArtisansTool').map(option => ({
+        id: option.index,
+        name: option.name,
+        optionType: 'manual',
+        desc: [],
+        featureType: ['TOOL'],
+      })),
+    })
+  }
+
   if (/^favored enemy/i.test(name)) {
     choices.push({
       type: 'option',
@@ -390,6 +646,21 @@ function manualFeatureChoices(feature, optionalFeatures = {}) {
         'Fey', 'Fiends', 'Giants', 'Monstrosities', 'Oozes', 'Plants', 'Undead',
         'Two humanoid races',
       ].map(option => ({ id: slug(option), name: option, optionType: 'manual', desc: [], featureType: ['RANGER:FAVORED_ENEMY'] })),
+    })
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 106,
+      options: [
+        'Abyssal', 'Celestial', 'Draconic', 'Deep Speech', 'Dwarvish', 'Elvish', 'Giant',
+        'Gnomish', 'Goblin', 'Halfling', 'Infernal', 'Orc', 'Primordial', 'Sylvan', 'Undercommon',
+      ].map(option => ({
+        id: slug(option),
+        name: option,
+        optionType: 'manual',
+        desc: ['Language associated with your favored enemy, if they speak one.'],
+        featureType: ['LANGUAGE', 'RANGER:FAVORED_ENEMY_LANGUAGE'],
+      })),
     })
   }
 
@@ -439,10 +710,38 @@ function manualFeatureChoices(feature, optionalFeatures = {}) {
     })
   }
 
+  if (/^elemental disciplines$/i.test(name) && /four elements/i.test(feature.subclassShortName ?? '')) {
+    const elementalAttunement = optionalFeaturesForType(optionalFeatures, 'ED', feature.level)
+      .find(option => /^elemental attunement$/i.test(option.name))
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 110,
+      ...(elementalAttunement && feature.level === 3 ? { autoOptions: [elementalAttunement] } : {}),
+      options: optionalFeaturesForType(optionalFeatures, 'ED', feature.level)
+        .filter(option => !/^elemental attunement$/i.test(option.name)),
+    })
+  }
+
+  if (/^extra elemental discipline$/i.test(name) && /four elements/i.test(feature.subclassShortName ?? '')) {
+    choices.push({
+      type: 'option',
+      choose: 1,
+      choiceIndex: 111,
+      options: optionalFeaturesForType(optionalFeatures, 'ED', feature.level)
+        .filter(option => !/^elemental attunement$/i.test(option.name)),
+    })
+  }
+
   return choices.filter(choice => choice.options.length > 0)
 }
 
-function normalizeFeatureChoices(entries = [], optionalFeatures = {}) {
+function shouldSkipNormalizedChoices(feature) {
+  return /^elemental disciplines$/i.test(feature.name ?? '') && /four elements/i.test(feature.subclassShortName ?? '')
+}
+
+function normalizeFeatureChoices(feature, optionalFeatures = {}) {
+  const entries = feature.entries ?? []
   return entries
     .filter(entry => entry?.type === 'options' && Array.isArray(entry.entries))
     .map((entry, choiceIndex) => {
@@ -473,7 +772,7 @@ function normalizeFeatureChoices(entries = [], optionalFeatures = {}) {
 
 function normalizeClassFeature(feature, optionalFeatures = {}) {
   const choices = [
-    ...normalizeFeatureChoices(feature.entries, optionalFeatures),
+    ...(shouldSkipNormalizedChoices(feature) ? [] : normalizeFeatureChoices(feature, optionalFeatures)),
     ...manualFeatureChoices(feature, optionalFeatures),
   ]
   return {
@@ -489,7 +788,7 @@ function normalizeClassFeature(feature, optionalFeatures = {}) {
 
 function normalizeSubclassFeature(feature, optionalFeatures = {}) {
   const choices = [
-    ...normalizeFeatureChoices(feature.entries, optionalFeatures),
+    ...(shouldSkipNormalizedChoices(feature) ? [] : normalizeFeatureChoices(feature, optionalFeatures)),
     ...manualFeatureChoices(feature, optionalFeatures),
   ]
   return {
@@ -506,12 +805,16 @@ function normalizeSubclassFeature(feature, optionalFeatures = {}) {
   }
 }
 
-function normalizeClass(cls, module = {}) {
+function normalizeClass(cls, module = {}, rulesEdition = '2014') {
   const optionalFeatures = optionalFeatureLookup()
-  const skillChoice = cls.startingProficiencies?.skills?.find(s => s.choose)?.choose
-  const skillOptions = (skillChoice?.from ?? []).map(skill => ({ option_type: 'reference', item: skillRef(skill) }))
-  const armor = (cls.startingProficiencies?.armor ?? []).map(name => ref(`${name} armor proficiency`))
-  const weapons = (cls.startingProficiencies?.weapons ?? []).map(name => ref(`${name} weapon proficiency`))
+  const skillChoiceGroup = cls.startingProficiencies?.skills?.find(s => s.choose || s.any)
+  const skillChoice = skillChoiceGroup?.choose
+  const skillCount = skillChoice?.count ?? skillChoiceGroup?.any ?? 0
+  const skillPool = skillChoice?.from?.length ? skillChoice.from.map(skillRef) : skillChoiceGroup?.any ? allSkillRefs() : []
+  const skillOptions = skillPool.map(item => ({ option_type: 'reference', item }))
+  const armor = (cls.startingProficiencies?.armor ?? []).map(item => ref(`${stripTags(item.full ?? item.proficiency ?? item)} armor proficiency`))
+  const weapons = (cls.startingProficiencies?.weapons ?? []).map(item => ref(`${stripTags(item.full ?? item.proficiency ?? item)} weapon proficiency`))
+  const tools = fixedToolProficiencies(cls.startingProficiencies?.toolProficiencies)
   const features = (module.classFeature ?? [])
     .filter(feature => feature.className === cls.name && (!feature.classSource || feature.classSource === cls.source))
     .map(feature => normalizeClassFeature(feature, optionalFeatures))
@@ -520,9 +823,9 @@ function normalizeClass(cls, module = {}) {
     byLevel[level] = [...(byLevel[level] ?? []), feature]
     return byLevel
   }, {})
-  const subclasses = (module.subclass ?? [])
+  const subclasses = dedupeByIndex((module.subclass ?? [])
     .filter(subclass => subclass.className === cls.name && (!subclass.classSource || subclass.classSource === cls.source))
-    .filter(subclass => !subclass.edition || subclass.edition === 'classic')
+    .filter(subclass => matchesRulesEdition(subclass, rulesEdition))
     .map(subclass => {
       const subclassFeatures = (module.subclassFeature ?? [])
         .filter(feature =>
@@ -541,24 +844,28 @@ function normalizeClass(cls, module = {}) {
         name: subclass.shortName ?? subclass.name,
         fullName: subclass.name,
         source: subclass.source,
+        additionalSpells: subclass.additionalSpells ?? [],
         features_by_level: featuresByLevel,
       }
-    })
+    }), cls.source)
   return {
     index: slug(cls.name),
     name: cls.name,
     source: cls.source,
+    edition: cls.edition,
     hit_die: cls.hd?.faces ?? 8,
     saving_throws: (cls.proficiency ?? []).map(abilityRef),
     proficiencies: [
       ...(cls.proficiency ?? []).map(a => ({ index: `saving-throw-${a}`, name: `Saving Throw: ${ABILITY_NAMES[a]}` })),
       ...armor,
       ...weapons,
+      ...tools,
     ],
+    class_tool_options: classToolOptions(cls.startingProficiencies),
     proficiency_choices: skillOptions.length ? [{
       type: 'proficiencies',
-      choose: skillChoice.count ?? 2,
-      desc: `Choose ${skillChoice.count ?? 2} skills`,
+      choose: skillCount || 2,
+      desc: `Choose ${skillCount || 2} skills`,
       from: { options: skillOptions },
     }] : [],
     starting_equipment: [],
@@ -576,6 +883,17 @@ function itemRefsFromText(text) {
     const wordCount = Object.entries(COUNT_WORDS).find(([word]) => new RegExp(`\\b${word}\\s*$`).test(prefix))?.[1]
     const quantity = Number(display.match(/\b(\d+)\b/)?.[1] ?? wordCount ?? 1)
     const name = display.replace(/^\d+\s+/, '').replace(/\s+\(\d+\)$/g, '')
+    const categoryIndex = equipmentCategoryFromText(name)
+    if (categoryIndex) {
+      return {
+        option_type: 'choice',
+        choice: {
+          choose: quantity,
+          desc: stripTags(name),
+          from: { equipment_category: { index: categoryIndex } },
+        },
+      }
+    }
     return {
       option_type: 'counted_reference',
       count: quantity,
@@ -592,6 +910,9 @@ const EQUIPMENT_FILTER_CATEGORIES = [
   { pattern: /\bsimple weapons?\b/i, index: 'simple-weapons' },
   { pattern: /\bmartial weapons?\b/i, index: 'martial-weapons' },
   { pattern: /\bmusical instruments?\b/i, index: 'musical-instruments' },
+  { pattern: /\barcane focus(?:es)?\b/i, index: 'arcane-focuses' },
+  { pattern: /\bdruidic focus(?:es)?\b/i, index: 'druidic-focuses' },
+  { pattern: /\bholy symbols?\b/i, index: 'holy-symbols' },
 ]
 
 const COUNT_WORDS = {
@@ -624,9 +945,23 @@ function normalizeStartingEquipment(lines) {
       .filter(Boolean)
     const options = (parts.length ? parts : [line]).map((part) => {
       const items = itemRefsFromText(part)
+      const categoryIndex = equipmentCategoryFromText(part)
+      const hasCategoryChoice = items.some(item =>
+        item.option_type === 'choice' &&
+        item.choice?.from?.equipment_category?.index === categoryIndex
+      )
+      if (categoryIndex && !hasCategoryChoice) {
+        items.push({
+          option_type: 'choice',
+          choice: {
+            choose: choiceCountFromText(part),
+            desc: stripTags(part),
+            from: { equipment_category: { index: categoryIndex } },
+          },
+        })
+      }
       if (items.length === 1) return items[0]
       if (items.length > 1) return { option_type: 'multiple', items }
-      const categoryIndex = equipmentCategoryFromText(part)
       return {
         option_type: 'choice',
         choice: {
@@ -644,6 +979,71 @@ function normalizeStartingEquipment(lines) {
   })
 }
 
+function cloneData(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value))
+}
+
+function applyEntryMod(entries = [], mod) {
+  if (!mod || !Array.isArray(entries)) return entries
+  if (Array.isArray(mod)) return mod.reduce((nextEntries, entryMod) => applyEntryMod(nextEntries, entryMod), entries)
+  if (mod.mode === 'replaceArr') {
+    const replacement = mod.items
+    const replace = mod.replace
+    const nextEntries = [...entries]
+    const targetIndex = typeof replace?.index === 'number'
+      ? replace.index
+      : nextEntries.findIndex(entry => entry?.name === replace)
+    if (targetIndex >= 0) {
+      nextEntries.splice(targetIndex, 1, ...(Array.isArray(replacement) ? replacement : [replacement]))
+    }
+    return nextEntries
+  }
+  if (mod.mode === 'insertArr') {
+    const insertion = Array.isArray(mod.items) ? mod.items : [mod.items]
+    const index = Number.isInteger(mod.index) ? mod.index : entries.length
+    const nextEntries = [...entries]
+    nextEntries.splice(index, 0, ...insertion)
+    return nextEntries
+  }
+  return entries
+}
+
+function resolveBackgroundCopies(backgrounds = []) {
+  const byKey = new Map(backgrounds.map(background => [`${background.name}|${background.source}`, background]))
+  const resolved = new Map()
+
+  const resolveOne = (background, stack = []) => {
+    const key = `${background.name}|${background.source}`
+    if (resolved.has(key)) return resolved.get(key)
+    if (!background._copy) {
+      resolved.set(key, background)
+      return background
+    }
+
+    const copyKey = `${background._copy.name}|${background._copy.source ?? background.source}`
+    const base = byKey.get(copyKey)
+    if (!base || stack.includes(copyKey)) {
+      resolved.set(key, background)
+      return background
+    }
+
+    const merged = {
+      ...cloneData(resolveOne(base, [...stack, key])),
+      ...cloneData(background),
+      name: background.name,
+      source: background.source,
+    }
+    if (background._copy?._mod?.entries) {
+      merged.entries = applyEntryMod(merged.entries, background._copy._mod.entries)
+    }
+    delete merged._copy
+    resolved.set(key, merged)
+    return merged
+  }
+
+  return backgrounds.map(background => resolveOne(background))
+}
+
 function normalizeBackground(background) {
   const skillBlock = background.skillProficiencies?.[0] ?? {}
   const featureEntry = background.entries?.find(entry => /feature/i.test(entry?.name ?? ''))
@@ -651,10 +1051,15 @@ function normalizeBackground(background) {
     index: slug(background.name),
     name: background.name,
     source: background.source,
-    starting_proficiencies: proficienciesFromObject(skillBlock),
+    edition: background.edition,
+    starting_proficiencies: [
+      ...proficienciesFromObject(skillBlock),
+      ...fixedToolProficiencies(background.toolProficiencies),
+    ],
     starting_equipment: [],
     starting_equipment_options: normalizeBackgroundEquipment(background.startingEquipment ?? []),
     language_options: normalizeLanguageOptions(background.languageProficiencies),
+    tool_options: toolChoiceOptions(background.toolProficiencies, 'Choose a background tool proficiency'),
     feature: featureEntry ? { name: featureEntry.name.replace(/^Feature:\s*/i, ''), desc: [stripTags(featureEntry.entries)] } : null,
   }
 }
@@ -665,6 +1070,11 @@ function normalizeBackgroundEquipment(groups) {
     setGaming: 'gaming set',
     toolArtisan: "artisan's tools",
   }[type] ?? fallback ?? 'custom item')
+  const equipmentTypeChoiceKey = (type) => ({
+    instrumentMusical: 'anyMusicalInstrument',
+    setGaming: 'anyGamingSet',
+    toolArtisan: 'anyArtisansTool',
+  }[type])
 
   const normalizeBackgroundItem = (item, i) => {
     if (typeof item === 'string') {
@@ -694,6 +1104,16 @@ function normalizeBackgroundEquipment(groups) {
     }
     if (item?.equipmentType) {
       const name = item.displayName ?? equipmentTypeName(item.equipmentType)
+      const choiceKey = equipmentTypeChoiceKey(item.equipmentType)
+      if (choiceKey) {
+        return {
+          option_type: 'equipment_type_choice',
+          count: item.quantity ?? 1,
+          equipmentType: item.equipmentType,
+          label: `Choose a ${name}`,
+          options: toolOptionsFromKey(choiceKey),
+        }
+      }
       return {
         option_type: 'counted_reference',
         count: item.quantity ?? 1,
@@ -754,6 +1174,7 @@ function normalizeItem(item, isMagic = false) {
     source: item.source,
     equipment_category: { index: slug(typeName), name: typeName },
     equipment_category_index: slug(typeName),
+    ...(item.scfType && { scfType: item.scfType }),
     weapon_category: weaponCategory,
     weapon_range: item.type === 'R' ? 'Ranged' : item.type === 'M' || item.type === 'MELEE' ? 'Melee' : undefined,
     armor_category: ['LA', 'MA', 'HA', 'S'].includes(item.type) ? typeName.replace(' Armor', '') : undefined,
@@ -919,42 +1340,57 @@ function normalizeMonster(monster) {
   }
 }
 
-function dedupeByIndex(items) {
+function matchesRulesEdition(item, rulesEdition = '2014') {
+  const edition = item?.edition
+  const source = item?.source
+  if (rulesEdition === '2024') return edition === 'one' || source === 'XPHB'
+  return edition !== 'one' && source !== 'XPHB'
+}
+
+function preferredSourceForRules(rulesEdition = '2014') {
+  return rulesEdition === '2024' ? 'XPHB' : 'PHB'
+}
+
+function dedupeByIndex(items, preferredSource = 'PHB') {
   const map = new Map()
   for (const item of items.filter(item => item?.index && item?.name)) {
-    if (!map.has(item.index) || item.source === 'PHB') map.set(item.index, item)
+    if (!map.has(item.index) || item.source === preferredSource) map.set(item.index, item)
   }
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
 }
 
-export const getRaces = () => memo('races', () => {
+export const getRaces = (rulesEdition = '2014') => memo(`races:${rulesEdition}`, () => {
   const data = firstModule(raceData)
-  const races = dedupeByIndex((data.race ?? []).map(normalizeRace))
-  const subraces = markSubraceAbilityModes((data.subrace ?? []).map(normalizeSubrace).filter(Boolean), races)
+  const preferredSource = preferredSourceForRules(rulesEdition)
+  const races = dedupeByIndex((data.race ?? []).map(normalizeRace).filter(race => matchesRulesEdition(race, rulesEdition)), preferredSource)
+  const subraces = markSubraceAbilityModes((data.subrace ?? []).map(normalizeSubrace).filter(Boolean).filter(subrace => matchesRulesEdition(subrace, rulesEdition)), races)
   return races.map(race => ({
     ...race,
-    subraces: subraces.filter(subrace => subrace.race.index === race.index).map(({ index, name, source, isBaseRaceOption, abilityOverridesRace }) => ({ index, name, source, isBaseRaceOption, abilityOverridesRace })),
+    subraces: subraces.filter(subrace => subrace.race.index === race.index).map(({ index, name, source, edition, isBaseRaceOption, abilityOverridesRace }) => ({ index, name, source, edition, isBaseRaceOption, abilityOverridesRace })),
   }))
 })
 
-export const getSubraces = () => memo('subraces', () => {
+export const getSubraces = (rulesEdition = '2014') => memo(`subraces:${rulesEdition}`, () => {
   const data = firstModule(raceData)
-  const races = dedupeByIndex((data.race ?? []).map(normalizeRace))
-  return dedupeByIndex(markSubraceAbilityModes((data.subrace ?? []).map(normalizeSubrace).filter(Boolean), races))
+  const preferredSource = preferredSourceForRules(rulesEdition)
+  const races = dedupeByIndex((data.race ?? []).map(normalizeRace).filter(race => matchesRulesEdition(race, rulesEdition)), preferredSource)
+  return dedupeByIndex(markSubraceAbilityModes((data.subrace ?? []).map(normalizeSubrace).filter(Boolean).filter(subrace => matchesRulesEdition(subrace, rulesEdition)), races), preferredSource)
 })
 
-export const getClasses = () => memo('classes', () => {
+export const getClasses = (rulesEdition = '2014') => memo(`classes:${rulesEdition}`, () => {
+  const preferredSource = preferredSourceForRules(rulesEdition)
   const classes = Object.values(classData).flatMap(module =>
     (module?.class ?? [])
-      .filter(cls => !cls.edition || cls.edition === 'classic')
-      .map(cls => normalizeClass(cls, module))
+      .filter(cls => matchesRulesEdition(cls, rulesEdition))
+      .map(cls => normalizeClass(cls, module, rulesEdition))
   )
-  return dedupeByIndex(classes)
+  return dedupeByIndex(classes, preferredSource)
 })
 
-export const getBackgrounds = () => memo('backgrounds', () => {
+export const getBackgrounds = (rulesEdition = '2014') => memo(`backgrounds:${rulesEdition}`, () => {
   const data = firstModule(backgroundData)
-  return dedupeByIndex((data.background ?? []).map(normalizeBackground))
+  const preferredSource = preferredSourceForRules(rulesEdition)
+  return dedupeByIndex(resolveBackgroundCopies(data.background ?? []).map(normalizeBackground).filter(background => matchesRulesEdition(background, rulesEdition)), preferredSource)
 })
 
 export const getEquipment = () => memo('equipment', () => {

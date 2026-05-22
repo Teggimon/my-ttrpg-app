@@ -105,8 +105,8 @@ function breathWeaponLimit(trait, pb) {
   return { max: 1, recharge: 'SR', label: 'SR' }
 }
 
-function rageUses(level) {
-  if (level >= 20) return null
+function rageUses(level, source) {
+  if (!/xphb/i.test(source ?? '') && level >= 20) return null
   if (level >= 17) return 6
   if (level >= 12) return 5
   if (level >= 6) return 4
@@ -133,6 +133,13 @@ function indomitableUses(level) {
   return level >= 9 ? 1 : 0
 }
 
+function secondWindUses(level, source) {
+  if (!/xphb/i.test(source ?? '')) return 1
+  if (level >= 10) return 4
+  if (level >= 4) return 3
+  return 2
+}
+
 function brutalCriticalDice(level) {
   if (level >= 17) return 3
   if (level >= 13) return 2
@@ -143,6 +150,33 @@ function clericChannelUses(level) {
   if (level >= 18) return 3
   if (level >= 6) return 2
   return level >= 2 ? 1 : 0
+}
+
+function xphbClericChannelUses(level) {
+  if (level >= 18) return 4
+  if (level >= 6) return 3
+  return level >= 2 ? 2 : 0
+}
+
+function paladinChannelUses(level, source) {
+  if (!/xphb/i.test(source ?? '')) return level >= 3 ? 1 : 0
+  if (level >= 11) return 3
+  return level >= 3 ? 2 : 0
+}
+
+function wildShapeUses(level, source) {
+  if (!/xphb/i.test(source ?? '')) return level >= 20 ? null : 2
+  if (level >= 18) return 4
+  if (level >= 6) return 3
+  return level >= 2 ? 2 : 0
+}
+
+function xphbFavoredEnemyUses(level) {
+  if (level >= 17) return 6
+  if (level >= 13) return 5
+  if (level >= 9) return 4
+  if (level >= 5) return 3
+  return level >= 1 ? 2 : 0
 }
 
 function mysticArcanumCount(level) {
@@ -156,6 +190,19 @@ function mysticArcanumLevels(level) {
     level >= 15 && '8th',
     level >= 17 && '9th',
   ].filter(Boolean).join(', ')
+}
+
+function martialArtsDie(level, source) {
+  if (/xphb/i.test(source ?? '')) {
+    if (level >= 17) return '1d12'
+    if (level >= 11) return '1d10'
+    if (level >= 5) return '1d8'
+    return '1d6'
+  }
+  if (level >= 17) return '1d10'
+  if (level >= 11) return '1d8'
+  if (level >= 5) return '1d6'
+  return '1d4'
 }
 
 function extraAttackCount({ fighterLevel, barbarianLevel, monkLevel, paladinLevel, rangerLevel }) {
@@ -186,6 +233,57 @@ function classFeatureChoiceOptions(char, predicate) {
       .filter(option => predicate(option, choice))
       .map(option => ({ ...option, choice }))
   )
+}
+
+function classSourceFor(char, classIndexValue, featurePattern = null) {
+  const identitySource = (char.identity?.class ?? []).find(cls => classIndex(cls) === classIndexValue)?.source
+  if (identitySource) return identitySource
+  const feature = (char.customContent?.classFeatures ?? []).find(item => {
+    const featureClass = classIndex({ index: item.classIndex, name: item.className })
+    return featureClass === classIndexValue && (!featurePattern || featurePattern.test(item.name ?? ''))
+  })
+  return feature?.source ?? null
+}
+
+function hasClassFeature(char, classIndexValue, featurePattern) {
+  return (char.customContent?.classFeatures ?? []).some(item => {
+    const featureClass = classIndex({ index: item.classIndex, name: item.className })
+    return featureClass === classIndexValue && featurePattern.test(item.name ?? '')
+  })
+}
+
+function hasFeat(char, featName) {
+  return (char.feats ?? []).some(feat => feat.name === featName)
+}
+
+function featChoice(char, featName) {
+  return (char.customContent?.featChoices ?? []).find(choice => choice.featName === featName)
+    ?? (char.feats ?? []).find(feat => feat.name === featName)?.choices
+    ?? null
+}
+
+function isPolearmMasterWeapon(item) {
+  const name = String(item.name ?? '').toLowerCase()
+  return ['glaive', 'halberd', 'pike', 'quarterstaff', 'spear'].some(weapon => name.includes(weapon))
+}
+
+function weaponProperties(item, srdMap) {
+  const srd = srdMap[item.index] ?? {}
+  return (item.properties ?? srd.properties?.map(prop => prop.name) ?? [])
+    .map(prop => (typeof prop === 'string' ? prop : prop.name ?? '').toLowerCase())
+}
+
+function hasWeaponProperty(item, srdMap, property) {
+  return weaponProperties(item, srdMap).includes(property.toLowerCase())
+}
+
+function isRangedWeapon(item, srdMap) {
+  const props = weaponProperties(item, srdMap)
+  return props.includes('ammunition') || props.includes('thrown')
+}
+
+function isFinesseWeapon(item, srdMap) {
+  return hasWeaponProperty(item, srdMap, 'finesse')
 }
 
 function isMagicItem(item, srdMap) {
@@ -240,6 +338,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     const isFin    = propsLower.includes('finesse')
     const usesAmmo = propsLower.includes('ammunition')
     const isThrown = propsLower.includes('thrown')
+    const isHeavy = propsLower.includes('heavy')
     const isTwoHanded = propsLower.includes('two-handed')
     const isRanged = usesAmmo || isThrown
     const useAttr  = isRanged || (isFin && dexMod > strMod) ? 'dex' : 'str'
@@ -252,6 +351,10 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     const duelingBonus = hasClassFeatureChoice(char, 'Dueling') && !usesAmmo && !isThrown && !isTwoHanded && !useVersatile ? 2 : 0
     const thrownWeaponBonus = hasClassFeatureChoice(char, 'Thrown Weapon Fighting') && isThrown ? 2 : 0
     const greatWeaponFighting = hasClassFeatureChoice(char, 'Great Weapon Fighting') && !usesAmmo && !isThrown && (isTwoHanded || useVersatile)
+    const powerAttack = [
+      hasFeat(char, 'Great Weapon Master') && isHeavy && !usesAmmo && !isThrown ? 'Great Weapon Master' : null,
+      hasFeat(char, 'Sharpshooter') && isRanged ? 'Sharpshooter' : null,
+    ].find(Boolean)
     const toHit    = attrMod + pb + enh + attackEffectBonus + archeryBonus
     const dmgMod   = attrMod + enh + damageEffectBonus + duelingBonus + thrownWeaponBonus
 
@@ -275,9 +378,10 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       duelingBonus ? 'Dueling +2 damage' : null,
       thrownWeaponBonus ? 'Thrown Weapon Fighting +2 damage' : null,
       greatWeaponFighting ? 'Great Weapon Fighting: reroll damage dice showing 1 or 2' : null,
+      powerAttack ? `${powerAttack}: optional -5 to hit for +10 damage` : null,
     ].filter(Boolean).join(', ')
 
-    return { toHit, dmgStr, versatileStr, breakdown, usesAmmo, greatWeaponFighting }
+    return { toHit, dmgStr, versatileStr, breakdown, usesAmmo, greatWeaponFighting, powerAttack }
   }
 
   function isAmmoItem(item) {
@@ -325,6 +429,11 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     const srd = srdMap[item.index] ?? {}
     return (item.armor_category ?? srd.armor_category) === 'Shield'
   })
+  const equippedHeavyArmor = (char.inventory ?? []).some(item => {
+    if (!item.equipped && !item.attuned) return false
+    const srd = srdMap[item.index] ?? {}
+    return (item.armor_category ?? srd.armor_category) === 'Heavy'
+  })
 
   // Charged items — wands, staves, rods with limited uses (equipped or attuned, no damage dice)
   const chargedItems = (char.inventory ?? []).filter(item =>
@@ -355,6 +464,10 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const pactSlotEntries = Object.entries(char.spells?.pactSlots ?? {})
     .filter(([, v]) => v.total > 0)
     .sort(([a], [b]) => Number(a) - Number(b))
+  const hasSpellcasting = !!char.spells?.spellcastingAbility
+    || (char.spells?.known ?? []).length > 0
+    || slotEntries.length > 0
+    || pactSlotEntries.length > 0
 
   // Prepared spells (cantrips + prepared leveled spells)
   const known    = char.spells?.known    ?? []
@@ -458,7 +571,13 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
 
   function resetTurn() {
     if (!isOwner || locked) return
-    setActionEconomy({ action: 1, bonusAction: 1, reaction: 1 })
+    updateChar({
+      combat: {
+        ...char.combat,
+        actionEconomy: { action: 1, bonusAction: 1, reaction: 1 },
+        classAbilities: (char.combat?.classAbilities ?? []).filter(ability => ability.recharge !== 'Turn'),
+      },
+    })
   }
 
   const fighterLevel = (char.identity?.class ?? [])
@@ -506,6 +625,25 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const maneuverDC = 8 + pb + Math.max(strMod, dexMod)
   const attackCount = extraAttackCount({ fighterLevel, barbarianLevel, monkLevel, paladinLevel, rangerLevel })
   const classFeatures = char.customContent?.classFeatures ?? []
+  const barbarianSource = classSourceFor(char, 'barbarian', /^rage$/i)
+  const monkSource = classSourceFor(char, 'monk', /^(martial arts|bonus unarmed strike)$/i)
+  const clericSource = classSourceFor(char, 'cleric', /^channel divinity$/i)
+  const clericInterventionSource = classSourceFor(char, 'cleric', /^divine intervention$/i) ?? clericSource
+  const fighterSource = classSourceFor(char, 'fighter', /^indomitable/i)
+  const paladinSource = classSourceFor(char, 'paladin', /^channel divinity$/i)
+  const druidSource = classSourceFor(char, 'druid', /^wild shape$/i)
+  const rangerFavoredEnemySource = classSourceFor(char, 'ranger', /^favored enemy$/i)
+  const rageMax = rageUses(barbarianLevel, barbarianSource)
+  const clericChannelMax = /xphb/i.test(clericSource ?? '') ? xphbClericChannelUses(clericLevel) : clericChannelUses(clericLevel)
+  const paladinChannelMax = paladinChannelUses(paladinLevel, paladinSource)
+  const wildShapeMax = wildShapeUses(druidLevel, druidSource)
+  const favoredEnemyMax = xphbFavoredEnemyUses(rangerLevel)
+  const isXphbBarbarian = /xphb/i.test(barbarianSource ?? '')
+  const isXphbClericIntervention = /xphb/i.test(clericInterventionSource ?? '')
+  const isXphbFighter = /xphb/i.test(fighterSource ?? '')
+  const isXphbRangerFavoredEnemy = /xphb/i.test(rangerFavoredEnemySource ?? '')
+  const isXphbPaladin = /xphb/i.test(paladinSource ?? '')
+  const hasPrimevalAwareness = hasClassFeature(char, 'ranger', /^primeval awareness$/i)
   const combatFeatures = classFeatures
     .filter(feature => /^(second wind|action surge|sneak attack)$/i.test(feature.name ?? ''))
     .filter((feature, index, list) => list.findIndex(other => featureKey(other.name) === featureKey(feature.name)) === index)
@@ -517,7 +655,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
         ? (fighterLevel >= 17 ? 2 : 1)
         : isSneakAttack
           ? null
-          : (/xphb/i.test(feature.source ?? '') ? 2 : 1)
+          : secondWindUses(fighterLevel, feature.source)
       return {
         ...feature,
         key,
@@ -539,11 +677,15 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       key: 'class-rage',
       sourceType: 'Class',
       actionType: 'Bonus',
-      recharge: rageUses(barbarianLevel) == null ? null : 'LR',
-      max: rageUses(barbarianLevel),
+      recharge: rageMax == null ? null : isXphbBarbarian ? 'SR/LR' : 'LR',
+      max: rageMax,
       used: storedAbilityMap['class-rage']?.used ?? 0,
       effect: `+${rageDamage(barbarianLevel)} damage`,
-      detail: rageUses(barbarianLevel) == null ? 'Unlimited uses' : `${rageUses(barbarianLevel)}/LR`,
+      detail: rageMax == null
+        ? 'Unlimited uses'
+        : isXphbBarbarian
+          ? `${rageMax} uses. Regain one on a short rest and all on a long rest.`
+          : `${rageMax}/LR`,
     },
     monkLevel >= 2 && {
       name: 'Ki',
@@ -555,6 +697,14 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       used: storedAbilityMap['class-ki']?.used ?? 0,
       effect: `${monkLevel} ki`,
       detail: 'Patient Defense, Step of the Wind, Flurry of Blows, and other monk features.',
+    },
+    monkLevel > 0 && {
+      name: 'Martial Arts',
+      key: 'class-martial-arts',
+      sourceType: 'Class',
+      actionType: 'Bonus',
+      effect: 'Unarmed strike',
+      detail: 'After attacking with an unarmed strike or monk weapon, make one unarmed strike as a bonus action.',
     },
     bardLevel > 0 && {
       name: 'Bardic Inspiration',
@@ -584,10 +734,10 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       sourceType: 'Paladin',
       actionType: 'Feature',
       recharge: 'SR',
-      max: 1,
+      max: paladinChannelMax,
       used: storedAbilityMap['class-paladin-channel-divinity']?.used ?? 0,
-      effect: '1 use',
-      detail: 'Use one Channel Divinity option granted by your oath.',
+      effect: `${paladinChannelMax} use${paladinChannelMax === 1 ? '' : 's'}`,
+      detail: isXphbPaladin ? 'Use Divine Sense or an option granted by your oath.' : 'Use one Channel Divinity option granted by your oath.',
     },
     clericLevel >= 2 && {
       name: 'Channel Divinity',
@@ -595,9 +745,9 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       sourceType: 'Cleric',
       actionType: 'Feature',
       recharge: 'SR',
-      max: clericChannelUses(clericLevel),
+      max: clericChannelMax,
       used: storedAbilityMap['class-cleric-channel-divinity']?.used ?? 0,
-      effect: `${clericChannelUses(clericLevel)} use${clericChannelUses(clericLevel) === 1 ? '' : 's'}`,
+      effect: `${clericChannelMax} use${clericChannelMax === 1 ? '' : 's'}`,
       detail: 'Turn Undead and domain Channel Divinity options.',
     },
     druidLevel >= 2 && {
@@ -605,11 +755,11 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       key: 'class-wild-shape',
       sourceType: 'Class',
       actionType: 'Action',
-      recharge: druidLevel >= 20 ? null : 'SR',
-      max: druidLevel >= 20 ? null : 2,
+      recharge: wildShapeMax == null ? null : 'SR',
+      max: wildShapeMax,
       used: storedAbilityMap['class-wild-shape']?.used ?? 0,
-      effect: druidLevel >= 20 ? 'Unlimited' : '2 uses',
-      detail: druidLevel >= 20 ? 'Unlimited Wild Shape uses.' : 'Regain uses when you finish a short or long rest.',
+      effect: wildShapeMax == null ? 'Unlimited' : `${wildShapeMax} uses`,
+      detail: wildShapeMax == null ? 'Unlimited Wild Shape uses.' : 'Regain one use on a short rest and all uses on a long rest.',
     },
     sorcererLevel >= 2 && {
       name: 'Sorcery Points',
@@ -641,10 +791,14 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       recharge: 'LR',
       max: indomitableUses(fighterLevel),
       used: storedAbilityMap['class-indomitable']?.used ?? 0,
-      effect: `${indomitableUses(fighterLevel)} reroll${indomitableUses(fighterLevel) === 1 ? '' : 's'}`,
-      detail: 'Reroll a failed saving throw.',
+      effect: isXphbFighter
+        ? `${indomitableUses(fighterLevel)} reroll${indomitableUses(fighterLevel) === 1 ? '' : 's'} +${fighterLevel}`
+        : `${indomitableUses(fighterLevel)} reroll${indomitableUses(fighterLevel) === 1 ? '' : 's'}`,
+      detail: isXphbFighter
+        ? 'Reroll a failed saving throw with a bonus equal to your Fighter level.'
+        : 'Reroll a failed saving throw.',
     },
-    paladinLevel > 0 && {
+    paladinLevel > 0 && !isXphbPaladin && {
       name: 'Divine Sense',
       key: 'class-divine-sense',
       sourceType: 'Paladin',
@@ -783,7 +937,18 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       effect: 'End charm/fear',
       detail: 'End one effect causing you to be charmed or frightened.',
     },
-    rangerLevel >= 3 && {
+    isXphbRangerFavoredEnemy && rangerLevel > 0 && {
+      name: "Hunter's Mark",
+      key: 'class-ranger-favored-enemy',
+      sourceType: 'Ranger',
+      actionType: 'Spell',
+      recharge: 'LR',
+      max: favoredEnemyMax,
+      used: storedAbilityMap['class-ranger-favored-enemy']?.used ?? 0,
+      effect: `${favoredEnemyMax} free cast${favoredEnemyMax === 1 ? '' : 's'}`,
+      detail: "Favored Enemy: cast Hunter's Mark without expending a spell slot.",
+    },
+    rangerLevel >= 3 && hasPrimevalAwareness && {
       name: 'Primeval Awareness',
       key: 'class-primeval-awareness',
       sourceType: 'Ranger',
@@ -806,12 +971,18 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       name: 'Divine Intervention',
       key: 'class-divine-intervention',
       sourceType: 'Cleric',
-      actionType: 'Action',
+      actionType: isXphbClericIntervention ? 'Magic' : 'Action',
       recharge: 'LR',
       max: 1,
       used: storedAbilityMap['class-divine-intervention']?.used ?? 0,
-      effect: clericLevel >= 20 ? 'Automatic' : `${clericLevel}%`,
-      detail: clericLevel >= 20 ? 'Your deity intervenes without a roll.' : 'Roll percentile dice; success if the result is equal to or below your Cleric level.',
+      effect: isXphbClericIntervention
+        ? (clericLevel >= 20 ? 'Wish option' : 'Lv 5 spell')
+        : clericLevel >= 20 ? 'Automatic' : `${clericLevel}%`,
+      detail: isXphbClericIntervention
+        ? (clericLevel >= 20
+            ? 'Cast a Cleric spell of level 5 or lower without a slot; Wish is also an option, then this recharges after 2d4 long rests.'
+            : 'Cast a Cleric spell of level 5 or lower without expending a slot or material components.')
+        : clericLevel >= 20 ? 'Your deity intervenes without a roll.' : 'Roll percentile dice; success if the result is equal to or below your Cleric level.',
     },
     warlockLevel >= 20 && {
       name: 'Eldritch Master',
@@ -825,13 +996,18 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       detail: 'Spend 1 minute entreating your patron to regain all expended Pact Magic slots.',
     },
   ].filter(Boolean)
-  const martialAdeptChoice = (char.customContent?.featChoices ?? []).find(choice => choice.featName === 'Martial Adept')
+  const martialAdeptChoice = featChoice(char, 'Martial Adept')
+  const magicInitiateChoice = featChoice(char, 'Magic Initiate')
+  const magicInitiateSpellNames = (magicInitiateChoice?.spells ?? []).map(spell => spell.name).filter(Boolean)
   const selectedFeatureOptions = selectedClassFeatureOptionNames(char)
   const eldritchInvocations = classFeatureChoiceOptions(char, option =>
     (option.featureType ?? []).includes('EI')
   ).filter((option, index, list) => list.findIndex(other => other.name === option.name) === index)
   const metamagicOptions = classFeatureChoiceOptions(char, option =>
     (option.featureType ?? []).includes('MM')
+  ).filter((option, index, list) => list.findIndex(other => other.name === option.name) === index)
+  const elementalDisciplines = classFeatureChoiceOptions(char, option =>
+    (option.featureType ?? []).includes('ED')
   ).filter((option, index, list) => list.findIndex(other => other.name === option.name) === index)
   const pactBoon = classFeatureChoiceOptions(char, (option, choice) =>
     /pact boon/i.test(choice.featureName ?? '') || /^Pact of /i.test(option.name ?? '')
@@ -860,6 +1036,14 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       actionType: 'Spell',
       effect: `${metamagicOptions.length} options`,
       detail: metamagicOptions.map(option => option.name).join(' · '),
+    },
+    elementalDisciplines.length > 0 && {
+      name: 'Elemental Disciplines',
+      key: 'choice-elemental-disciplines',
+      sourceType: 'Monk',
+      actionType: 'Ki',
+      effect: `${elementalDisciplines.length} known`,
+      detail: elementalDisciplines.map(option => option.name).join(' · '),
     },
   ].filter(Boolean)
   const battleMasterManeuvers = classFeatureChoiceOptions(char, (option, choice) => {
@@ -931,19 +1115,180 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       detail: 'Add your ability modifier to the damage of the second light-weapon attack.',
     },
   ].filter(Boolean)
-  const featCombatFeatures = martialAdeptChoice?.maneuvers?.length
-    ? [{
-        name: 'Martial Adept',
-        key: 'feat-martial-adept',
-        sourceType: 'Feat',
-        actionType: 'Maneuver',
-        recharge: 'SR',
-        max: 1,
-        used: storedAbilityMap['feat-martial-adept']?.used ?? 0,
-        effect: '1d6 superiority',
-        detail: [`DC ${maneuverDC}`, martialAdeptChoice.maneuvers.map(maneuver => maneuver.name).join(' · ')].filter(Boolean).join(' · '),
-      }]
-    : []
+  const featCombatFeatures = [
+    martialAdeptChoice?.maneuvers?.length && {
+      name: 'Martial Adept',
+      key: 'feat-martial-adept',
+      sourceType: 'Feat',
+      actionType: 'Maneuver',
+      recharge: 'SR',
+      max: 1,
+      used: storedAbilityMap['feat-martial-adept']?.used ?? 0,
+      effect: '1d6 superiority',
+      detail: [`DC ${maneuverDC}`, martialAdeptChoice.maneuvers.map(maneuver => maneuver.name).join(' · ')].filter(Boolean).join(' · '),
+    },
+    hasFeat(char, 'Charger') && {
+      name: 'Charger',
+      key: 'feat-charger',
+      sourceType: 'Feat',
+      actionType: 'Bonus',
+      effect: '+5 damage / push',
+      detail: 'After using your action to Dash, make one bonus-action melee attack or shove. If you moved at least 10 ft in a straight line, add +5 damage or push the target up to 10 ft.',
+    },
+    hasFeat(char, 'Crossbow Expert') && {
+      name: 'Crossbow Expert',
+      key: 'feat-crossbow-expert',
+      sourceType: 'Feat',
+      actionType: 'Bonus',
+      effect: 'Hand crossbow',
+      detail: 'Ignore loading with crossbows, and attacking within 5 ft does not impose disadvantage. After attacking with a one-handed weapon, you can make a bonus-action hand crossbow attack.',
+    },
+    hasFeat(char, 'Lucky') && {
+      name: 'Lucky',
+      key: 'feat-lucky',
+      sourceType: 'Feat',
+      actionType: 'Roll',
+      recharge: 'LR',
+      max: 3,
+      used: storedAbilityMap['feat-lucky']?.used ?? 0,
+      effect: '3 luck points',
+      detail: 'Spend a luck point to roll an extra d20 on your attack, ability check, or save, or to affect an attack roll against you.',
+    },
+    hasFeat(char, 'Magic Initiate') && magicInitiateSpellNames.length > 0 && {
+      name: 'Magic Initiate',
+      key: 'feat-magic-initiate',
+      sourceType: 'Feat',
+      actionType: 'Spell',
+      recharge: 'LR',
+      max: 1,
+      used: storedAbilityMap['feat-magic-initiate']?.used ?? 0,
+      effect: '1 free cast',
+      detail: `Cast ${magicInitiateSpellNames.join(', ')} once per long rest without expending a spell slot.`,
+    },
+    (char.feats ?? []).some(feat => feat.name === 'Heavy Armour Master') && equippedHeavyArmor && {
+      name: 'Heavy Armour Master',
+      key: 'feat-heavy-armour-master',
+      sourceType: 'Feat',
+      actionType: 'Passive',
+      effect: '-3 B/P/S',
+      detail: 'While wearing heavy armor, reduce nonmagical bludgeoning, piercing, and slashing damage by 3.',
+    },
+    hasFeat(char, 'Defensive Duelist') && equippedWeapons.some(item => isFinesseWeapon(item, srdMap)) && {
+      name: 'Defensive Duelist',
+      key: 'feat-defensive-duelist',
+      sourceType: 'Feat',
+      actionType: 'Reaction',
+      effect: `+${pb} AC`,
+      detail: 'When hit by a melee attack while wielding a finesse weapon, use your reaction to add your proficiency bonus to AC for that attack.',
+    },
+    hasFeat(char, 'Grappler') && {
+      name: 'Grappler',
+      key: 'feat-grappler',
+      sourceType: 'Feat',
+      actionType: 'Attack',
+      effect: 'Grapple control',
+      detail: 'You have advantage on attack rolls against a creature you are grappling, and you can use your action to try to pin it; both of you are restrained on success.',
+    },
+    hasFeat(char, 'Great Weapon Master') && equippedWeapons.some(item => hasWeaponProperty(item, srdMap, 'heavy') && !isRangedWeapon(item, srdMap)) && {
+      name: 'Great Weapon Master',
+      key: 'feat-great-weapon-master',
+      sourceType: 'Feat',
+      actionType: 'Bonus',
+      effect: 'Extra attack',
+      detail: 'On your turn, after scoring a critical hit with a melee weapon or reducing a creature to 0 HP, make one melee weapon attack as a bonus action. Heavy weapon attack cards also show the optional -5/+10 attack.',
+    },
+    hasFeat(char, 'Healer') && {
+      name: 'Healer',
+      key: 'feat-healer',
+      sourceType: 'Feat',
+      actionType: 'Action',
+      effect: `1d6 + 4 + ${level} HP`,
+      detail: 'Use a healer\'s kit to stabilize a dying creature to 1 HP, or restore hit points equal to 1d6 + 4 + the creature\'s maximum Hit Dice. One heal per creature per rest.',
+    },
+    hasFeat(char, 'Inspiring Leader') && {
+      name: 'Inspiring Leader',
+      key: 'feat-inspiring-leader',
+      sourceType: 'Feat',
+      actionType: 'Rest',
+      effect: `${level + chaMod} temp HP`,
+      detail: 'Spend 10 minutes inspiring up to six friendly creatures; each gains temporary hit points equal to your level + Charisma modifier.',
+    },
+    hasFeat(char, 'Mage Slayer') && {
+      name: 'Mage Slayer',
+      key: 'feat-mage-slayer',
+      sourceType: 'Feat',
+      actionType: 'Reaction',
+      effect: 'Anti-caster',
+      detail: 'React to attack a creature that casts a spell within 5 ft. Nearby casters have disadvantage on concentration saves, and you have advantage on saves against their spells.',
+    },
+    hasFeat(char, 'Mounted Combatant') && {
+      name: 'Mounted Combatant',
+      key: 'feat-mounted-combatant',
+      sourceType: 'Feat',
+      actionType: 'Mounted',
+      effect: 'Protect mount',
+      detail: 'Gain advantage on melee attacks against unmounted creatures smaller than your mount, redirect attacks from your mount to you, and help your mount avoid Dexterity-save damage.',
+    },
+    hasFeat(char, 'Polearm Master') && equippedWeapons.some(isPolearmMasterWeapon) && {
+      name: 'Polearm Master',
+      key: 'feat-polearm-master',
+      sourceType: 'Feat',
+      actionType: 'Bonus',
+      effect: `1d4${fmtB(strMod)} bludgeoning`,
+      detail: 'After attacking with a qualifying polearm, make a bonus-action melee attack with the opposite end. Creatures provoke opportunity attacks when they enter your reach.',
+    },
+    hasFeat(char, 'Shield Master') && equippedShields.length > 0 && {
+      name: 'Shield Master',
+      key: 'feat-shield-master',
+      sourceType: 'Feat',
+      actionType: 'Bonus',
+      effect: 'Shield shove',
+      detail: 'After attacking, shove with your shield as a bonus action. Add your shield bonus to Dexterity saves against effects that target only you; after a successful Dexterity save for half damage, you can use your reaction to take no damage.',
+    },
+    hasFeat(char, 'Savage Attacker') && equippedWeapons.length > 0 && {
+      name: 'Savage Attacker',
+      key: 'feat-savage-attacker',
+      sourceType: 'Feat',
+      actionType: 'Once/turn',
+      recharge: 'Turn',
+      max: 1,
+      used: storedAbilityMap['feat-savage-attacker']?.used ?? 0,
+      effect: 'Reroll damage',
+      detail: 'Once per turn when you roll weapon damage, reroll the weapon damage dice and use either total.',
+    },
+    hasFeat(char, 'Sharpshooter') && equippedWeapons.some(item => isRangedWeapon(item, srdMap)) && {
+      name: 'Sharpshooter',
+      key: 'feat-sharpshooter',
+      sourceType: 'Feat',
+      actionType: 'Attack',
+      effect: 'Ignore range/cover',
+      detail: 'Ranged weapon attacks ignore half and three-quarters cover and do not suffer disadvantage at long range. Ranged attack cards also show the optional -5/+10 attack.',
+    },
+    hasFeat(char, 'Sentinel') && {
+      name: 'Sentinel',
+      key: 'feat-sentinel',
+      sourceType: 'Feat',
+      actionType: 'Reaction',
+      effect: 'Lockdown',
+      detail: 'Opportunity attacks reduce speed to 0, ignore Disengage, and you can react when a nearby creature attacks someone other than you.',
+    },
+    hasFeat(char, 'Tavern Brawler') && {
+      name: 'Tavern Brawler',
+      key: 'feat-tavern-brawler',
+      sourceType: 'Feat',
+      actionType: 'Bonus',
+      effect: 'Bonus grapple',
+      detail: 'After hitting a creature with an unarmed strike or improvised weapon on your turn, you can try to grapple it as a bonus action.',
+    },
+    hasFeat(char, 'War Caster') && hasSpellcasting && {
+      name: 'War Caster',
+      key: 'feat-war-caster',
+      sourceType: 'Feat',
+      actionType: 'Reaction',
+      effect: 'Battle casting',
+      detail: 'You have advantage on concentration saves, can perform somatic components while holding weapons or a shield, and can cast a spell instead of making an opportunity attack.',
+    },
+  ].filter(Boolean)
 
   const raceAbilityFeatures = racialCombatTraits.map(trait => {
     const isBreath = trait.index === 'breath-weapon'
@@ -979,6 +1324,46 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     ...featCombatFeatures,
     ...raceAbilityFeatures,
   ]
+  const hasSpentShortRestFeature = combatAbilityFeatures.some(feature => feature.max && feature.used > 0 && /SR/.test(feature.recharge ?? ''))
+  const hasSpentLongRestFeature = combatAbilityFeatures.some(feature => feature.max && feature.used > 0 && /LR/.test(feature.recharge ?? ''))
+  const hasSpentPactSlots = pactSlotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
+  const hasSpentSpellSlots = slotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
+  const hasSpentChargedItems = (char.inventory ?? []).some(item => item.chargesMax && (item.chargesCurrent ?? item.chargesMax) < item.chargesMax)
+  const canShortRestRecover = hasSpentShortRestFeature || hasSpentPactSlots
+  const canLongRestRecover = hasSpentLongRestFeature || hasSpentSpellSlots || hasSpentPactSlots || hasSpentChargedItems
+  const showRestRecovery = canShortRestRecover || canLongRestRecover || slotEntries.length > 0 || pactSlotEntries.length > 0 || chargedItems.length > 0
+
+  function recoverFeatures(restType) {
+    if (!isOwner || locked) return
+    const rechargePattern = restType === 'SR' ? /SR/ : /LR/
+    const nextSpells = { ...(char.spells ?? {}) }
+    if (restType === 'SR') {
+      nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
+        lvl,
+        { ...slot, used: 0 },
+      ]))
+    } else {
+      nextSpells.slots = Object.fromEntries(Object.entries(nextSpells.slots ?? {}).map(([lvl, slot]) => [
+        lvl,
+        { ...slot, used: 0 },
+      ]))
+      nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
+        lvl,
+        { ...slot, used: 0 },
+      ]))
+      nextSpells.concentration = null
+    }
+    updateChar({
+      inventory: restType === 'LR'
+        ? (char.inventory ?? []).map(item => item.chargesMax ? { ...item, chargesCurrent: item.chargesMax } : item)
+        : char.inventory,
+      spells: nextSpells,
+      combat: {
+        ...char.combat,
+        classAbilities: (char.combat?.classAbilities ?? []).filter(ability => !rechargePattern.test(ability.recharge ?? '')),
+      },
+    })
+  }
 
   function handleCombatFeature(feature) {
     if (!isOwner || locked || !feature.max || feature.used >= feature.max) return
@@ -1006,9 +1391,26 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   }
 
   const hasUnarmedFighting = hasClassFeatureChoice(char, 'Unarmed Fighting')
-  const unarmedDie = equippedWeapons.length === 0 && equippedShields.length === 0 ? '1d8' : '1d6'
-  const unarmedDamage = `${unarmedDie}${strMod !== 0 ? fmtB(strMod) : ''} bludgeoning`
-  const hasAnything = hasUnarmedFighting || equippedWeapons.length > 0 || chargedItems.length > 0 || combatAbilityFeatures.length > 0
+  const hasTavernBrawler = (char.feats ?? []).some(feat => feat.name === 'Tavern Brawler')
+  const hasMonkMartialArts = monkLevel > 0
+  const monkAttackMod = Math.max(strMod, dexMod)
+  const monkAttackAttr = dexMod >= strMod ? 'DEX' : 'STR'
+  const unarmedDie = hasUnarmedFighting
+    ? equippedWeapons.length === 0 && equippedShields.length === 0 ? '1d8' : '1d6'
+    : hasMonkMartialArts ? martialArtsDie(monkLevel, monkSource)
+      : hasTavernBrawler ? '1d4'
+      : '1'
+  const unarmedMod = hasMonkMartialArts ? monkAttackMod : strMod
+  const unarmedAttr = hasMonkMartialArts ? monkAttackAttr : 'STR'
+  const unarmedLabel = hasUnarmedFighting ? 'Unarmed Fighting' : hasMonkMartialArts ? 'Martial Arts' : hasTavernBrawler ? 'Tavern Brawler' : 'Basic'
+  const unarmedDamage = `${unarmedDie}${unarmedDie !== '1' && unarmedMod !== 0 ? fmtB(unarmedMod) : ''} bludgeoning`
+  const unarmedTitle = hasUnarmedFighting
+    ? 'Unarmed Fighting style changes your unarmed strike damage.'
+    : hasMonkMartialArts
+      ? 'Martial Arts changes your unarmed strike damage and can use Dexterity.'
+      : hasTavernBrawler
+        ? 'Tavern Brawler changes your unarmed strike damage to 1d4.'
+        : 'A basic unarmed strike deals 1 bludgeoning damage.'
 
   return (
     <div className="tab-combat">
@@ -1037,39 +1439,38 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       {/* ── Attacks & Abilities ── */}
       <div className="sec-head">Attacks &amp; Abilities</div>
 
-      {!hasAnything && Object.keys(srdMap).length > 0 && (
-        <p className="empty-hint">Equip weapons in the Gear tab to show attacks here.</p>
-      )}
-
-      {hasUnarmedFighting && (
-        <div className="attack-card">
-          <div className="atk-line1">
-            <span className="atk-name">Unarmed Strike</span>
-          </div>
-          <div className="atk-line2">
-            <span className="badge" title={`STR ${fmtB(strMod)}, Prof ${fmtB(pb)}`}>{fmtB(strMod + pb)} to hit</span>
-            <span className="badge">{unarmedDamage}</span>
+      <div className="attack-card">
+        <div className="atk-line1">
+          <span className="atk-name">Unarmed Strike</span>
+        </div>
+        <div className="atk-line2">
+          <span className="badge" title={`${unarmedAttr} ${fmtB(unarmedMod)}, Prof ${fmtB(pb)}`}>{fmtB(unarmedMod + pb)} to hit</span>
+          <span className="badge">{unarmedDamage}</span>
+          <span className="badge badge--dim" title={unarmedTitle}>
+            {unarmedLabel}
+          </span>
+          {hasUnarmedFighting && (
             <span className="badge badge--dim" title="Unarmed Fighting: deal 1d4 bludgeoning damage to one creature grappled by you at the start of each of your turns">
               Grapple 1d4
             </span>
-            <div className="atk-btns">
-              <button
-                className="atk-btn atk-btn--roll"
-                disabled={!isOwner || locked}
-                title={`Roll ${unarmedDamage}`}
-              >
-                Roll
-              </button>
-            </div>
+          )}
+          <div className="atk-btns">
+            <button
+              className="atk-btn atk-btn--roll"
+              disabled={!isOwner || locked}
+              title={`Roll ${unarmedDamage}`}
+            >
+              Roll
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Weapon attack cards */}
       {equippedWeapons.map(item => {
         const resolved = resolveWeapon(item)
         if (!resolved) return null
-        const { toHit, dmgStr, versatileStr, breakdown, usesAmmo, greatWeaponFighting } = resolved
+        const { toHit, dmgStr, versatileStr, breakdown, usesAmmo, greatWeaponFighting, powerAttack } = resolved
         const key = itemKey(item)
         const useVersatile = !!versatileStr && !!versatileMode[key]
         const selectedDamage = useVersatile ? versatileStr : dmgStr
@@ -1110,6 +1511,11 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
               {greatWeaponFighting && (
                 <span className="badge badge--dim" title="Great Weapon Fighting: reroll weapon damage dice that show 1 or 2">
                   GWF
+                </span>
+              )}
+              {powerAttack && (
+                <span className="badge badge--dim" title={`${powerAttack}: before attacking, you can take -5 to hit for +10 damage.`}>
+                  -5/+10
                 </span>
               )}
               <div className="atk-btns">
@@ -1168,35 +1574,58 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
         )
       })}
 
-      {combatAbilityFeatures.length > 0 && (
-        <div className="combat-feature-grid" aria-label="Combat abilities">
-          {combatAbilityFeatures.map(feature => {
-            const remaining = feature.max ? Math.max(0, feature.max - feature.used) : null
-            const isSpent = remaining != null && remaining <= 0
-            const title = Array.isArray(feature.desc) ? feature.desc.join(' ') : feature.detail ?? ''
-            return feature.max ? (
-              <button
-                key={feature.key}
-                className={`combat-feature-square${isSpent ? ' combat-feature-square--spent' : ''}`}
-                type="button"
-                onClick={() => handleCombatFeature(feature)}
-                disabled={!isOwner || locked || isSpent}
-                title={title}
-              >
-                <span className="combat-feature-name">{feature.name}</span>
-                <span className="combat-feature-effect">{feature.effect}</span>
-                <span className="combat-feature-meta">{feature.actionType} · {remaining}/{feature.max}</span>
-              </button>
-            ) : (
-              <div key={feature.key} className="combat-feature-square combat-feature-square--static" title={title}>
-                <span className="combat-feature-source">{String(feature.sourceType).toUpperCase()}</span>
-                <span className="combat-feature-name">{feature.name}</span>
-                <span className="combat-feature-effect">{feature.effect}</span>
-                <span className="combat-feature-meta">{feature.detail || feature.actionType}</span>
-              </div>
-            )
-          })}
+      {showRestRecovery && (
+        <div className="combat-rest-actions">
+          <button
+            className="combat-rest-btn"
+            type="button"
+            onClick={() => recoverFeatures('SR')}
+            disabled={!isOwner || locked || !canShortRestRecover}
+            title="Recover spent short-rest features and pact slots"
+          >
+            Short Rest
+          </button>
+          <button
+            className="combat-rest-btn"
+            type="button"
+            onClick={() => recoverFeatures('LR')}
+            disabled={!isOwner || locked || !canLongRestRecover}
+            title="Recover spent long-rest features, spell slots, pact slots, charges, and concentration"
+          >
+            Long Rest
+          </button>
         </div>
+      )}
+
+      {combatAbilityFeatures.length > 0 && (
+          <div className="combat-feature-grid" aria-label="Combat abilities">
+            {combatAbilityFeatures.map(feature => {
+              const remaining = feature.max ? Math.max(0, feature.max - feature.used) : null
+              const isSpent = remaining != null && remaining <= 0
+              const title = Array.isArray(feature.desc) ? feature.desc.join(' ') : feature.detail ?? ''
+              return feature.max ? (
+                <button
+                  key={feature.key}
+                  className={`combat-feature-square${isSpent ? ' combat-feature-square--spent' : ''}`}
+                  type="button"
+                  onClick={() => handleCombatFeature(feature)}
+                  disabled={!isOwner || locked || isSpent}
+                  title={title}
+                >
+                  <span className="combat-feature-name">{feature.name}</span>
+                  <span className="combat-feature-effect">{feature.effect}</span>
+                  <span className="combat-feature-meta">{feature.actionType} · {remaining}/{feature.max}{feature.recharge ? ` · ${feature.recharge}` : ''}</span>
+                </button>
+              ) : (
+                <div key={feature.key} className="combat-feature-square combat-feature-square--static" title={title}>
+                  <span className="combat-feature-source">{String(feature.sourceType).toUpperCase()}</span>
+                  <span className="combat-feature-name">{feature.name}</span>
+                  <span className="combat-feature-effect">{feature.effect}</span>
+                  <span className="combat-feature-meta">{feature.detail || feature.actionType}</span>
+                </div>
+              )
+            })}
+          </div>
       )}
 
       {/* ── Spell slots ── */}

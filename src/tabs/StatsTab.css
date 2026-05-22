@@ -44,6 +44,35 @@
   text-align: center;
 }
 
+.feat-note-list {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.feat-note {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.feat-note-name {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--accent-light);
+}
+
+.feat-note-detail {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
 /* ── Ability score grid ── */
 .ability-grid {
   display: grid;

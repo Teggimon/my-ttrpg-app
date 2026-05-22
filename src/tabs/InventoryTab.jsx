@@ -73,6 +73,18 @@ function hasClassFeatureChoice(char, optionName) {
   )
 }
 
+function hasFeat(char, featName) {
+  return (char?.feats ?? []).some(feat => feat.name === featName)
+}
+
+function isOneHandedMeleeWeapon(item, srd = {}) {
+  const damage = item.damage ?? srd.damage
+  if (!damage) return false
+  const props = item.properties ?? srd.properties?.map(prop => prop.name) ?? []
+  const propsLower = props.map(prop => (typeof prop === 'string' ? prop : prop.name ?? '').toLowerCase())
+  return !propsLower.includes('ammunition') && !propsLower.includes('two-handed')
+}
+
 export function computeAC(inventory, abilityScores, srdMap, char = null) {
   const dexMod   = abilityMod(abilityScores?.dex ?? 10)
   const active   = inventory.filter(i => i.equipped || i.attuned)
@@ -98,14 +110,19 @@ export function computeAC(inventory, abilityScores, srdMap, char = null) {
 
   let baseAC
   if (armorBase !== null) {
+    const mediumDexCap = hasFeat(char, 'Medium Armour Master') ? 3 : 2
     baseAC = armorCat === 'Light'  ? armorBase + dexMod
-           : armorCat === 'Medium' ? armorBase + Math.min(dexMod, 2)
+           : armorCat === 'Medium' ? armorBase + Math.min(dexMod, mediumDexCap)
            : armorBase
   } else {
     baseAC = 10 + dexMod
   }
   const defenseBonus = armorBase !== null && hasClassFeatureChoice(char, 'Defense') ? 1 : 0
-  return baseAC + shieldAC + flatACBonus + defenseBonus
+  const dualWielderBonus = hasFeat(char, 'Dual Wielder') &&
+    active.filter(item => isOneHandedMeleeWeapon(item, srdMap[item.index] ?? {})).length >= 2
+    ? 1
+    : 0
+  return baseAC + shieldAC + flatACBonus + defenseBonus + dualWielderBonus
 }
 
 function itemCategory(item, srdMap) {

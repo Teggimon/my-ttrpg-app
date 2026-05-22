@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment } from './srdContent'
-import { FEATS, SUBCLASSES, SUBCLASS_LEVELS, getSlotsForCharacter, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
+import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment, getOptionalFeatures } from './srdContent'
+import { FEATS, SUBCLASSES, SUBCLASS_LEVELS, featRule, getSlotsForCharacter, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
 import { getSpells } from './srdContent'
 import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
 import { inventoryItemFromCatalogItem, normalizeInventoryItem } from './itemRules'
+import { RULES_EDITION_OPTIONS, normalizeAvailableRulesEdition, normalizeRuleSettings, normalizeRulesEdition, rulesSystemForEdition } from './ruleSettings'
 
 // Spellcasting ability by class index
 const SPELLCASTING_ABILITY = {
@@ -49,19 +50,298 @@ function isVariantHuman(raceData, subraceData) {
   return raceData?.index === 'human' && /^variant$/i.test(subraceData?.name ?? '') && subraceData?.source === 'PHB'
 }
 
+function featNeedsCreationSetup(feat) {
+  const rule = featRule(feat)
+  return !!(
+    rule.damageTypeChoice ||
+    rule.spellClassChoice ||
+    rule.ritualClassChoice ||
+    rule.cantripsKnown ||
+    rule.cantripFromAnyClass ||
+    rule.spellsKnown ||
+    rule.ritualSpellsKnown ||
+    rule.maneuverChoices ||
+    rule.skillOrToolProficiencies ||
+    rule.weaponProficiencies
+  )
+}
+
+function creationFeatPrereqStatus(feat, abilityScores, raceData, subraceData, raceBonusOptions) {
+  const prereq = feat?.prereq
+  if (!prereq) return { ok: true }
+  if (/spellcasting/i.test(prereq)) return { ok: false, reason: 'Requires spellcasting after class selection.' }
+  if (/armou?r/i.test(prereq)) return { ok: false, reason: 'Requires armor proficiency after class selection.' }
+
+  const abilityParts = String(prereq).match(/(STR|DEX|CON|INT|WIS|CHA)(?:\s+or\s+(STR|DEX|CON|INT|WIS|CHA))*\s+(\d+)/i)
+  if (abilityParts) {
+    const required = Number(abilityParts[3])
+    const abilities = [...String(prereq).matchAll(/STR|DEX|CON|INT|WIS|CHA/gi)].map(match => match[0].toLowerCase())
+    const ok = abilities.some(key => abilityScoreWithCreationBonuses(abilityScores, key, raceData, subraceData, raceBonusOptions) >= required)
+    return { ok, reason: `Requires ${feat.prereq}.` }
+  }
+
+  return { ok: false, reason: `Requires ${prereq}.` }
+}
+
+function selectedSubclassData(classData, subclassChoice) {
+  const choice = String(subclassChoice ?? '').toLowerCase()
+  if (!choice) return null
+  return (classData?.subclasses ?? []).find(subclass =>
+    String(subclass.name ?? '').toLowerCase() === choice ||
+    String(subclass.fullName ?? '').toLowerCase() === choice
+  ) ?? null
+}
+
+function featureText(feature) {
+  return (feature?.desc ?? []).join(' ')
+}
+
+function bonusProficienciesFromFeatures(features = []) {
+  const proficiencies = []
+  for (const feature of features) {
+    const text = featureText(feature).toLowerCase()
+    if (/\bheavy armor\b/.test(text)) proficiencies.push({ index: 'heavy-armor-proficiency', name: 'Heavy armor proficiency' })
+    if (/\bmartial weapons\b/.test(text)) proficiencies.push({ index: 'martial-weapon-proficiency', name: 'Martial weapon proficiency' })
+  }
+  return proficiencies
+}
+
+function bonusSpellsFromSubclass(classData, subclassData, startingCantrips = []) {
+  const knownIndexes = new Set(startingCantrips.map(spell => spell.index))
+  return (subclassData?.additionalSpells ?? []).flatMap(entry =>
+    Object.entries(entry?.known ?? {})
+      .filter(([unlockLevel]) => Number(unlockLevel) <= 1)
+      .flatMap(([, spells]) => (spells ?? [])
+        .filter(spell => typeof spell === 'string')
+        .map(spell => {
+          const index = spellIndexFromName(spell)
+          const isCantrip = /#c\b/i.test(spell) || index === 'light'
+          return {
+            id: index,
+            index,
+            name: spellNameFromIndex(index),
+            source: subclassData?.source ?? 'PHB',
+            level: isCantrip ? 0 : 1,
+            classIndex: classData?.index ?? null,
+            castingAbility: SPELLCASTING_ABILITY[classData?.index] ?? null,
+            origin: `${subclassData?.name ?? 'Subclass'} Bonus Spells`,
+            bonusKnown: true,
+          }
+        }))
+  ).filter(spell => !knownIndexes.has(spell.index))
+}
+
+function fixedBonusCantripsFromFeatures(features = [], classData = {}, existingSpells = []) {
+  const existingIndexes = new Set(existingSpells.map(spell => spell.index))
+  return features.flatMap(feature => {
+    const text = featureText(feature)
+    if (!/cantrips?/i.test(text) || !/does(?:n'?t| not) count/i.test(text) || /\bchoice\b/i.test(text)) return []
+    return [...text.matchAll(/{@spell ([^}|#]+)(?:\|[^}#]+)?(?:#[^}]*)?}/gi)]
+      .map(match => {
+        const index = spellIndexFromName(match[1])
+        return {
+          id: index,
+          index,
+          name: spellNameFromIndex(index),
+          source: feature.source ?? classData?.source ?? 'PHB',
+          level: 0,
+          classIndex: classData?.index ?? null,
+          castingAbility: SPELLCASTING_ABILITY[classData?.index] ?? null,
+          origin: feature.name ?? 'Bonus Cantrip',
+          bonusKnown: true,
+        }
+      })
+      .filter(spell => !existingIndexes.has(spell.index))
+  })
+}
+
+function selectedFeatureOptionsByType(classFeatureChoices = [], featureType) {
+  return classFeatureChoices.flatMap(choice =>
+    (choice.options ?? []).filter(option => (option.featureType ?? []).includes(featureType))
+  )
+}
+
+function featureToolProficiencyLabel(option) {
+  if (!option?.name) return null
+  return (option.featureType ?? []).includes('EXPERTISE') ? `${option.name} expertise` : option.name
+}
+
+function selectedDraconicAncestor(classFeatureChoices = []) {
+  const option = selectedFeatureOptionsByType(classFeatureChoices, 'SORCERER:DRACONIC_ANCESTRY')[0]
+  if (!option) return null
+  return {
+    name: option.name,
+    damageType: option.damageType ?? option.desc?.[0]?.match(/^(\w+)/)?.[1]?.toLowerCase() ?? null,
+  }
+}
+
+function shouldAutoEquipStartingItem(item, armorEquipped) {
+  const category = item.armor_category
+  if (item.damage) return true
+  if (category === 'Shield') return true
+  if (['Light', 'Medium', 'Heavy'].includes(category)) return !armorEquipped
+  return false
+}
+
+function autoEquipStartingInventory(inventory = []) {
+  let armorEquipped = false
+  return inventory.map(item => {
+    const equipped = shouldAutoEquipStartingItem(item, armorEquipped)
+    if (equipped && ['Light', 'Medium', 'Heavy'].includes(item.armor_category)) armorEquipped = true
+    return equipped ? { ...item, equipped: true } : item
+  })
+}
+
+function hasFeatByName(feat, name) {
+  return feat?.name === name
+}
+
+function isOneHandedMeleeWeapon(item) {
+  if (!item.damage) return false
+  const props = item.properties ?? []
+  const propsLower = props.map(prop => (typeof prop === 'string' ? prop : prop.name ?? '').toLowerCase())
+  return !propsLower.includes('ammunition') && !propsLower.includes('two-handed')
+}
+
+function initialArmorClass(inventory, abilityScores, classFeatures, classFeatureChoices, feat = null) {
+  const dexMod = Math.floor(((abilityScores?.dex ?? 10) - 10) / 2)
+  const conMod = Math.floor(((abilityScores?.con ?? 10) - 10) / 2)
+  const wisMod = Math.floor(((abilityScores?.wis ?? 10) - 10) / 2)
+  const active = inventory.filter(item => item.equipped || item.attuned)
+  let armorBase = null
+  let armorCat = null
+  let shieldAC = 0
+
+  for (const item of active) {
+    const ac = item.armor_class
+    const cat = item.armor_category
+    if (!ac || !cat) continue
+    if (cat === 'Shield') shieldAC += ac.base ?? 2
+    else if (['Light', 'Medium', 'Heavy'].includes(cat)) {
+      armorBase = ac.base
+      armorCat = cat
+    }
+  }
+
+  const hasDraconicResilience = classFeatures.some(feature => feature.name === 'Draconic Resilience')
+  const hasBarbarianUnarmored = classFeatures.some(feature =>
+    feature.name === 'Unarmored Defense' && feature.classIndex === 'barbarian'
+  )
+  const hasMonkUnarmored = classFeatures.some(feature =>
+    feature.name === 'Unarmored Defense' && feature.classIndex === 'monk'
+  )
+  const hasDefenseStyle = classFeatureChoices.some(choice =>
+    (choice.options ?? []).some(option => option.name === 'Defense')
+  )
+  const dualWielderBonus = hasFeatByName(feat, 'Dual Wielder') &&
+    active.filter(isOneHandedMeleeWeapon).length >= 2
+    ? 1
+    : 0
+  if (armorBase != null) {
+    const mediumDexCap = hasFeatByName(feat, 'Medium Armour Master') ? 3 : 2
+    const armorAC = armorCat === 'Light' ? armorBase + dexMod
+      : armorCat === 'Medium' ? armorBase + Math.min(dexMod, mediumDexCap)
+      : armorBase
+    return armorAC + shieldAC + (hasDefenseStyle ? 1 : 0) + dualWielderBonus
+  }
+
+  const baseCandidates = [
+    10 + dexMod,
+    hasDraconicResilience ? 13 + dexMod : null,
+    hasBarbarianUnarmored ? 10 + dexMod + conMod : null,
+    hasMonkUnarmored && shieldAC === 0 ? 10 + dexMod + wisMod : null,
+  ].filter(value => value != null)
+  return Math.max(...baseCandidates) + shieldAC + dualWielderBonus
+}
+
+function spellNameFromIndex(index) {
+  return String(index ?? '')
+    .split('-')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function spellIndexFromName(name) {
+  return String(name ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function domainPreparedSpells(subclassData) {
+  const spellIndexes = (subclassData?.additionalSpells ?? [])
+    .flatMap(entry => entry?.prepared?.['1'] ?? entry?.prepared?.[1] ?? [])
+    .filter(spell => typeof spell === 'string')
+    .map(spell => spell.replace(/#.*$/, ''))
+  return [...new Set(spellIndexes)].map(index => ({
+    id: index,
+    index,
+    name: spellNameFromIndex(index),
+    source: subclassData?.source ?? 'PHB',
+    level: 1,
+    classIndex: 'cleric',
+    castingAbility: SPELLCASTING_ABILITY.cleric,
+    origin: `${subclassData?.name ?? 'Domain'} Domain`,
+    alwaysPrepared: true,
+    domainSpell: true,
+  }))
+}
+
+function expandedSpellIndexesForLevel(subclassData, spellLevel) {
+  return [...new Set((subclassData?.additionalSpells ?? [])
+    .flatMap(entry => entry?.expanded?.[`s${spellLevel}`] ?? [])
+    .filter(spell => typeof spell === 'string')
+    .map(spell => spellIndexFromName(spell.replace(/#.*$/, ''))))]
+}
+
+function classGrantedLanguages(classData, subclassData) {
+  return [
+    classData?.index === 'druid' ? 'Druidic' : null,
+    classData?.index === 'rogue' ? "Thieves' Cant" : null,
+    classData?.index === 'sorcerer' && /^draconic$/i.test(subclassData?.name ?? '') ? 'Draconic' : null,
+  ].filter(Boolean)
+}
+
+function groupProficiencies(proficiencies = [], languages = []) {
+  const groups = { Armour: [], Weapons: [], Tools: [], Languages: languages }
+  for (const proficiency of proficiencies) {
+    const name = String(proficiency ?? '').trim()
+    if (!name) continue
+    const lower = name.toLowerCase()
+    const category = lower.includes('weapon') ? 'Weapons'
+      : lower.includes('armor') || lower.includes('armour') || lower.includes('shield') ? 'Armour'
+      : 'Tools'
+    groups[category].push(name)
+  }
+  return Object.fromEntries(Object.entries(groups).map(([category, values]) => [
+    category,
+    values.filter((value, index, list) => value && list.indexOf(value) === index),
+  ]))
+}
+
 // ─── Character builder ────────────────────────────────────────────────────────
 
-export function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, choices, baseAbilityScores, startingCantrips, startingSpells, equipmentCatalog = [] }) {
+export function buildCharacter({ user, name, raceData, subraceData, classData, subclassChoice, backgroundData, alignment, rulesEdition = '2014', choices, baseAbilityScores, startingCantrips, startingBonusCantrips, startingSpells, equipmentCatalog = [] }) {
+  const normalizedRulesEdition = normalizeRulesEdition(rulesEdition)
   const {
     raceBonusOptions = [],   // [{ability_score:{index}, bonus}]
     classSkills = [],        // ['skill-perception', ...]
+    classTools = [],
     classEquipment = [],     // [{index, name, quantity}]
     classFeatureChoices = [],
     backgroundLanguages = [],
+    backgroundTools = [],
     backgroundEquipment = [],
     backgroundFeature = null,
     racialOptionChoices = {},
     racialFeat = null,
+    racialFeatAbility = null,
+    racialLanguages = [],
+    racialSkills = [],
+    racialTools = [],
   } = choices
 
   // 1. Base ability scores from creation step (default 10 if not provided)
@@ -87,11 +367,22 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
   for (const bonus of raceBonusOptions) {
     abilityScores[bonus.ability_score.index] += bonus.bonus
   }
+  const racialFeatRule = featRule(racialFeat)
+  if (racialFeatRule.abilityIncrease && racialFeatAbility) {
+    abilityScores[racialFeatAbility] = Math.min(20, (abilityScores[racialFeatAbility] ?? 10) + racialFeatRule.abilityIncrease)
+  }
+
+  const subclassData = selectedSubclassData(classData, subclassChoice)
+  const draconicAncestor = selectedDraconicAncestor(classFeatureChoices)
+  const subclassFeatures = Object.values(subclassData?.features_by_level ?? {})
+    .flat()
+    .filter(feature => (feature.level ?? 1) <= 1)
 
   // 3. HP: hit_die + CON mod
   const conMod = Math.floor((abilityScores.con - 10) / 2)
   const hitDie = classData?.hit_die ?? 8
-  const hpMax = Math.max(1, hitDie + conMod)
+  const subclassHpBonus = classData?.index === 'sorcerer' && /^draconic$/i.test(subclassData?.name ?? '') ? 1 : 0
+  const hpMax = Math.max(1, hitDie + conMod + subclassHpBonus)
 
   // 4. Speed & size from race
   const speed = raceData?.speed ?? 30
@@ -101,6 +392,12 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
   const savingThrows = {}
   for (const save of (classData?.saving_throws ?? [])) {
     savingThrows[save.index] = { proficient: true }
+  }
+  if (racialFeatRule.savingThrowChoice && racialFeatAbility) {
+    savingThrows[racialFeatAbility] = {
+      ...(savingThrows[racialFeatAbility] ?? {}),
+      proficient: true,
+    }
   }
 
   // 6. Skill proficiencies
@@ -116,11 +413,58 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
       skills[skillKeyFromIndex(prof.index)] = { proficient: true }
     }
   }
+  // From race/subrace fixed and chosen skill proficiencies
+  for (const prof of [
+    ...(raceData?.starting_proficiencies ?? []),
+    ...(subraceData?.starting_proficiencies ?? []),
+  ]) {
+    if (prof.index?.startsWith('skill-')) {
+      skills[skillKeyFromIndex(prof.index)] = { proficient: true }
+    }
+  }
+  for (const skillIndex of racialSkills) {
+    skills[skillKeyFromIndex(skillIndex)] = { proficient: true }
+  }
+  for (const choice of classFeatureChoices) {
+    for (const option of (choice.options ?? []).filter(option => (option.featureType ?? []).includes('SKILL'))) {
+      const key = skillKeyFromIndex(option.id)
+      skills[key] = {
+        ...(skills[key] ?? {}),
+        proficient: true,
+        ...(choice.featureName === 'Blessings of Knowledge' && { expertise: true }),
+      }
+    }
+    for (const option of (choice.options ?? []).filter(option => (option.featureType ?? []).includes('EXPERTISE') && option.id?.startsWith('skill-'))) {
+      const key = skillKeyFromIndex(option.id)
+      skills[key] = {
+        ...(skills[key] ?? {}),
+        proficient: true,
+        expertise: true,
+      }
+    }
+  }
 
   // 7. Armor / weapon proficiencies from class
-  const proficiencies = (classData?.proficiencies ?? [])
-    .filter(p => !p.index.startsWith('saving-throw-'))
+  const proficiencies = [
+    ...(classData?.proficiencies ?? []),
+    ...bonusProficienciesFromFeatures(subclassFeatures),
+    ...(raceData?.starting_proficiencies ?? []),
+    ...(subraceData?.starting_proficiencies ?? []),
+    ...(backgroundData?.starting_proficiencies ?? []),
+  ]
+    .filter(p => !p.index?.startsWith('saving-throw-'))
+    .filter(p => !p.index?.startsWith('skill-'))
     .map(p => p.name)
+  for (const tool of racialTools) proficiencies.push(tool.name ?? tool)
+  for (const tool of classTools) proficiencies.push(tool.name ?? tool)
+  for (const tool of backgroundTools) proficiencies.push(tool.name ?? tool)
+  for (const values of Object.values(racialFeatRule.proficiencies ?? {})) {
+    proficiencies.push(...values)
+  }
+  for (const option of selectedFeatureOptionsByType(classFeatureChoices, 'TOOL')) {
+    const label = featureToolProficiencyLabel(option)
+    if (label) proficiencies.push(label)
+  }
 
   // 8. Inventory: class starting_equipment + chosen class equipment + background equipment
   const inventory = []
@@ -174,6 +518,7 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
   for (const item of backgroundEquipment) {
     addInventoryItem(item)
   }
+  const equippedInventory = autoEquipStartingInventory(inventory)
 
   // 9. Racial traits
   const draconicAncestry = racialOptionChoices['draconic-ancestry'] ?? null
@@ -191,47 +536,90 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
     }
   })
   const damageResistances = draconicAncestry?.grantsResistance && draconicAncestry?.damageType ? [draconicAncestry.damageType] : []
-  const classFeatures = Object.values(classData?.features_by_level ?? {})
-    .flat()
-    .filter(feature => (feature.level ?? 1) <= 1)
-    .map(feature => ({
-      index: feature.index,
-      name: feature.name,
-      source: feature.source,
-      desc: feature.desc ?? [],
-      classIndex: classData?.index ?? null,
-      className: classData?.name ?? '',
-      gainedAtLevel: feature.level ?? 1,
-    }))
+  const classFeatures = [
+    ...Object.values(classData?.features_by_level ?? {})
+      .flat()
+      .filter(feature => (feature.level ?? 1) <= 1)
+      .map(feature => ({
+        index: feature.index,
+        name: feature.name,
+        source: feature.source,
+        desc: feature.desc ?? [],
+        classIndex: classData?.index ?? null,
+        className: classData?.name ?? '',
+        gainedAtLevel: feature.level ?? 1,
+      })),
+    ...subclassFeatures.map(feature => ({
+        index: feature.index,
+        name: feature.name,
+        source: feature.source,
+        desc: feature.desc ?? [],
+        classIndex: classData?.index ?? null,
+        className: classData?.name ?? '',
+        subclassName: subclassData?.name ?? subclassChoice,
+        ...(feature.name === 'Dragon Ancestor' && draconicAncestor ? { dragonAncestor: draconicAncestor.name, damageType: draconicAncestor.damageType } : {}),
+        gainedAtLevel: feature.level ?? 1,
+      })),
+  ]
+  const startingAC = initialArmorClass(equippedInventory, abilityScores, classFeatures, classFeatureChoices, racialFeat)
+  const bonusSpells = [
+    ...bonusSpellsFromSubclass(classData, subclassData, startingCantrips),
+    ...(startingBonusCantrips ?? []),
+    ...fixedBonusCantripsFromFeatures(subclassFeatures, classData, [...(startingCantrips ?? []), ...(startingBonusCantrips ?? [])]),
+    ...(classData?.index === 'cleric' ? domainPreparedSpells(subclassData) : []),
+  ]
   const selectedClassFeatureChoices = classFeatureChoices.map(choice => ({
     choiceKey: choice.choiceKey,
     featureIndex: choice.featureIndex,
-    featureName: choice.featureName,
-    className: choice.className,
-    classIndex: choice.classIndex,
-    gainedAtLevel: choice.gainedAtLevel,
+      featureName: choice.featureName,
+      className: choice.className,
+      classIndex: choice.classIndex,
+      subclassName: choice.subclassName,
+      gainedAtLevel: choice.gainedAtLevel,
     options: (choice.options ?? []).map(option => ({
       id: option.id,
       name: option.name,
       source: option.source,
       desc: option.desc ?? [],
       featureType: option.featureType,
+      damageType: option.damageType,
     })),
   }))
+  const racialFeatChoices = racialFeat ? {
+    featName: racialFeat.name,
+    ability: racialFeatAbility ?? null,
+    skills: [],
+    tools: [],
+    damageType: null,
+    spellClass: null,
+    cantrips: [],
+    spells: [],
+    maneuvers: [],
+    weapons: [],
+  } : null
 
   // 10. Languages
   const languages = [
     ...(raceData?.languages ?? []).map(l => l.name),
+    ...(subraceData?.languages ?? []).map(l => l.name),
+    ...racialLanguages,
+    ...selectedFeatureOptionsByType(classFeatureChoices, 'LANGUAGE').map(option => option.name),
+    ...classGrantedLanguages(classData, subclassData),
     ...backgroundLanguages,
-  ]
+  ].filter((language, index, all) => language && all.indexOf(language) === index)
   const spellSlotData = getSlotsForCharacter([{ index: classData?.index ?? null, level: 1 }])
+  const featHpBonus = racialFeatRule.hpPerLevel ? racialFeatRule.hpPerLevel : 0
+  const featSpeedBonus = racialFeatRule.speedBonus ?? 0
+  const featInitiativeBonus = racialFeatRule.initiativeBonus ?? 0
+  const featPassiveBonus = racialFeatRule.passiveBonus ?? 0
 
   return {
     meta: {
       owner: `github:${user.login}`,
       characterId: uuidv4(),
       copiedFrom: null,
-      system: 'dnd5e',
+      system: rulesSystemForEdition(normalizedRulesEdition),
+      rulesEdition: normalizedRulesEdition,
       version: 1,
       lastUpdated: new Date().toISOString(),
     },
@@ -241,7 +629,7 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
       raceIndex: raceData?.index ?? null,
       subrace: subraceData?.isBaseRaceOption ? null : subraceData?.name ?? null,
       subraceIndex: subraceData?.isBaseRaceOption ? null : subraceData?.index ?? null,
-      class: [{ name: classData?.name ?? '', index: classData?.index ?? null, level: 1, subclass: subclassChoice ?? null }],
+      class: [{ name: classData?.name ?? '', index: classData?.index ?? null, source: classData?.source ?? null, level: 1, subclass: subclassChoice ?? null }],
       background: backgroundData?.name ?? '',
       backgroundIndex: backgroundData?.index ?? null,
       backgroundFeature: backgroundFeature ?? null,
@@ -257,33 +645,47 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
       abilityScores,
       savingThrows,
       skills,
-      proficiencies,
+      proficiencies: groupProficiencies(proficiencies, languages),
       damageResistances,
+      ...(featPassiveBonus && {
+        passiveBonuses: {
+          perception: featPassiveBonus,
+          investigation: featPassiveBonus,
+        },
+      }),
     },
     combat: {
-      hpMax,
-      hpCurrent: hpMax,
+      hpMax: hpMax + featHpBonus,
+      hpCurrent: hpMax + featHpBonus,
       hpTemp: 0,
-      ac: 10,
+      ac: startingAC,
       initiative: 0,
-      speed,
+      ...(featInitiativeBonus && { initiativeBonus: featInitiativeBonus }),
+      speed: speed + featSpeedBonus,
       deathSaves: { successes: 0, failures: 0 },
       conditions: [],
     },
-    inventory,
-    feats: racialFeat ? [{ name: racialFeat.name, desc: racialFeat.desc, source: racialFeat.source ?? null, origin: 'Variant Human' }] : [],
+    inventory: equippedInventory,
+    feats: racialFeat ? [{
+      name: racialFeat.name,
+      desc: racialFeat.desc,
+      source: racialFeat.source ?? null,
+      origin: 'Variant Human',
+      choices: racialFeatAbility ? { ability: racialFeatAbility } : {},
+    }] : [],
     racialTraits,
     spells: {
       spellcastingAbility: SPELLCASTING_ABILITY[classData?.index] ?? null,
       slots: spellSlotData.slots,
       pactSlots: spellSlotData.pactSlots,
-      known: [...(startingCantrips ?? []), ...(startingSpells ?? [])],
-      prepared: (startingSpells ?? []).map(s => s.index),
+      known: [...(startingCantrips ?? []), ...bonusSpells, ...(startingSpells ?? [])],
+      prepared: [...(startingSpells ?? []), ...bonusSpells.filter(spell => spell.level > 0)].map(s => s.index),
       concentration: null,
     },
     customContent: {
       classFeatures,
       classFeatureChoices: selectedClassFeatureChoices,
+      ...(racialFeatChoices && { featChoices: [racialFeatChoices] }),
       backgroundFeature: backgroundFeature ?? null,
     },
     notes: {
@@ -296,7 +698,8 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
       alliesAndOrganisations: '',
       general: '',
     },
-    settings: {
+    settings: normalizeRuleSettings({
+      rulesEdition: normalizedRulesEdition,
       encumbranceTracking: false,
       encumbranceMode: 'disabled',
       attunementLimit: 3,
@@ -311,7 +714,7 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
       levellingSystem: 'xp',
       milestoneMode: false,
       multiclassing: 'enabled',
-    },
+    }),
   }
 }
 
@@ -439,6 +842,42 @@ function SourceBadge({ item }) {
   return <span style={S.sourceBadge}>{sourceCode(item)}</span>
 }
 
+function StepEdition({ selected, onSelect, onNext, onCancel }) {
+  return (
+    <div style={S.wrap}>
+      <div style={S.h1}>Choose Rules Edition</div>
+      <div style={S.sub}>Which rules should this character use?</div>
+      <div style={S.scrollList}>
+        {RULES_EDITION_OPTIONS.map(option => (
+          option.available === false ? (
+            <div
+              key={option.value}
+              style={S.card(false, true)}
+              aria-disabled="true"
+            >
+              <div style={S.cardName}>{option.label}</div>
+              <div style={S.cardSub}>{option.sub} · {option.unavailableLabel ?? 'Unavailable'}</div>
+            </div>
+          ) : (
+          <div
+            key={option.value}
+            style={S.card(selected === option.value)}
+            onClick={() => onSelect(option.value)}
+          >
+            <div style={S.cardName}>{option.label}</div>
+            <div style={S.cardSub}>{option.sub}</div>
+          </div>
+          )
+        ))}
+      </div>
+      <div style={S.row}>
+        <button style={S.btn(false)} onClick={onCancel}>Cancel</button>
+        <button style={S.btn(true)} onClick={onNext}>Next: Name →</button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Ability score constants ──────────────────────────────────────────────────
 
 const STANDARD_ARRAY  = [15, 14, 13, 12, 10, 8]
@@ -447,6 +886,27 @@ const ABILITY_LABEL   = { str:'STR', dex:'DEX', con:'CON', int:'INT', wis:'WIS',
 const ABILITY_NAME    = { str:'Strength', dex:'Dexterity', con:'Constitution', int:'Intelligence', wis:'Wisdom', cha:'Charisma' }
 // Point-buy cost per score value
 const PB_COST = { 8:0, 9:1, 10:2, 11:3, 12:4, 13:5, 14:7, 15:9 }
+const COMMON_LANGUAGES = ['Abyssal', 'Celestial', 'Draconic', 'Deep Speech', 'Dwarvish', 'Elvish', 'Giant', 'Gnomish', 'Goblin', 'Halfling', 'Infernal', 'Orc', 'Primordial', 'Sylvan', 'Undercommon']
+const SKILL_OPTIONS = [
+  ['acrobatics', 'Acrobatics'],
+  ['animal-handling', 'Animal Handling'],
+  ['arcana', 'Arcana'],
+  ['athletics', 'Athletics'],
+  ['deception', 'Deception'],
+  ['history', 'History'],
+  ['insight', 'Insight'],
+  ['intimidation', 'Intimidation'],
+  ['investigation', 'Investigation'],
+  ['medicine', 'Medicine'],
+  ['nature', 'Nature'],
+  ['perception', 'Perception'],
+  ['performance', 'Performance'],
+  ['persuasion', 'Persuasion'],
+  ['religion', 'Religion'],
+  ['sleight-of-hand', 'Sleight of Hand'],
+  ['stealth', 'Stealth'],
+  ['survival', 'Survival'],
+].map(([index, name]) => ({ index: `skill-${index}`, name: `Skill: ${name}` }))
 
 function roll4d6dl() {
   const d = [1,2,3,4].map(() => Math.ceil(Math.random() * 6))
@@ -631,7 +1091,7 @@ function StepAbilityScores({ raceData, subraceData, raceBonusOptions, onChange, 
 
 // ─── Step 1: Name ─────────────────────────────────────────────────────────────
 
-function StepName({ value, onChange, onNext, onCancel }) {
+function StepName({ value, onChange, onNext, onCancel, cancelLabel = 'Cancel' }) {
   return (
     <div style={S.wrap}>
       <div style={S.h1}>New Character</div>
@@ -645,7 +1105,7 @@ function StepName({ value, onChange, onNext, onCancel }) {
         autoFocus
       />
       <div style={S.row}>
-        <button style={S.btn(false)} onClick={onCancel}>Cancel</button>
+        <button style={S.btn(false)} onClick={onCancel}>{cancelLabel}</button>
         <button style={S.btn(true)} onClick={onNext} disabled={!value.trim()}>Next: Race →</button>
       </div>
     </div>
@@ -698,7 +1158,7 @@ function StepRace({ races, selected, onSelect, onNext, onBack }) {
 
 // ─── Step 3: Subrace ──────────────────────────────────────────────────────────
 
-function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonusOptions, selectedFeat, onFeatChange, onNext, onBack }) {
+function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonusOptions, selectedFeat, onFeatChange, selectedFeatAbility, onFeatAbilityChange, baseAbilityScores, onNext, onBack }) {
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
   const [featSearch, setFeatSearch] = useState('')
   // Filter subraces for this race
@@ -728,7 +1188,11 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
 
   const canProceed = available.length === 0 || selected
   const bonusReady = !hasBonusOptions || bonusOptions.length === bonusCount
-  const featReady = !grantsFeat || !!selectedFeat
+  const selectedFeatRule = featRule(selectedFeat)
+  const selectedFeatAbilityOptions = (selectedFeatRule.abilityOptions ?? [])
+    .filter(ability => abilityScoreWithCreationBonuses(baseAbilityScores, ability, race, selected, bonusOptions) < 20)
+  const featNeedsAbility = (selectedFeatRule.abilityOptions ?? []).length > 0
+  const featReady = !grantsFeat || (!!selectedFeat && (!featNeedsAbility || (selectedFeatAbilityOptions.length > 0 && !!selectedFeatAbility)))
   const missing = [
     !canProceed ? 'subrace' : null,
     !bonusReady ? `${bonusCount - bonusOptions.length} ability bonus${bonusCount - bonusOptions.length === 1 ? '' : 'es'}` : null,
@@ -801,17 +1265,51 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
           <div style={{ maxHeight: 280, overflowY: 'auto', paddingRight: 4, marginBottom: '0.75rem' }}>
             {filteredFeats.map(feat => {
               const selectedFeatName = selectedFeat?.name === feat.name
+              const prereqStatus = creationFeatPrereqStatus(feat, baseAbilityScores, race, selected, bonusOptions)
+              const needsSetup = featNeedsCreationSetup(feat)
+              const disabled = needsSetup || !prereqStatus.ok
               return (
-                <div key={feat.name} style={S.card(selectedFeatName)} onClick={() => onFeatChange(feat)}>
+                <div
+                  key={feat.name}
+                  style={{ ...S.card(selectedFeatName), ...(disabled && { opacity: 0.55, cursor: 'not-allowed' }) }}
+                  onClick={() => !disabled && onFeatChange(feat)}
+                >
                   <div style={S.cardTop}>
                     <div style={S.cardName}>{feat.name}</div>
                     {feat.prereq && <span style={S.sourceBadge}>{feat.prereq}</span>}
                   </div>
                   <div style={S.cardSub}>{feat.desc}</div>
+                  {disabled && (
+                    <div style={{ ...S.cardSub, color: 'var(--warning)', marginTop: 4 }}>
+                      {needsSetup ? 'Needs a detailed feat setup step after character creation.' : prereqStatus.reason}
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
+          {selectedFeat && featNeedsAbility && (
+            <>
+              <label style={S.label}>Choose Feat Ability Increase</label>
+              <div style={S.cardSub}>{selectedFeat.name} increases one ability score by 1.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {selectedFeatAbilityOptions.map(ability => (
+                  <div
+                    key={ability}
+                    style={{ ...S.card(selectedFeatAbility === ability), textAlign: 'center', padding: '0.6rem' }}
+                    onClick={() => onFeatAbilityChange(ability)}
+                  >
+                    <div style={{ fontSize: '0.85rem', fontWeight: selectedFeatAbility === ability ? 700 : 400 }}>{ability.toUpperCase()}</div>
+                  </div>
+                ))}
+                {selectedFeatAbilityOptions.length === 0 && (
+                  <div style={{ ...S.cardSub, gridColumn: '1 / -1', color: 'var(--warning)' }}>
+                    All eligible ability scores are already 20.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -832,12 +1330,61 @@ function racialOptionGroups(raceData, subraceData) {
   return [...groups.values()]
 }
 
+function combineChoiceGroups(raceData, subraceData, key) {
+  return [...(raceData?.[key] ?? []), ...(subraceData?.[key] ?? [])]
+}
+
+function racialChoiceCount(groups) {
+  return groups.reduce((sum, group) => sum + (group.choose ?? 0), 0)
+}
+
+function hasRacialSetupOptions(raceData, subraceData) {
+  return racialOptionGroups(raceData, subraceData).length > 0
+    || racialChoiceCount(combineChoiceGroups(raceData, subraceData, 'racial_language_options')) > 0
+    || racialChoiceCount(combineChoiceGroups(raceData, subraceData, 'racial_skill_options')) > 0
+    || racialChoiceCount(combineChoiceGroups(raceData, subraceData, 'racial_tool_options')) > 0
+}
+
 function StepRacialOptions({ raceData, subraceData, selectedOptions, onOptionsChange, onNext, onBack }) {
   const groups = racialOptionGroups(raceData, subraceData)
+  const languageGroups = combineChoiceGroups(raceData, subraceData, 'racial_language_options')
+  const skillGroups = combineChoiceGroups(raceData, subraceData, 'racial_skill_options')
+  const toolGroups = combineChoiceGroups(raceData, subraceData, 'racial_tool_options')
+  const languageCount = racialChoiceCount(languageGroups)
+  const skillCount = racialChoiceCount(skillGroups)
+  const toolCount = racialChoiceCount(toolGroups)
+  const selectedLanguages = selectedOptions.racialLanguages ?? []
+  const selectedSkills = selectedOptions.racialSkills ?? []
+  const selectedTools = selectedOptions.racialTools ?? []
+  const knownLanguages = new Set([
+    ...(raceData?.languages ?? []).map(l => l.name),
+    ...(subraceData?.languages ?? []).map(l => l.name),
+  ])
+  const languagePool = [
+    ...COMMON_LANGUAGES.filter(name => !knownLanguages.has(name)).map(name => ({ index: name.toLowerCase().replace(/\s+/g, '-'), name })),
+    ...languageGroups.flatMap(group => group.options ?? []),
+  ].filter((language, index, options) => options.findIndex(other => other.name === language.name) === index)
+  const skillPool = (skillGroups.some(group => !group.options) ? SKILL_OPTIONS : skillGroups.flatMap(group => group.options ?? []))
+    .filter((skill, index, options) => options.findIndex(other => other.index === skill.index) === index)
+  const toolPool = toolGroups.flatMap(group => group.options ?? [])
+    .filter((tool, index, options) => options.findIndex(other => other.index === tool.index) === index)
   const ready = groups.every(group => !!selectedOptions[group.id])
+    && selectedLanguages.length >= languageCount
+    && selectedSkills.length >= skillCount
+    && selectedTools.length >= toolCount
 
   const chooseOption = (group, option) => {
     onOptionsChange({ ...selectedOptions, [group.id]: option })
+  }
+  const toggleListOption = (key, current, option, max) => {
+    const optionKey = typeof option === 'string' ? option : option.index ?? option.name
+    const checked = current.some(item => (typeof item === 'string' ? item : item.index ?? item.name) === optionKey)
+    const next = checked
+      ? current.filter(item => (typeof item === 'string' ? item : item.index ?? item.name) !== optionKey)
+      : current.length < max
+      ? [...current, option]
+      : current
+    onOptionsChange({ ...selectedOptions, [key]: next })
   }
 
   return (
@@ -866,6 +1413,69 @@ function StepRacialOptions({ raceData, subraceData, selectedOptions, onOptionsCh
           })}
         </div>
       ))}
+
+      {languageCount > 0 && (
+        <div>
+          <label style={S.label}>Choose {languageCount} Racial Language{languageCount === 1 ? '' : 's'}</label>
+          <div style={S.cardSub}>{selectedLanguages.length} / {languageCount} selected</div>
+          {languagePool.map(language => {
+            const checked = selectedLanguages.includes(language.name)
+            const disabled = !checked && selectedLanguages.length >= languageCount
+            return (
+              <div
+                key={language.name}
+                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                onClick={() => !disabled && toggleListOption('racialLanguages', selectedLanguages, language.name, languageCount)}
+              >
+                <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                <span>{language.name}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {skillCount > 0 && (
+        <div>
+          <label style={S.label}>Choose {skillCount} Racial Skill{skillCount === 1 ? '' : 's'}</label>
+          <div style={S.cardSub}>{selectedSkills.length} / {skillCount} selected</div>
+          {skillPool.map(skill => {
+            const checked = selectedSkills.includes(skill.index)
+            const disabled = !checked && selectedSkills.length >= skillCount
+            return (
+              <div
+                key={skill.index}
+                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                onClick={() => !disabled && toggleListOption('racialSkills', selectedSkills, skill.index, skillCount)}
+              >
+                <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                <span>{skill.name.replace('Skill: ', '')}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {toolCount > 0 && (
+        <div>
+          <label style={S.label}>Choose {toolCount} Racial Tool Proficiency{toolCount === 1 ? '' : 'ies'}</label>
+          <div style={S.cardSub}>{selectedTools.length} / {toolCount} selected</div>
+          {toolPool.map(tool => {
+            const checked = selectedTools.some(item => item.index === tool.index)
+            const disabled = !checked && selectedTools.length >= toolCount
+            return (
+              <div
+                key={tool.index}
+                style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                onClick={() => !disabled && toggleListOption('racialTools', selectedTools, tool, toolCount)}
+              >
+                <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                <span>{tool.name}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
@@ -922,18 +1532,52 @@ function SpellPicker({ label, spells, selected, max, onToggle }) {
   )
 }
 
-function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, onSpells, onNext, onBack }) {
+const PREPARED_SPELLCASTERS_L1 = new Set(['cleric', 'druid'])
+
+function abilityScoreWithCreationBonuses(baseAbilityScores, ability, raceData, subraceData, raceBonusOptions) {
+  let score = baseAbilityScores?.[ability] ?? 10
+  for (const bonus of effectiveRaceAbilityBonuses(raceData, subraceData)) {
+    if (bonus.ability_score.index === ability) score += bonus.bonus
+  }
+  for (const bonus of (subraceData?.ability_bonuses ?? [])) {
+    if (bonus.ability_score.index === ability) score += bonus.bonus
+  }
+  for (const bonus of (raceBonusOptions ?? [])) {
+    if (bonus.ability_score.index === ability) score += bonus.bonus
+  }
+  return score
+}
+
+function spellChoiceCountAtCreation(classIdx, abilityScores, raceData, subraceData, raceBonusOptions) {
+  if (!PREPARED_SPELLCASTERS_L1.has(classIdx)) return SPELLS_KNOWN_L1[classIdx] ?? 0
+  const ability = SPELLCASTING_ABILITY[classIdx]
+  const score = abilityScoreWithCreationBonuses(abilityScores, ability, raceData, subraceData, raceBonusOptions)
+  const mod = Math.floor((score - 10) / 2)
+  return Math.max(1, 1 + mod)
+}
+
+function spellChoiceLabel(classIdx, spellMax) {
+  if (PREPARED_SPELLCASTERS_L1.has(classIdx)) return `Prepared 1st-Level Spells (choose ${spellMax})`
+  if (classIdx === 'wizard') return `Spellbook 1st-Level Spells (choose ${spellMax})`
+  return `1st-Level Spells (choose ${spellMax})`
+}
+
+function StepSpells({ classData, subclassChoice, abilityScores, raceData, subraceData, raceBonusOptions, selectedCantrips, onCantrips, selectedBonusCantrips, onBonusCantrips, selectedSpells, onSpells, onNext, onBack }) {
   const [allSpells, setAllSpells] = useState([])
   const classIdx   = classData?.index ?? ''
   const cantripMax = CANTRIPS_KNOWN[classIdx] ?? 0
-  const spellMax   = SPELLS_KNOWN_L1[classIdx] ?? 0
+  const spellMax   = spellChoiceCountAtCreation(classIdx, abilityScores, raceData, subraceData, raceBonusOptions)
+  const needsNatureCantrip = classIdx === 'cleric' && /^nature$/i.test(subclassChoice ?? '')
+  const subclassData = selectedSubclassData(classData, subclassChoice)
 
   useEffect(() => {
     getSpells().then(all => setAllSpells(all)).catch(() => {})
   }, [])
 
-  const classSpells   = allSpells.filter(s => s.classes?.some(c => c.index === classIdx))
+  const expandedSpellIndexes = new Set(expandedSpellIndexesForLevel(subclassData, 1))
+  const classSpells = allSpells.filter(s => s.classes?.some(c => c.index === classIdx) || expandedSpellIndexes.has(s.index))
   const cantrips      = classSpells.filter(s => s.level === 0)
+  const druidCantrips = allSpells.filter(s => s.level === 0 && s.classes?.some(c => c.index === 'druid'))
   const leveledSpells = classSpells.filter(s => s.level === 1) // level 1 only at creation
 
   const toggleCantrip = (sp) => {
@@ -962,16 +1606,38 @@ function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, o
         level: sp.level,
         classIndex: classIdx,
         castingAbility: SPELLCASTING_ABILITY[classIdx] ?? null,
+        ...(expandedSpellIndexes.has(sp.index) && { origin: `${subclassData?.name ?? subclassChoice} Expanded Spells` }),
       }])
+  }
+  const toggleBonusCantrip = (sp) => {
+    if (selectedBonusCantrips.some(s => s.index === sp.index)) {
+      onBonusCantrips(selectedBonusCantrips.filter(s => s.index !== sp.index))
+    } else if (selectedBonusCantrips.length < 1) {
+      onBonusCantrips([...selectedBonusCantrips, {
+        id: sp.index,
+        index: sp.index,
+        name: sp.name,
+        source: sp.source,
+        level: 0,
+        classIndex: 'druid',
+        castingAbility: SPELLCASTING_ABILITY.cleric,
+        origin: 'Acolyte of Nature',
+      }])
+    }
   }
 
   const cantripDone = cantripMax === 0 || selectedCantrips.length === cantripMax
+  const bonusCantripDone = !needsNatureCantrip || selectedBonusCantrips.length === 1
   const spellDone   = spellMax   === 0 || selectedSpells.length   === spellMax
 
   return (
     <div style={S.wrap}>
       <div style={S.h1}>Starting Spells — {classData?.name}</div>
-      <div style={S.sub}>Choose your starting cantrips and spells.</div>
+      <div style={S.sub}>
+        {PREPARED_SPELLCASTERS_L1.has(classIdx)
+          ? `Choose cantrips and prepare ${spellMax} 1st-level spell${spellMax === 1 ? '' : 's'} based on your level and ${SPELLCASTING_ABILITY[classIdx]?.toUpperCase()}.`
+          : 'Choose your starting cantrips and spells.'}
+      </div>
 
       {allSpells.length === 0 && <div style={{ color:'var(--text-secondary)', fontSize:'0.85rem' }}>Loading spells…</div>}
 
@@ -987,7 +1653,7 @@ function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, o
 
       {spellMax > 0 && (
         <SpellPicker
-          label={`1st-Level Spells (choose ${spellMax})`}
+          label={spellChoiceLabel(classIdx, spellMax)}
           spells={leveledSpells}
           selected={selectedSpells}
           max={spellMax}
@@ -995,10 +1661,20 @@ function StepSpells({ classData, selectedCantrips, onCantrips, selectedSpells, o
         />
       )}
 
+      {needsNatureCantrip && (
+        <SpellPicker
+          label="Acolyte of Nature Druid Cantrip (choose 1)"
+          spells={druidCantrips}
+          selected={selectedBonusCantrips}
+          max={1}
+          onToggle={toggleBonusCantrip}
+        />
+      )}
+
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
-        <button style={S.btn(true)} onClick={onNext} disabled={!cantripDone || !spellDone}>
-          Next: Ability Scores →
+        <button style={S.btn(true)} onClick={onNext} disabled={!cantripDone || !bonusCantripDone || !spellDone}>
+          Next: Background →
         </button>
       </div>
     </div>
@@ -1095,6 +1771,9 @@ const WEAPON_CATEGORY_MAP = {
 
 const EQUIPMENT_TYPE_MAP = {
   'musical-instruments': { equipment_category_index: 'instrument' },
+  'arcane-focuses': { equipment_category_index: 'spellcasting-focus', scfType: 'arcane' },
+  'druidic-focuses': { equipment_category_index: 'spellcasting-focus', scfType: 'druid' },
+  'holy-symbols': { equipment_category_index: 'spellcasting-focus', scfType: 'holy' },
 }
 
 async function fetchCategoryItems(categoryIndex) {
@@ -1127,8 +1806,13 @@ async function fetchCategoryItems(categoryIndex) {
   } catch { return [] }
 }
 
-function classFeatureChoiceGroups(classData) {
-  const choices = Object.values(classData?.features_by_level ?? {})
+function classFeatureChoiceGroups(classData, subclassChoice) {
+  const subclassData = selectedSubclassData(classData, subclassChoice)
+  const sourceFeatures = [
+    ...Object.values(classData?.features_by_level ?? {}).flat(),
+    ...Object.values(subclassData?.features_by_level ?? {}).flat(),
+  ]
+  const choices = sourceFeatures
     .flat()
     .filter(feature => (feature.level ?? 1) <= 1)
     .flatMap(feature => (feature.choices ?? []).map(choice => ({
@@ -1139,6 +1823,7 @@ function classFeatureChoiceGroups(classData) {
         name: feature.name,
         className: classData?.name,
         classIndex: classData?.index,
+        subclassName: subclassData?.name,
         level: feature.level ?? 1,
       },
     })))
@@ -1164,14 +1849,31 @@ function classFeatureChoiceGroups(classData) {
   return [...merged.values()]
 }
 
-function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEquipment, onEquipmentChange, selectedFeatureChoices, onFeatureChoicesChange, onNext, onBack }) {
+function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsChange, selectedTools = [], onToolsChange, selectedEquipment, onEquipmentChange, selectedFeatureChoices, onFeatureChoicesChange, onNext, onBack }) {
   const [categoryItems, setCategoryItems] = useState({}) // { choiceId: [items] }
   const [categorySourceFilters, setCategorySourceFilters] = useState({})
   const [expandedChoice, setExpandedChoice] = useState(null) // choiceId being expanded
+  const [maneuverOptions, setManeuverOptions] = useState([])
 
   const profChoices = classData.proficiency_choices?.filter(pc => pc.type === 'proficiencies') ?? []
   const equipOptions = classData.starting_equipment_options ?? []
-  const featureChoiceGroups = classFeatureChoiceGroups(classData)
+  const featureChoiceGroups = classFeatureChoiceGroups(classData, subclassChoice)
+  const toolGroups = (classData.class_tool_options ?? []).map((group, groupIndex) => ({ ...group, groupIndex }))
+  const superiorTechniqueChoiceKey = `${classData.index}:superior-technique-maneuver`
+  const superiorTechniqueSelected = selectedFeatureChoices.some(choice =>
+    (choice.options ?? []).some(option => option.name === 'Superior Technique')
+  )
+  const superiorTechniqueChoice = selectedFeatureChoices.find(choice => choice.choiceKey === superiorTechniqueChoiceKey)
+  const superiorTechniqueManeuver = superiorTechniqueChoice?.options?.[0] ?? null
+
+  useEffect(() => {
+    getOptionalFeatures()
+      .then(features => setManeuverOptions(features
+        .filter(feature => (feature.featureType ?? []).includes('MV:B'))
+        .filter((feature, index, list) => list.findIndex(other => other.name === feature.name && other.source === feature.source) === index)
+      ))
+      .catch(() => setManeuverOptions([]))
+  }, [])
 
   // Collect all skill choices across all proficiency_choices groups
   const allSkillGroups = profChoices.map((pc, gi) => ({
@@ -1190,6 +1892,15 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
       onSkillsChange([...selectedSkills, skillIndex])
     }
   }
+  const toggleTool = (group, tool) => {
+    const selectedForGroup = selectedTools.filter(item => item.groupIndex === group.groupIndex)
+    const checked = selectedForGroup.some(item => item.index === tool.index)
+    if (checked) {
+      onToolsChange(selectedTools.filter(item => !(item.groupIndex === group.groupIndex && item.index === tool.index)))
+    } else if (selectedForGroup.length < (group.choose ?? 1)) {
+      onToolsChange([...selectedTools, { ...tool, groupIndex: group.groupIndex }])
+    }
+  }
 
   // Parse a single equipment option into a selectable card descriptor
   const parseEquipOption = (o, gi, oi) => {
@@ -1204,13 +1915,16 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
         if (i.option_type === 'counted_reference') {
           return [{ index: i.of?.index ?? `__multi__${gi}_${oi}_${ii}`, name: i.of?.name ?? 'Item', quantity: i.count ?? 1 }]
         }
-        if (i.option_type === 'choice') {
-          // e.g. "a holy symbol" — use a generic placeholder that the user sees as real gear
-          const desc = i.choice?.desc ?? 'Holy Symbol'
-          return [{ index: 'holy-symbol', name: 'Holy Symbol', quantity: 1, placeholder: desc }]
-        }
         return []
       })
+      const embeddedChoice = (o.items ?? []).find(i => i.option_type === 'choice' && i.choice?.from?.equipment_category?.index)
+      if (embeddedChoice) {
+        const desc = embeddedChoice.choice?.desc ?? 'Any item'
+        const categoryIndex = embeddedChoice.choice?.from?.equipment_category?.index ?? null
+        const choose = embeddedChoice.choice?.choose ?? 1
+        const label = [desc, ...parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name)].join(' + ')
+        return { id: `${gi}_${oi}`, label, items: parts, isCategory: true, isCategoryBundle: true, categoryIndex, choiceDesc: desc, choose }
+      }
       const label = parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name).join(' + ')
       return { id: `${gi}_${oi}`, label, items: parts, isCategory: false }
     }
@@ -1245,6 +1959,9 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
     const count = selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length
     return count >= g.choose
   })
+  const allToolsSelected = toolGroups.every(group =>
+    selectedTools.filter(item => item.groupIndex === group.groupIndex).length >= (group.choose ?? 1)
+  )
   const allEquipSelected = equipGroups.every(g => {
     const groupSelections = selectedEquipment.filter(e => e.groupIndex === g.groupIndex)
     if (groupSelections.length === 0) return false
@@ -1254,14 +1971,14 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
       if (!selectedChoiceIds.has(choice.id)) return false
       if (!choice.isCategory) return true
       const need = choice.choose ?? 1
-      const have = groupSelections.filter(e => e.choiceId === choice.id).length
+      const have = groupSelections.filter(e => e.choiceId === choice.id && !e.bundledFixed).length
       return have >= need
     })
   })
   const allFeatureChoicesSelected = featureChoiceGroups.every(choice => {
     const selected = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
     return (selected?.options?.length ?? 0) >= (choice.choose ?? 1)
-  })
+  }) && (!superiorTechniqueSelected || !!superiorTechniqueManeuver)
 
   const toggleFeatureOption = (choice, option) => {
     const existing = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
@@ -1285,11 +2002,37 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
       featureName: choice.feature.name,
       className: choice.feature.className,
       classIndex: choice.feature.classIndex,
+      subclassName: choice.feature.subclassName,
       gainedAtLevel: choice.feature.level,
       options: nextOptions,
     }
+    const clearSuperiorTechnique = checked && option.name === 'Superior Technique'
     onFeatureChoicesChange([
-      ...selectedFeatureChoices.filter(item => item.choiceKey !== choice.choiceKey),
+      ...selectedFeatureChoices.filter(item =>
+        item.choiceKey !== choice.choiceKey &&
+        (!clearSuperiorTechnique || item.choiceKey !== superiorTechniqueChoiceKey)
+      ),
+      nextChoice,
+    ])
+  }
+  const chooseSuperiorTechniqueManeuver = (maneuver) => {
+    const nextChoice = {
+      choiceKey: superiorTechniqueChoiceKey,
+      featureIndex: 'superior-technique-maneuver',
+      featureName: 'Superior Technique Maneuver',
+      className: classData.name,
+      classIndex: classData.index,
+      gainedAtLevel: 1,
+      options: [{
+        id: maneuver.id,
+        name: maneuver.name,
+        source: maneuver.source,
+        desc: maneuver.desc,
+        featureType: maneuver.featureType,
+      }],
+    }
+    onFeatureChoicesChange([
+      ...selectedFeatureChoices.filter(item => item.choiceKey !== superiorTechniqueChoiceKey),
       nextChoice,
     ])
   }
@@ -1336,6 +2079,32 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
   </div>
 ))}
 
+      {/* Tool choices */}
+      {toolGroups.map(group => {
+        const selectedForGroup = selectedTools.filter(item => item.groupIndex === group.groupIndex)
+        const choose = group.choose ?? 1
+        return (
+          <div key={group.groupIndex}>
+            <label style={S.label}>Choose {choose} Class Tool Proficiency{choose === 1 ? '' : 'ies'}</label>
+            <div style={S.cardSub}>{selectedForGroup.length} / {choose} selected</div>
+            {(group.options ?? []).map(tool => {
+              const checked = selectedForGroup.some(item => item.index === tool.index)
+              const disabled = !checked && selectedForGroup.length >= choose
+              return (
+                <div
+                  key={tool.index}
+                  style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                  onClick={() => !disabled && toggleTool(group, tool)}
+                >
+                  <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                  <span>{tool.name}</span>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+
       {/* Feature choices */}
       {featureChoiceGroups.map(choice => {
         const selected = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
@@ -1367,6 +2136,30 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
         )
       })}
 
+      {superiorTechniqueSelected && (
+        <div>
+          <label style={S.label}>Superior Technique Maneuver</label>
+          <div style={S.cardSub}>Choose 1 Battle Master maneuver.</div>
+          {maneuverOptions.map(maneuver => {
+            const checked = superiorTechniqueManeuver?.id === maneuver.id
+            return (
+              <div
+                key={maneuver.id}
+                style={{ ...S.checkRow, alignItems:'flex-start', border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                onClick={() => chooseSuperiorTechniqueManeuver(maneuver)}
+              >
+                <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem', lineHeight:1.2 }}>{checked ? '◉' : '○'}</span>
+                <span style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                  <span>{maneuver.name}</span>
+                  {maneuver.desc?.[0] && <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)', lineHeight:1.35 }}>{maneuver.desc[0].slice(0, 180)}{maneuver.desc[0].length > 180 ? '…' : ''}</span>}
+                </span>
+                {maneuver.source && <span style={{ marginLeft:'auto' }}><SourceBadge item={maneuver} /></span>}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Equipment choices */}
       {equipGroups.map((group) => (
         <div key={group.groupIndex}>
@@ -1381,7 +2174,8 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
             if (choice.isCategory) {
               const choose = choice.choose ?? 1
               const selectedForChoice = groupSelections.filter(e => e.choiceId === choice.id)
-              const choiceComplete = selectedForChoice.length >= choose
+              const selectedCategoryItems = selectedForChoice.filter(e => !e.bundledFixed)
+              const choiceComplete = selectedCategoryItems.length >= choose
               const loadedItems = categoryItems[choice.id] // null=loading, undefined=not started, []=empty, [...]
               const itemSourceFilter = categorySourceFilters[choice.id] ?? ALL_SOURCES
               const visibleItems = (loadedItems ?? []).filter(item => itemSourceFilter === ALL_SOURCES || sourceCode(item) === itemSourceFilter)
@@ -1396,7 +2190,7 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                       {lockedByOtherChoice
                         ? 'Locked by another option in this group'
                         : isExpanded
-                        ? `${selectedForChoice.length}/${choose} selected — choose below ↓`
+                        ? `${selectedCategoryItems.length}/${choose} selected — choose below ↓`
                         : `Tap to expand · choose ${choose}`}
                     </div>
                   </div>
@@ -1413,22 +2207,25 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
                             onChange={(source) => setCategorySourceFilters(prev => ({ ...prev, [choice.id]: source }))}
                           />
                           {visibleItems.map(item => {
-                            const itemChecked = selectedForChoice.some(e => e.index === item.index)
-                            const disabled = !itemChecked && selectedForChoice.length >= choose
+                            const itemChecked = selectedCategoryItems.some(e => e.index === item.index)
+                            const disabled = !itemChecked && selectedCategoryItems.length >= choose
                             return (
                               <div
                                 key={item.index}
                                 style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: itemChecked ? '1px solid var(--accent)' : '1px solid var(--border)', marginBottom: '0.35rem' }}
                                 onClick={() => {
-                                  if (disabled) return
-                                  const otherGroups = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
+                  if (disabled) return
+                  const otherGroups = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
                                   const sameChoiceWithoutItem = selectedForChoice.filter(e => e.index !== item.index)
                                   if (itemChecked) {
                                     onEquipmentChange([...otherGroups, ...sameChoiceWithoutItem])
                                   } else {
-                                    onEquipmentChange([...otherGroups, ...sameChoiceWithoutItem, { ...item, groupIndex: group.groupIndex, choiceId: choice.id }])
-                                  }
-                                }}
+                                    const bundleItems = choice.isCategoryBundle && selectedCategoryItems.length === 0
+                                      ? choice.items.map(bundleItem => ({ ...bundleItem, groupIndex: group.groupIndex, choiceId: choice.id, bundledFixed: true }))
+                                      : []
+                    onEquipmentChange([...otherGroups, ...sameChoiceWithoutItem, ...bundleItems, { ...item, groupIndex: group.groupIndex, choiceId: choice.id }])
+                  }
+                }}
                               >
                                 <span style={{ color: itemChecked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{itemChecked ? '◉' : '○'}</span>
                                 <span>{item.name}</span>
@@ -1476,13 +2273,14 @@ function StepClassSetup({ classData, selectedSkills, onSkillsChange, selectedEqu
 
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
-        <button style={S.btn(true)} onClick={onNext} disabled={!allSkillsSelected || !allEquipSelected || !allFeatureChoicesSelected}>
+        <button style={S.btn(true)} onClick={onNext} disabled={!allSkillsSelected || !allToolsSelected || !allEquipSelected || !allFeatureChoicesSelected}>
           Next: Background →
         </button>
       </div>
-      {(!allSkillsSelected || !allEquipSelected || !allFeatureChoicesSelected) && (
+      {(!allSkillsSelected || !allToolsSelected || !allEquipSelected || !allFeatureChoicesSelected) && (
         <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
           {!allSkillsSelected && <div>Skills not complete ({allSkillGroups.map(g => `${selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length}/${g.choose}`).join(', ')})</div>}
+          {!allToolsSelected && <div>Tool choices not complete.</div>}
           {!allFeatureChoicesSelected && <div>Feature choices not complete.</div>}
           {!allEquipSelected && <div>Equipment not complete — groups: {equipGroups.length}, selected groupIndexes: [{selectedEquipment.map(e => e.groupIndex).join(', ')}]</div>}
         </div>
@@ -1531,9 +2329,9 @@ function StepBackground({ backgrounds, selected, onSelect, onNext, onBack }) {
   )
 }
 
-// ─── Step 7: Background setup (languages + equipment choices) ─────────────────
+// ─── Step 7: Background setup (languages, tools + equipment choices) ──────────
 
-function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesChange, selectedEquipment, onEquipmentChange, onNext, onBack }) {
+function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesChange, selectedTools = [], onToolsChange, selectedEquipment, onEquipmentChange, onNext, onBack }) {
   const langOptions = backgroundData.language_options
   const langPool = langOptions?.from?.options ?? langOptions?.from?.resource_list_url
     ? [] // resource_list means "any language" — we'll show a curated list
@@ -1552,6 +2350,17 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
       onLanguagesChange(selectedLanguages.filter(l => l !== name))
     } else if (selectedLanguages.length < langChoose) {
       onLanguagesChange([...selectedLanguages, name])
+    }
+  }
+
+  const toolGroups = (backgroundData.tool_options ?? []).map((group, groupIndex) => ({ ...group, groupIndex }))
+  const toggleTool = (group, tool) => {
+    const selectedForGroup = selectedTools.filter(item => item.groupIndex === group.groupIndex)
+    const checked = selectedForGroup.some(item => item.index === tool.index)
+    if (checked) {
+      onToolsChange(selectedTools.filter(item => !(item.groupIndex === group.groupIndex && item.index === tool.index)))
+    } else if (selectedForGroup.length < (group.choose ?? 1)) {
+      onToolsChange([...selectedTools, { ...tool, groupIndex: group.groupIndex }])
     }
   }
 
@@ -1578,8 +2387,31 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
             custom: i.custom,
             containsValue: i.containsValue,
           }))
+          const equipmentChoice = (o.items ?? []).find(i => i.option_type === 'equipment_type_choice')
+          if (equipmentChoice) {
+            const label = [
+              equipmentChoice.label ?? 'Choose equipment',
+              ...parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name),
+            ].join(' + ')
+            return {
+              id: `${gi}_${oi}`,
+              label,
+              items: parts,
+              isEquipmentTypeChoice: true,
+              equipmentChoice,
+            }
+          }
           const label = parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name).join(' + ')
           return { id: `${gi}_${oi}`, label, items: parts, isChoice: false }
+        }
+        if (o.option_type === 'equipment_type_choice') {
+          return {
+            id: `${gi}_${oi}`,
+            label: o.label ?? 'Choose equipment',
+            items: [],
+            isEquipmentTypeChoice: true,
+            equipmentChoice: o,
+          }
         }
         if (o.option_type === 'choice') {
           const desc = o.choice?.desc ?? 'Any item'
@@ -1595,6 +2427,9 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
   })
 
   const langReady = langChoose === 0 || selectedLanguages.length >= langChoose
+  const toolReady = toolGroups.every(group =>
+    selectedTools.filter(item => item.groupIndex === group.groupIndex).length >= (group.choose ?? 1)
+  )
   const equipOk = equipGroups.length === 0 || equipGroups.every(g => selectedEquipment.some(e => e.groupIndex === g.groupIndex))
 
   return (
@@ -1608,6 +2443,16 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
           <label style={S.label}>Skills Gained</label>
           <div>{backgroundData.starting_proficiencies.filter(p => p.index.startsWith('skill-')).map(p => (
             <span key={p.index} style={S.tag}>{p.name.replace('Skill: ', '')}</span>
+          ))}</div>
+        </>
+      )}
+
+      {/* Fixed tools */}
+      {backgroundData.starting_proficiencies?.filter(p => !p.index.startsWith('skill-')).length > 0 && (
+        <>
+          <label style={S.label}>Tool Proficiencies Gained</label>
+          <div>{backgroundData.starting_proficiencies.filter(p => !p.index.startsWith('skill-')).map(p => (
+            <span key={p.index} style={S.tag}>{p.name}</span>
           ))}</div>
         </>
       )}
@@ -1635,6 +2480,32 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
         </>
       )}
 
+      {/* Tool choices */}
+      {toolGroups.map(group => {
+        const selectedForGroup = selectedTools.filter(item => item.groupIndex === group.groupIndex)
+        const choose = group.choose ?? 1
+        return (
+          <div key={group.groupIndex}>
+            <label style={S.label}>Choose {choose} Tool Proficiency{choose === 1 ? '' : 'ies'}</label>
+            <div style={S.cardSub}>{selectedForGroup.length} / {choose} selected</div>
+            {(group.options ?? []).map(tool => {
+              const checked = selectedForGroup.some(item => item.index === tool.index)
+              const disabled = !checked && selectedForGroup.length >= choose
+              return (
+                <div
+                  key={tool.index}
+                  style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                  onClick={() => !disabled && toggleTool(group, tool)}
+                >
+                  <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                  <span>{tool.name}</span>
+                </div>
+              )
+            })}
+          </div>
+        )
+      })}
+
       {/* Equipment choices */}
       {equipGroups.map((group) => (
         <div key={group.groupIndex}>
@@ -1642,6 +2513,42 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
           <div style={S.cardSub}>{group.desc}</div>
           {group.choices.map(choice => {
             const checked = selectedEquipment.some(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
+            if (choice.isEquipmentTypeChoice) {
+              const selectedForChoice = selectedEquipment.filter(e => e.groupIndex === group.groupIndex && e.choiceId === choice.id)
+              const selectedToolIndex = selectedForChoice.find(item => item.equipmentTypeChoice)?.index
+              return (
+                <div key={choice.id}>
+                  <div style={S.card(checked)}>
+                    <div style={S.cardName}>{choice.equipmentChoice?.label ?? choice.label}</div>
+                    {choice.items.length > 0 && (
+                      <div style={S.cardSub}>Also includes {choice.items.map(item => item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name).join(', ')}</div>
+                    )}
+                  </div>
+                  <div style={{ paddingLeft: '1rem', marginBottom: '0.5rem' }}>
+                    {(choice.equipmentChoice?.options ?? []).map(option => {
+                      const optionChecked = selectedToolIndex === option.index
+                      return (
+                        <div
+                          key={option.index}
+                          style={{ ...S.checkRow, border: optionChecked ? '1px solid var(--accent)' : '1px solid var(--border)', marginBottom: '0.35rem' }}
+                          onClick={() => {
+                            const without = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
+                            onEquipmentChange([
+                              ...without,
+                              { ...option, quantity: choice.equipmentChoice?.count ?? 1, groupIndex: group.groupIndex, choiceId: choice.id, equipmentTypeChoice: true },
+                              ...choice.items.map(item => ({ ...item, groupIndex: group.groupIndex, choiceId: choice.id })),
+                            ])
+                          }}
+                        >
+                          <span style={{ color: optionChecked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{optionChecked ? '◉' : '○'}</span>
+                          <span>{option.name}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
             return (
               <div
                 key={choice.id}
@@ -1688,7 +2595,7 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
 
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
-        <button style={S.btn(true)} onClick={onNext} disabled={!langReady || !equipOk}>Next: Alignment →</button>
+        <button style={S.btn(true)} onClick={onNext} disabled={!langReady || !toolReady || !equipOk}>Next: Alignment →</button>
       </div>
     </div>
   )
@@ -1757,50 +2664,56 @@ function CreateCharacter({ user, onComplete, onCancel }) {
   const [equipmentCatalog, setEquipmentCatalog] = useState([])
 
   // Wizard state
+  const [rulesEdition, setRulesEdition] = useState('2014')
   const [name, setName] = useState('')
   const [raceData, setRaceData] = useState(null)
   const [subraceData, setSubraceData] = useState(null)
   const [raceBonusOptions, setRaceBonusOptions] = useState([])
   const [racialOptionChoices, setRacialOptionChoices] = useState({})
   const [racialFeat, setRacialFeat] = useState(null)
+  const [racialFeatAbility, setRacialFeatAbility] = useState(null)
   const [classData, setClassData] = useState(null)
   const [subclassChoice, setSubclassChoice] = useState(null)
   const [classSkills, setClassSkills] = useState([])
+  const [classTools, setClassTools] = useState([])
   const [classEquipment, setClassEquipment] = useState([])
   const [classFeatureChoices, setClassFeatureChoices] = useState([])
   const [abilityScores, setAbilityScores] = useState({ str:10, dex:10, con:10, int:10, wis:10, cha:10 })
   const [startingCantrips, setStartingCantrips] = useState([])
+  const [startingBonusCantrips, setStartingBonusCantrips] = useState([])
   const [startingSpells,   setStartingSpells]   = useState([])
   const [backgroundData, setBackgroundData] = useState(null)
   const [backgroundLanguages, setBackgroundLanguages] = useState([])
+  const [backgroundTools, setBackgroundTools] = useState([])
   const [backgroundEquipment, setBackgroundEquipment] = useState([])
   const [alignment, setAlignment] = useState('')
 
   useEffect(() => {
-    Promise.all([getRaces(), getSubraces(), getClasses(), getBackgrounds(), getEquipment()])
+    Promise.all([getRaces(rulesEdition), getSubraces(rulesEdition), getClasses(rulesEdition), getBackgrounds(rulesEdition), getEquipment()])
       .then(([r, s, c, b, e]) => { setRaces(r); setAllSubraces(s); setClasses(c); setBackgrounds(b); setEquipmentCatalog(e) })
       .catch(err => setError(err.message))
-  }, [])
+  }, [rulesEdition])
 
   const hasSubrace = raceData?.subraces?.length > 0 || !!raceData?.ability_bonus_options
-  const hasRacialOptions = racialOptionGroups(raceData, subraceData).length > 0
+  const hasRacialOptions = hasRacialSetupOptions(raceData, subraceData)
   const hasSubclassAtCreation = !!(classData && (SUBCLASS_LEVELS[classData.index] ?? []).includes(1))
   const isSpellcaster = !!(classData && (CANTRIPS_KNOWN[classData.index] || SPELLS_KNOWN_L1[classData.index]))
 
   // Compute step indices dynamically
-  const STEP_NAME       = 0
-  const STEP_RACE       = 1
-  const STEP_SUBRACE    = 2                                        // may be skipped
-  const STEP_RACE_OPTIONS = hasSubrace ? 3 : 2                      // may be skipped
+  const STEP_EDITION    = 0
+  const STEP_NAME       = 1
+  const STEP_RACE       = 2
+  const STEP_SUBRACE    = 3                                        // may be skipped
+  const STEP_RACE_OPTIONS = hasSubrace ? 4 : 3                      // may be skipped
   const STEP_CLASS      = STEP_RACE_OPTIONS + (hasRacialOptions ? 1 : 0)
   const STEP_SUBCLASS   = STEP_CLASS + 1                          // may be skipped
   const STEP_CLASS_SETUP    = hasSubclassAtCreation ? STEP_SUBCLASS + 1 : STEP_CLASS + 1
-  const STEP_SPELLS         = STEP_CLASS_SETUP + 1                // may be skipped
-  const STEP_ABILITY_SCORES = isSpellcaster ? STEP_SPELLS + 1 : STEP_CLASS_SETUP + 1
-  const STEP_BACKGROUND     = STEP_ABILITY_SCORES + 1
-  const STEP_BG_SETUP       = STEP_ABILITY_SCORES + 2
-  const STEP_ALIGNMENT      = STEP_ABILITY_SCORES + 3
-  const TOTAL_STEPS         = STEP_ABILITY_SCORES + 4
+  const STEP_ABILITY_SCORES = STEP_CLASS_SETUP + 1
+  const STEP_SPELLS         = STEP_ABILITY_SCORES + 1             // may be skipped
+  const STEP_BACKGROUND     = isSpellcaster ? STEP_SPELLS + 1 : STEP_ABILITY_SCORES + 1
+  const STEP_BG_SETUP       = STEP_BACKGROUND + 1
+  const STEP_ALIGNMENT      = STEP_BACKGROUND + 2
+  const TOTAL_STEPS         = STEP_BACKGROUND + 3
 
   const finish = async () => {
     setCreating(true)
@@ -1809,20 +2722,28 @@ function CreateCharacter({ user, onComplete, onCancel }) {
       const character = buildCharacter({
         user, name,
         raceData, subraceData, classData, subclassChoice, backgroundData, alignment,
+        rulesEdition,
         baseAbilityScores: abilityScores,
         startingCantrips,
+        startingBonusCantrips,
         startingSpells,
         equipmentCatalog,
         choices: {
           raceBonusOptions,
           classSkills,
+          classTools,
           classEquipment: classEquipment.filter(e => !e.index.startsWith('__')),
           classFeatureChoices,
           backgroundLanguages,
+          backgroundTools,
           backgroundEquipment: backgroundEquipment.filter(e => !e.index.startsWith('__')),
           backgroundFeature: backgroundData?.feature ?? null,
           racialOptionChoices,
           racialFeat,
+          racialFeatAbility,
+          racialLanguages: racialOptionChoices.racialLanguages ?? [],
+          racialSkills: racialOptionChoices.racialSkills ?? [],
+          racialTools: racialOptionChoices.racialTools ?? [],
         },
       })
       const fileName = characterFileName(name)
@@ -1835,6 +2756,29 @@ function CreateCharacter({ user, onComplete, onCancel }) {
 
   const goTo = (s) => { setError(null); setStep(s) }
 
+  const selectRulesEdition = (value) => {
+    setRulesEdition(normalizeAvailableRulesEdition(value))
+    setRaceData(null)
+    setSubraceData(null)
+    setRaceBonusOptions([])
+    setRacialOptionChoices({})
+    setRacialFeat(null)
+    setRacialFeatAbility(null)
+    setClassData(null)
+    setSubclassChoice(null)
+    setClassSkills([])
+    setClassTools([])
+    setClassEquipment([])
+    setClassFeatureChoices([])
+    setStartingCantrips([])
+    setStartingBonusCantrips([])
+    setStartingSpells([])
+    setBackgroundData(null)
+    setBackgroundLanguages([])
+    setBackgroundTools([])
+    setBackgroundEquipment([])
+  }
+
   // When race changes, reset downstream
   const selectRace = (r) => {
     setRaceData(r)
@@ -1842,6 +2786,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
     setRaceBonusOptions([])
     setRacialOptionChoices({})
     setRacialFeat(null)
+    setRacialFeatAbility(null)
   }
 
   // When class changes, reset downstream
@@ -1849,9 +2794,11 @@ function CreateCharacter({ user, onComplete, onCancel }) {
     setClassData(c)
     setSubclassChoice(null)
     setClassSkills([])
+    setClassTools([])
     setClassEquipment([])
     setClassFeatureChoices([])
     setStartingCantrips([])
+    setStartingBonusCantrips([])
     setStartingSpells([])
   }
 
@@ -1860,12 +2807,19 @@ function CreateCharacter({ user, onComplete, onCancel }) {
     setRaceBonusOptions([])
     setRacialOptionChoices({})
     setRacialFeat(null)
+    setRacialFeatAbility(null)
+  }
+
+  const selectRacialFeat = (feat) => {
+    setRacialFeat(feat)
+    setRacialFeatAbility(null)
   }
 
   // When background changes, reset downstream
   const selectBackground = (b) => {
     setBackgroundData(b)
     setBackgroundLanguages([])
+    setBackgroundTools([])
     setBackgroundEquipment([])
   }
 
@@ -1874,8 +2828,17 @@ function CreateCharacter({ user, onComplete, onCancel }) {
       <div style={S.panel}>
         <ProgressBar step={step} totalSteps={TOTAL_STEPS} />
 
+        {step === STEP_EDITION && (
+          <StepEdition
+            selected={rulesEdition}
+            onSelect={selectRulesEdition}
+            onNext={() => goTo(STEP_NAME)}
+            onCancel={onCancel}
+          />
+        )}
+
         {step === STEP_NAME && (
-          <StepName value={name} onChange={setName} onNext={() => goTo(STEP_RACE)} onCancel={onCancel} />
+          <StepName value={name} onChange={setName} onNext={() => goTo(STEP_RACE)} onCancel={() => goTo(STEP_EDITION)} cancelLabel="← Back" />
         )}
 
         {step === STEP_RACE && (
@@ -1897,7 +2860,10 @@ function CreateCharacter({ user, onComplete, onCancel }) {
             bonusOptions={raceBonusOptions}
             onBonusOptions={setRaceBonusOptions}
             selectedFeat={racialFeat}
-            onFeatChange={setRacialFeat}
+            onFeatChange={selectRacialFeat}
+            selectedFeatAbility={racialFeatAbility}
+            onFeatAbilityChange={setRacialFeatAbility}
+            baseAbilityScores={abilityScores}
             onNext={() => goTo(hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
             onBack={() => goTo(STEP_RACE)}
           />
@@ -1937,26 +2903,17 @@ function CreateCharacter({ user, onComplete, onCancel }) {
         {step === STEP_CLASS_SETUP && classData && (
           <StepClassSetup
             classData={classData}
+            subclassChoice={subclassChoice}
             selectedSkills={classSkills}
             onSkillsChange={setClassSkills}
+            selectedTools={classTools}
+            onToolsChange={setClassTools}
             selectedEquipment={classEquipment}
             onEquipmentChange={setClassEquipment}
             selectedFeatureChoices={classFeatureChoices}
             onFeatureChoicesChange={setClassFeatureChoices}
-            onNext={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_ABILITY_SCORES)}
-            onBack={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS)}
-          />
-        )}
-
-        {step === STEP_SPELLS && classData && isSpellcaster && (
-          <StepSpells
-            classData={classData}
-            selectedCantrips={startingCantrips}
-            onCantrips={setStartingCantrips}
-            selectedSpells={startingSpells}
-            onSpells={setStartingSpells}
             onNext={() => goTo(STEP_ABILITY_SCORES)}
-            onBack={() => goTo(STEP_CLASS_SETUP)}
+            onBack={() => goTo(hasSubclassAtCreation ? STEP_SUBCLASS : STEP_CLASS)}
           />
         )}
 
@@ -1966,8 +2923,27 @@ function CreateCharacter({ user, onComplete, onCancel }) {
             subraceData={subraceData}
             raceBonusOptions={raceBonusOptions}
             onChange={setAbilityScores}
+            onNext={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_BACKGROUND)}
+            onBack={() => goTo(STEP_CLASS_SETUP)}
+          />
+        )}
+
+        {step === STEP_SPELLS && classData && isSpellcaster && (
+          <StepSpells
+            classData={classData}
+            subclassChoice={subclassChoice}
+            abilityScores={abilityScores}
+            raceData={raceData}
+            subraceData={subraceData}
+            raceBonusOptions={raceBonusOptions}
+            selectedCantrips={startingCantrips}
+            onCantrips={setStartingCantrips}
+            selectedBonusCantrips={startingBonusCantrips}
+            onBonusCantrips={setStartingBonusCantrips}
+            selectedSpells={startingSpells}
+            onSpells={setStartingSpells}
             onNext={() => goTo(STEP_BACKGROUND)}
-            onBack={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_CLASS_SETUP)}
+            onBack={() => goTo(STEP_ABILITY_SCORES)}
           />
         )}
 
@@ -1977,7 +2953,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
             selected={backgroundData}
             onSelect={selectBackground}
             onNext={() => goTo(STEP_BG_SETUP)}
-            onBack={() => goTo(STEP_CLASS_SETUP)}
+            onBack={() => goTo(isSpellcaster ? STEP_SPELLS : STEP_ABILITY_SCORES)}
           />
         )}
 
@@ -1986,6 +2962,8 @@ function CreateCharacter({ user, onComplete, onCancel }) {
             backgroundData={backgroundData}
             selectedLanguages={backgroundLanguages}
             onLanguagesChange={setBackgroundLanguages}
+            selectedTools={backgroundTools}
+            onToolsChange={setBackgroundTools}
             selectedEquipment={backgroundEquipment}
             onEquipmentChange={setBackgroundEquipment}
             onNext={() => goTo(STEP_ALIGNMENT)}

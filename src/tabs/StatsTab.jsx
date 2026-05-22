@@ -43,6 +43,14 @@ function fmtB(n)    { return n >= 0 ? `+${n}` : `${n}` }
 function characterLevel(char) {
   return (char.identity?.class ?? []).reduce((sum, cls) => sum + (cls.level ?? 0), 0) || 1
 }
+function hasFeat(char, featName) {
+  return (char.feats ?? []).some(feat => feat.name === featName)
+}
+function featChoice(char, featName) {
+  return (char.customContent?.featChoices ?? []).find(choice => choice.featName === featName)
+    ?? (char.feats ?? []).find(feat => feat.name === featName)?.choices
+    ?? null
+}
 
 // ── Effect dot with hover tooltip ─────────────────────────────────────────────
 function EffectDot({ infos }) {
@@ -89,7 +97,81 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
   const ac          = char.combat?.ac ?? 10
   const speed       = char.combat?.speed ?? char.identity?.speed ?? 30
   const percLvl     = skillLevel('perception')
+  const invLvl      = skillLevel('investigation')
   const passivePerc = 10 + mod(scores.wis ?? 10) + (percLvl === 1 ? pb : percLvl === 2 ? pb * 2 : 0) + (char.stats?.passiveBonuses?.perception ?? 0)
+  const passiveInv  = 10 + mod(scores.int ?? 10) + (invLvl === 1 ? pb : invLvl === 2 ? pb * 2 : 0) + (char.stats?.passiveBonuses?.investigation ?? 0)
+  const resilientChoice = featChoice(char, 'Resilient')
+  const weaponMasterChoice = featChoice(char, 'Weapon Master')
+  const featNotes = [
+    hasFeat(char, 'Actor') && {
+      name: 'Actor',
+      detail: 'Advantage on Deception and Performance checks when trying to pass yourself off as another person, plus mimicry.',
+    },
+    hasFeat(char, 'Athlete') && {
+      name: 'Athlete',
+      detail: 'Climbing does not cost extra movement, standing from prone costs only 5 ft, and running starts are not needed for long or high jumps.',
+    },
+    hasFeat(char, 'Dual Wielder') && {
+      name: 'Dual Wielder',
+      detail: 'Gain +1 AC while wielding two melee weapons, use two-weapon fighting with non-light one-handed weapons, and draw or stow two weapons together.',
+    },
+    hasFeat(char, 'Dungeon Delver') && {
+      name: 'Dungeon Delver',
+      detail: 'Advantage on checks to detect secret doors, advantage on saves against traps, resistance to trap damage, and normal-pace trap searching.',
+    },
+    hasFeat(char, 'Durable') && {
+      name: 'Durable',
+      detail: 'When you spend Hit Dice to regain hit points, the minimum roll on each die is twice your Constitution modifier.',
+    },
+    hasFeat(char, 'Keen Mind') && {
+      name: 'Keen Mind',
+      detail: 'Always know which way is north, know hours until sunrise or sunset, and accurately recall anything seen or heard within the past month.',
+    },
+    hasFeat(char, 'Heavily Armoured') && {
+      name: 'Heavily Armoured',
+      detail: 'You gain heavy armor proficiency.',
+    },
+    hasFeat(char, 'Lightly Armoured') && {
+      name: 'Lightly Armoured',
+      detail: 'You gain light armor proficiency.',
+    },
+    hasFeat(char, 'Medium Armour Master') && {
+      name: 'Medium Armour Master',
+      detail: 'Medium armor no longer imposes disadvantage on Stealth, and medium armor can use up to +3 Dexterity modifier for AC.',
+    },
+    hasFeat(char, 'Mobile') && {
+      name: 'Mobile',
+      detail: 'Difficult terrain does not slow you when you Dash, and creatures you attack cannot make opportunity attacks against you for the rest of the turn.',
+    },
+    hasFeat(char, 'Moderately Armoured') && {
+      name: 'Moderately Armoured',
+      detail: 'You gain medium armor and shield proficiency.',
+    },
+    hasFeat(char, 'Observant') && {
+      name: 'Observant',
+      detail: 'Read lips when you can see a speaking creature. Passive Perception and Investigation include the feat bonus.',
+    },
+    hasFeat(char, 'Resilient') && {
+      name: 'Resilient',
+      detail: resilientChoice?.ability
+        ? `You are proficient with ${ABILITY_FULL[resilientChoice.ability] ?? resilientChoice.ability.toUpperCase()} saving throws.`
+        : 'You gain proficiency in one chosen saving throw.',
+    },
+    hasFeat(char, 'Skulker') && {
+      name: 'Skulker',
+      detail: 'You can hide when lightly obscured, missed ranged attacks while hidden do not reveal you, and dim light does not impose disadvantage on Perception.',
+    },
+    hasFeat(char, 'Tavern Brawler') && {
+      name: 'Tavern Brawler',
+      detail: 'You are proficient with improvised weapons, and your unarmed strike damage is shown in Combat.',
+    },
+    hasFeat(char, 'Weapon Master') && {
+      name: 'Weapon Master',
+      detail: weaponMasterChoice?.weapons?.length
+        ? `Weapon proficiencies: ${weaponMasterChoice.weapons.map(weapon => weapon.name).join(', ')}.`
+        : 'You gain proficiency with four chosen weapons.',
+    },
+  ].filter(Boolean)
 
   const proficiencies = char.stats?.proficiencies ?? {}
   const profList = typeof proficiencies === 'object' && !Array.isArray(proficiencies)
@@ -198,6 +280,7 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
           { val: fmtB(pb),          lbl: 'Prof Bonus',   effects: [] },
           { val: fmtB(initiative),  lbl: 'Initiative',   effects: itemEffectsFor('Initiative') },
           { val: passivePerc,       lbl: 'Passive Perc', effects: [] },
+          { val: passiveInv,        lbl: 'Passive Inv',  effects: [] },
           { val: ac,                lbl: 'AC',            effects: acEffects },
           { val: `${speed}ft`,      lbl: 'Speed',         effects: speedEffects },
         ].map(({ val, lbl, effects }) => (
@@ -212,6 +295,16 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
       </div>
 
       <div className="stats-scroll">
+        {featNotes.length > 0 && (
+          <div className="feat-note-list">
+            {featNotes.map(note => (
+              <div key={note.name} className="feat-note">
+                <span className="feat-note-name">{note.name}</span>
+                <span className="feat-note-detail">{note.detail}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ── Ability Scores ── */}
         <div className="sec-head" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>

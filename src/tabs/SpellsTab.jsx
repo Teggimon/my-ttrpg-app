@@ -37,6 +37,28 @@ function uid()              { return Math.random().toString(36).slice(2) }
 function characterLevel(char) {
   return (char.identity?.class ?? []).reduce((sum, cls) => sum + (cls.level ?? 0), 0) || 1
 }
+function hasFeat(char, featName) {
+  return (char.feats ?? []).some(feat => feat.name === featName)
+}
+function featChoice(char, featName) {
+  return (char.customContent?.featChoices ?? []).find(choice => choice.featName === featName)
+}
+function classLabel(index) {
+  return String(index ?? '')
+    .split('-')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+function spellNames(spells = []) {
+  return spells.map(spell => spell.name).filter(Boolean).join(', ')
+}
+function isPreparedSpell(spell, prepared) {
+  return spell?.level === 0 || spell?.alwaysPrepared || prepared.includes(spell?.id)
+}
+function isConcentrationSpell(srdSpell) {
+  return !!srdSpell?.concentration || String(srdSpell?.duration ?? '').toLowerCase().includes('concentration')
+}
 function classIndex(cls) {
   return cls?.index ?? cls?.name?.toLowerCase?.().replace(/\s+/g, '-')
 }
@@ -127,11 +149,12 @@ function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
             )}
           </div>
         )}
-        <button className="spell-picker-close" onClick={onClose}>✕</button>
+        <button type="button" className="spell-picker-close" onClick={onClose}>✕</button>
       </div>
       <div className="spell-picker-levels">
         {levels.map(l => (
           <button
+            type="button"
             key={l}
             className={`filter-chip${filterLevel === l ? ' filter-chip--on' : ''}`}
             onClick={() => setFilterLevel(l)}
@@ -143,7 +166,7 @@ function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
       <div className="spell-picker-list">
         {results.length === 0 && <p className="empty-hint">No spells match.</p>}
         {results.map(s => (
-          <button key={s.index} className="spell-picker-row" onClick={() => onAdd(s)}>
+          <button type="button" key={s.index} className="spell-picker-row" onClick={() => onAdd(s)}>
             <span className="spell-picker-name">{s.name}</span>
             <span className="spell-picker-meta">
               <span className="spell-picker-source">{sourceCode(s)}</span>
@@ -151,14 +174,14 @@ function SpellPicker({ srdSpells, knownIds, onAdd, onClose }) {
             </span>
           </button>
         ))}
-        {results.length === 50 && <p className="empty-hint" style={{ padding: '6px 0' }}>Showing first 50 — refine search.</p>}
+        {results.length === 50 && <p className="empty-hint spell-picker-limit">Showing first 50 — refine search.</p>}
       </div>
     </div>
   )
 }
 
 // ── Slot Editor ─────────────────────────────────────────────────────────────
-function SlotEditor({ slots, onSave, onClose }) {
+function SlotEditor({ slots, pactSlots, onSave, onClose }) {
   const [draft, setDraft] = useState(() => {
     const d = {}
     for (let i = 1; i <= 9; i++) d[i] = slots[i]?.total ?? 0
@@ -170,28 +193,28 @@ function SlotEditor({ slots, onSave, onClose }) {
     for (let i = 1; i <= 9; i++) {
       if (draft[i] > 0) next[i] = { total: draft[i], used: Math.min(slots[i]?.used ?? 0, draft[i]) }
     }
-    onSave(next)
+    onSave(next, pactSlots)
   }
 
   return (
     <div className="slot-editor">
       <div className="slot-editor-head">
         <span className="slot-editor-title">Configure Spell Slots</span>
-        <button className="spell-picker-close" onClick={onClose}>✕</button>
+        <button type="button" className="spell-picker-close" onClick={onClose}>✕</button>
       </div>
       <div className="slot-editor-grid">
         {[1,2,3,4,5,6,7,8,9].map(lvl => (
           <div key={lvl} className="slot-editor-row">
             <span className="slot-editor-lbl">{ORDINALS[lvl]}</span>
             <div className="slot-editor-btns">
-              <button className="slot-adj-btn" onClick={() => setDraft(d => ({ ...d, [lvl]: Math.max(0, d[lvl] - 1) }))}>−</button>
+              <button type="button" className="slot-adj-btn" onClick={() => setDraft(d => ({ ...d, [lvl]: Math.max(0, d[lvl] - 1) }))}>−</button>
               <span className="slot-editor-val">{draft[lvl]}</span>
-              <button className="slot-adj-btn" onClick={() => setDraft(d => ({ ...d, [lvl]: Math.min(MAX_SLOTS[lvl] ?? 4, d[lvl] + 1) }))}>+</button>
+              <button type="button" className="slot-adj-btn" onClick={() => setDraft(d => ({ ...d, [lvl]: Math.min(MAX_SLOTS[lvl] ?? 4, d[lvl] + 1) }))}>+</button>
             </div>
           </div>
         ))}
       </div>
-      <button className="spell-prep-btn spell-prep-btn--on" style={{ width: '100%', alignSelf: 'stretch' }} onClick={save}>
+      <button type="button" className="spell-prep-btn spell-prep-btn--on slot-editor-save" onClick={save}>
         Save Slots
       </button>
     </div>
@@ -207,6 +230,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   const [allSrdSpells,   setAllSrdSpells]   = useState([])
   const [showPicker,     setShowPicker]     = useState(false)
   const [showSlotEditor, setShowSlotEditor] = useState(false)
+  const [castSlots,      setCastSlots]      = useState({})
 
   const known    = char.spells?.known    ?? []
   const prepared = char.spells?.prepared ?? []
@@ -227,11 +251,56 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   const pactSlotEntries = Object.entries(pactSlots)
     .filter(([, v]) => v.total > 0)
     .sort(([a], [b]) => Number(a) - Number(b))
+  const hasSpentPactSlots = pactSlotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
+  const hasSpentSpellSlots = slotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
+  const canShortRestRecover = hasSpentPactSlots
+  const canLongRestRecover = hasSpentSpellSlots || hasSpentPactSlots || !!char.spells?.concentration
 
-  const preparedLeveled = known.filter(s => s.level > 0 && prepared.includes(s.id))
+  const preparedLeveled = known.filter(s => s.level > 0 && prepared.includes(s.id) && !s.alwaysPrepared)
   const preparedMax     = preparedCapacity(char)
   const preparedFull    = preparedMax != null && preparedLeveled.length >= preparedMax
   const preparedOverCap = preparedMax != null && preparedLeveled.length > preparedMax
+  const elementalAdeptChoice = featChoice(char, 'Elemental Adept')
+  const magicInitiateChoice = featChoice(char, 'Magic Initiate')
+  const ritualCasterChoice = featChoice(char, 'Ritual Caster')
+  const spellSniperChoice = featChoice(char, 'Spell Sniper')
+  const elementalAdeptDamage = elementalAdeptChoice?.damageType
+  const magicInitiateSpellIndexes = new Set((magicInitiateChoice?.spells ?? []).map(spell => spell.index))
+  const magicInitiateCantripIndexes = new Set((magicInitiateChoice?.cantrips ?? []).map(spell => spell.index))
+  const ritualCasterSpellIndexes = new Set((ritualCasterChoice?.spells ?? []).map(spell => spell.index))
+  const spellSniperCantripIndexes = new Set((spellSniperChoice?.cantrips ?? []).map(spell => spell.index))
+  const spellFeatNotes = [
+    hasFeat(char, 'Elemental Adept') && {
+      name: 'Elemental Adept',
+      detail: `${elementalAdeptDamage ?? 'Chosen damage type'} spells ignore resistance, and damage dice showing 1 count as 2.`,
+    },
+    hasFeat(char, 'Magic Initiate') && {
+      name: 'Magic Initiate',
+      detail: [
+        magicInitiateChoice?.spellClass ? `${classLabel(magicInitiateChoice.spellClass)} spell list` : null,
+        magicInitiateChoice?.cantrips?.length ? `Cantrips: ${spellNames(magicInitiateChoice.cantrips)}` : null,
+        magicInitiateChoice?.spells?.length ? `1/LR: ${spellNames(magicInitiateChoice.spells)}` : null,
+      ].filter(Boolean).join(' · ') || 'Two cantrips and one 1st-level spell from a chosen class; the 1st-level spell can be cast once per long rest without a slot.',
+    },
+    hasFeat(char, 'Ritual Caster') && {
+      name: 'Ritual Caster',
+      detail: [
+        ritualCasterChoice?.spellClass ? `${classLabel(ritualCasterChoice.spellClass)} ritual book` : null,
+        ritualCasterChoice?.spells?.length ? `Rituals: ${spellNames(ritualCasterChoice.spells)}` : null,
+      ].filter(Boolean).join(' · ') || 'You have a ritual book and can cast its ritual spells without expending spell slots.',
+    },
+    hasFeat(char, 'Spell Sniper') && {
+      name: 'Spell Sniper',
+      detail: [
+        'Double the range of spells that require attack rolls, and ignore half cover and three-quarters cover with spell attacks.',
+        spellSniperChoice?.cantrips?.length ? `Cantrip: ${spellNames(spellSniperChoice.cantrips)}.` : null,
+      ].filter(Boolean).join(' '),
+    },
+    hasFeat(char, 'War Caster') && {
+      name: 'War Caster',
+      detail: 'Advantage on concentration saves, somatic components can be performed with weapons or shield in hand, and you can cast a spell for opportunity attacks.',
+    },
+  ].filter(Boolean)
 
   useEffect(() => {
     getSpells().then(all => {
@@ -249,7 +318,31 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     updateChar({ spells: { ...char.spells, [pool]: { ...source, [lvl]: { ...current, used } } } })
   }
 
-  function togglePrepared(spellId) {
+  function availableSlotOptions(spellLevel) {
+    if (spellLevel === 0) return []
+    const normalOptions = Object.entries(slots)
+      .filter(([lvl, slot]) => Number(lvl) >= spellLevel && slot.total > 0 && slot.used < slot.total)
+      .map(([lvl]) => ({
+        pool: 'slots',
+        level: Number(lvl),
+        value: `slots:${lvl}`,
+        label: `Lv ${lvl}`,
+      }))
+    const pactOptions = Object.entries(pactSlots)
+      .filter(([lvl, slot]) => Number(lvl) >= spellLevel && slot.total > 0 && slot.used < slot.total)
+      .map(([lvl]) => ({
+        pool: 'pactSlots',
+        level: Number(lvl),
+        value: `pactSlots:${lvl}`,
+        label: `Pact Lv ${lvl}`,
+      }))
+    return [...normalOptions, ...pactOptions]
+      .sort((a, b) => a.level - b.level || (a.pool === 'slots' ? -1 : 1))
+  }
+
+  function togglePrepared(spell) {
+    const spellId = spell?.id
+    if (spell?.alwaysPrepared) return
     if (!prepared.includes(spellId) && preparedFull) return
     const next = prepared.includes(spellId)
       ? prepared.filter(id => id !== spellId)
@@ -285,9 +378,70 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     updateChar({ spells: { ...char.spells, concentration: null } })
   }
 
-  function saveSlots(newSlots) {
-    updateChar({ spells: { ...char.spells, slots: newSlots } })
+  function toggleConcentration(spellId) {
+    updateChar({
+      spells: {
+        ...char.spells,
+        concentration: char.spells?.concentration === spellId ? null : spellId,
+      }
+    })
+  }
+
+  function nextConcentration(spell, requiresConcentration) {
+    if (!requiresConcentration) return char.spells?.concentration ?? null
+    if (char.settings?.concentrationMode === 'none') return char.spells?.concentration ?? spell.id
+    return spell.id
+  }
+
+  function castSpell(spell, slotValue, requiresConcentration = false) {
+    if (!isOwner || locked) return
+    const concentration = nextConcentration(spell, requiresConcentration)
+    const spellLevel = spell.level ?? 0
+    if (spellLevel === 0) {
+      if (requiresConcentration && concentration !== (char.spells?.concentration ?? null)) {
+        updateChar({ spells: { ...char.spells, concentration } })
+      }
+      return
+    }
+    const [pool = 'slots', slotLevel] = String(slotValue ?? '').split(':')
+    const slotPool = pool === 'pactSlots' ? 'pactSlots' : 'slots'
+    const source = slotPool === 'pactSlots' ? pactSlots : slots
+    const slot = source[slotLevel]
+    if (!slot || slot.used >= slot.total) return
+    updateChar({
+      spells: {
+        ...char.spells,
+        [slotPool]: { ...source, [slotLevel]: { ...slot, used: slot.used + 1 } },
+        concentration,
+      },
+    })
+  }
+
+  function saveSlots(newSlots, newPactSlots = pactSlots) {
+    updateChar({ spells: { ...char.spells, slots: newSlots, pactSlots: newPactSlots } })
     setShowSlotEditor(false)
+  }
+
+  function recoverSpellRest(restType) {
+    if (!isOwner || locked) return
+    const nextSpells = { ...(char.spells ?? {}) }
+    if (restType === 'SR') {
+      nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
+        lvl,
+        { ...slot, used: 0 },
+      ]))
+    } else {
+      nextSpells.slots = Object.fromEntries(Object.entries(nextSpells.slots ?? {}).map(([lvl, slot]) => [
+        lvl,
+        { ...slot, used: 0 },
+      ]))
+      nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
+        lvl,
+        { ...slot, used: 0 },
+      ]))
+      nextSpells.concentration = null
+    }
+    updateChar({ spells: nextSpells })
   }
 
   // Collect unique schools from known spells (via SRD data)
@@ -298,7 +452,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
 
   // Filter and group spells
   const visible = known.filter(spell => {
-    if (!showUnprepared && spell.level > 0 && !prepared.includes(spell.id)) return false
+    if (!showUnprepared && spell.level > 0 && !isPreparedSpell(spell, prepared)) return false
     if (filterSchool !== 'All') {
       if (srdSpellMap[spell.index]?.school?.name !== filterSchool) return false
     }
@@ -340,6 +494,17 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
         </div>
       )}
 
+      {spellFeatNotes.length > 0 && (
+        <div className="spell-feat-notes">
+          {spellFeatNotes.map(note => (
+            <div key={note.name} className="spell-feat-note">
+              <span className="spell-feat-note-name">{note.name}</span>
+              <span className="spell-feat-note-detail">{note.detail}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Filter bar ── */}
       {knownSchools.length > 1 && (
         <div className="spell-filter-bar">
@@ -348,6 +513,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
             <div className="filter-chips">
               {['All', ...SCHOOLS.filter(s => knownSchools.includes(s))].map(s => (
                 <button
+                  type="button"
                   key={s}
                   className={`filter-chip${filterSchool === s ? ' filter-chip--on' : ''}`}
                   onClick={() => setFilterSchool(s)}
@@ -363,12 +529,35 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
         {/* ── Slot tracker ── */}
         {(slotEntries.length > 0 || pactSlotEntries.length > 0 || (isOwner && !locked)) && (
           <div className="spell-slot-block">
+            {(slotEntries.length > 0 || pactSlotEntries.length > 0) && (
+              <div className="spell-rest-actions">
+                <button
+                  type="button"
+                  className="spell-prep-btn"
+                  onClick={() => recoverSpellRest('SR')}
+                  disabled={!isOwner || locked || !canShortRestRecover}
+                  title="Recover pact slots"
+                >
+                  Short Rest
+                </button>
+                <button
+                  type="button"
+                  className="spell-prep-btn"
+                  onClick={() => recoverSpellRest('LR')}
+                  disabled={!isOwner || locked || !canLongRestRecover}
+                  title="Recover spell slots, pact slots, and concentration"
+                >
+                  Long Rest
+                </button>
+              </div>
+            )}
             {slotEntries.map(([lvl, { total, used }]) => (
               <div key={lvl} className="slot-row-sp">
                 <span className="slot-lbl-sp">{ORDINALS[Number(lvl)]}</span>
                 <div className="slot-pips-sp">
                   {Array.from({ length: total }, (_, i) => (
                     <button
+                      type="button"
                       key={i}
                       className={`slot-pip-sp${i < used ? ' slot-pip-sp--used' : ''}`}
                       onClick={() => isOwner && !locked && toggleSlot(lvl, i)}
@@ -383,6 +572,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 <div className="slot-pips-sp">
                   {Array.from({ length: total }, (_, i) => (
                     <button
+                      type="button"
                       key={i}
                       className={`slot-pip-sp slot-pip-sp--pact${i < used ? ' slot-pip-sp--used' : ''}`}
                       onClick={() => isOwner && !locked && toggleSlot(lvl, i, 'pactSlots')}
@@ -393,6 +583,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
             ))}
             {isOwner && !locked && (
               <button
+                type="button"
                 className="slot-configure-btn"
                 onClick={() => setShowSlotEditor(v => !v)}
               >
@@ -404,20 +595,20 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
 
         {/* ── Slot editor ── */}
         {showSlotEditor && isOwner && !locked && (
-          <SlotEditor slots={slots} onSave={saveSlots} onClose={() => setShowSlotEditor(false)} />
+          <SlotEditor slots={slots} pactSlots={pactSlots} onSave={saveSlots} onClose={() => setShowSlotEditor(false)} />
         )}
 
         {/* Spell list header */}
         <div className="spell-list-head">
-          <span className="sec-head" style={{ margin: 0 }}>Spells</span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span className="sec-head spell-list-title">Spells</span>
+          <div className="spell-list-actions">
             {known.length > 0 && (
-              <button className="add-link" onClick={() => setShowUnprepared(v => !v)}>
+              <button type="button" className="add-link" onClick={() => setShowUnprepared(v => !v)}>
                 {showUnprepared ? 'Prepared only' : 'Show all'}
               </button>
             )}
             {isOwner && !locked && (
-              <button className="add-link" onClick={() => setShowPicker(v => !v)}>
+              <button type="button" className="add-link" onClick={() => setShowPicker(v => !v)}>
                 {showPicker ? 'Cancel' : '+ Add spell'}
               </button>
             )}
@@ -468,8 +659,8 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
               </div>
 
               {spells.map(spell => {
-                const isPrep    = lvlNum === 0 || prepared.includes(spell.id)
-                const canPrepare = isPrep || preparedMax == null || !preparedFull
+                const isPrep    = isPreparedSpell(spell, prepared)
+                const canTogglePrepare = !spell.alwaysPrepared && (isPrep || preparedMax == null || !preparedFull)
                 const isConc    = char.spells?.concentration === spell.id
                 const expanded  = expandedId === spell.id
                 const srd       = srdSpellMap[spell.index] ?? {}
@@ -477,6 +668,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 const castTime  = srd.casting_time
                 const range     = srd.range
                 const duration  = srd.duration
+                const canConcentrate = isConcentrationSpell(srd)
                 const components = srd.components?.join(', ')
                 const spellAbility = spellCastingAbility(spell, char)
                 const spellMod = spellAbility ? abilityMod(scores[spellAbility] ?? 10) : null
@@ -485,24 +677,40 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 const isAtk = !!srd.attack_type
                 const saveName = srd.dc?.dc_type?.name ?? srd.saving_throw
                 const desc      = Array.isArray(srd.desc) ? srd.desc.join('\n\n') : srd.desc
+                const hasSpellSniperBadge = hasFeat(char, 'Spell Sniper') && isAtk
+                const hasElementalAdeptBadge = elementalAdeptDamage && desc?.toLowerCase().includes(elementalAdeptDamage.toLowerCase())
+                const hasMagicInitiateSpellBadge = magicInitiateSpellIndexes.has(spell.index)
+                const hasMagicInitiateCantripBadge = magicInitiateCantripIndexes.has(spell.index)
+                const hasRitualCasterBadge = ritualCasterSpellIndexes.has(spell.index)
+                const hasSpellSniperPickBadge = spellSniperCantripIndexes.has(spell.index)
 
                 return (
                   <div key={spell.id} className={`spell-row${!isPrep ? ' spell-row--unprepared' : ''}${expanded ? ' spell-row--expanded' : ''}`}>
 
                     <div className="spell-row-head" onClick={() => setExpandedId(expanded ? null : spell.id)}>
-                      <span className="conc-dot-wrap" title={isConc ? 'Concentration active' : 'Concentration'}>
+                      <button
+                        type="button"
+                        className={`conc-dot-wrap${canConcentrate ? ' conc-dot-wrap--active' : ''}`}
+                        onClick={e => {
+                          e.stopPropagation()
+                          if (isOwner && !locked && canConcentrate) toggleConcentration(spell.id)
+                        }}
+                        disabled={!isOwner || locked || !canConcentrate}
+                        title={canConcentrate ? (isConc ? 'End concentration' : 'Start concentration') : 'No concentration'}
+                      >
                         <span className={`conc-dot${isConc ? ' conc-dot--on' : ''}`} />
-                      </span>
+                      </button>
                       <span className="spell-name">{spell.name}</span>
                       {lvlNum > 0 && (
                         <span
-                          className={`spell-star${isPrep ? ' spell-star--prep' : ''}${!canPrepare ? ' spell-star--disabled' : ''}`}
-                          onClick={e => { e.stopPropagation(); isOwner && !locked && canPrepare && togglePrepared(spell.id) }}
-                          title={isPrep ? 'Prepared — click to unprepare' : !canPrepare ? 'Preparation limit reached' : 'Not prepared — click to prepare'}
+                          className={`spell-star${isPrep ? ' spell-star--prep' : ''}${!canTogglePrepare ? ' spell-star--disabled' : ''}`}
+                          onClick={e => { e.stopPropagation(); isOwner && !locked && canTogglePrepare && togglePrepared(spell) }}
+                          title={spell.alwaysPrepared ? 'Always prepared by subclass feature' : isPrep ? 'Prepared — click to unprepare' : !canTogglePrepare ? 'Preparation limit reached' : 'Not prepared — click to prepare'}
                         >
-                          {isPrep ? 'Prepared' : 'Add'}
+                          {spell.alwaysPrepared ? 'Always' : isPrep ? 'Prepared' : 'Add'}
                         </span>
                       )}
+                      {spell.origin && <span className="spell-origin-badge">{spell.origin}</span>}
                       {school && <span className="spell-school-badge">{school}</span>}
                       {isAtk && rowSpellAtk != null && (
                         <span className="spell-mechanic-badge">{fmtB(rowSpellAtk)} hit</span>
@@ -510,7 +718,13 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                       {saveName && rowSpellDC != null && (
                         <span className="spell-mechanic-badge">DC {rowSpellDC} {saveName.slice(0, 3).toUpperCase()}</span>
                       )}
-                      <button className="spell-xbtn">{expanded ? '▲' : '▾'}</button>
+                      {hasMagicInitiateSpellBadge && <span className="spell-mechanic-badge" title="Magic Initiate: cast once per long rest without a spell slot">1/LR</span>}
+                      {hasMagicInitiateCantripBadge && <span className="spell-mechanic-badge" title="Magic Initiate cantrip">Initiate</span>}
+                      {hasRitualCasterBadge && <span className="spell-mechanic-badge" title="Ritual Caster spellbook spell">Ritual Book</span>}
+                      {hasSpellSniperPickBadge && <span className="spell-mechanic-badge" title="Cantrip learned from Spell Sniper">Sniper Pick</span>}
+                      {hasSpellSniperBadge && <span className="spell-mechanic-badge" title="Spell Sniper: double range and ignore half/three-quarters cover">Sniper</span>}
+                      {hasElementalAdeptBadge && <span className="spell-mechanic-badge" title={`Elemental Adept: ${elementalAdeptDamage} spells ignore resistance and treat 1s as 2s`}>Adept</span>}
+                      <button type="button" className="spell-xbtn">{expanded ? '▲' : '▾'}</button>
                     </div>
 
                     {expanded && (
@@ -528,19 +742,31 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                           </div>
                         )}
                         {desc && <p className="spell-desc">{desc.slice(0, 400)}{desc.length > 400 ? '…' : ''}</p>}
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div className="spell-detail-actions">
                           {lvlNum > 0 && isOwner && !locked && (
                             <button
+                              type="button"
                               className={`spell-prep-btn${isPrep ? ' spell-prep-btn--on' : ''}`}
-                              onClick={() => togglePrepared(spell.id)}
-                              disabled={!canPrepare}
-                              title={!canPrepare ? 'Preparation limit reached' : undefined}
+                              onClick={() => togglePrepared(spell)}
+                              disabled={!canTogglePrepare}
+                              title={spell.alwaysPrepared ? 'Always prepared by subclass feature' : !canTogglePrepare ? 'Preparation limit reached' : undefined}
                             >
-                              {isPrep ? 'Prepared' : 'Add to prepared'}
+                              {spell.alwaysPrepared ? 'Always prepared' : isPrep ? 'Prepared' : 'Add to prepared'}
+                            </button>
+                          )}
+                          {canConcentrate && !isConc && isOwner && !locked && (
+                            <button
+                              type="button"
+                              className="spell-prep-btn"
+                              onClick={() => toggleConcentration(spell.id)}
+                              title="Start concentration"
+                            >
+                              Concentrate
                             </button>
                           )}
                           {isConc && isOwner && !locked && (
                             <button
+                              type="button"
                               className="spell-prep-btn spell-prep-btn--danger"
                               onClick={clearConcentration}
                               title="End concentration"
@@ -550,8 +776,8 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                           )}
                           {isOwner && !locked && (
                             <button
-                              className="spell-xbtn"
-                              style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--danger)' }}
+                              type="button"
+                              className="spell-xbtn spell-remove-btn"
                               onClick={() => removeSpell(spell.id)}
                               title="Remove spell"
                             >
