@@ -25,8 +25,12 @@ export function matchesSource(item, selectedSource) {
 
 export function filterBySearchAndSource(items, search, selectedSource, getSearchText = item => item?.name ?? '') {
   const q = search.trim().toLowerCase()
+  const sourceIsAvailable = selectedSource === ALL_SOURCES
+    || (items ?? []).some(item => sourceCode(item) === selectedSource)
+  const effectiveSource = sourceIsAvailable ? selectedSource : ALL_SOURCES
+
   return (items ?? []).filter(item => {
-    if (!matchesSource(item, selectedSource)) return false
+    if (!matchesSource(item, effectiveSource)) return false
     if (!q) return true
     return getSearchText(item).toLowerCase().includes(q)
   })

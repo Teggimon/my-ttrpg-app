@@ -19,6 +19,14 @@ const SKILL_INDEX_TO_STAT_KEY = {
   'sleight-of-hand': 'sleightOfHand',
 }
 
+const CONTENT_LOADING_INITIAL = {
+  races: true,
+  subraces: true,
+  classes: true,
+  backgrounds: true,
+  equipment: true,
+}
+
 function characterFileName(name) {
   const slug = String(name ?? '')
     .trim()
@@ -1155,7 +1163,7 @@ function StepRace({ races, selected, loading, onSelect, onNext, onBack }) {
           <div style={S.emptyState}>Loading races...</div>
         )}
         {!loading && races.length === 0 && (
-          <div style={S.emptyState}>No races are available for this rules edition.</div>
+          <div style={S.emptyState}>Race content could not be loaded. Try switching rules editions and back again.</div>
         )}
         {races.length > 0 && filtered.length === 0 && (
           <div style={S.emptyState}>
@@ -2692,7 +2700,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
   const [classes, setClasses] = useState([])
   const [backgrounds, setBackgrounds] = useState([])
   const [equipmentCatalog, setEquipmentCatalog] = useState([])
-  const [contentLoading, setContentLoading] = useState(true)
+  const [contentLoading, setContentLoading] = useState(CONTENT_LOADING_INITIAL)
 
   // Wizard state
   const [rulesEdition, setRulesEdition] = useState('2014')
@@ -2720,11 +2728,34 @@ function CreateCharacter({ user, onComplete, onCancel }) {
   const [alignment, setAlignment] = useState('')
 
   useEffect(() => {
-    setContentLoading(true)
-    Promise.all([getRaces(rulesEdition), getSubraces(rulesEdition), getClasses(rulesEdition), getBackgrounds(rulesEdition), getEquipment()])
-      .then(([r, s, c, b, e]) => { setRaces(r); setAllSubraces(s); setClasses(c); setBackgrounds(b); setEquipmentCatalog(e) })
-      .catch(err => setError(err.message))
-      .finally(() => setContentLoading(false))
+    let cancelled = false
+    setContentLoading(CONTENT_LOADING_INITIAL)
+    setRaces([])
+    setAllSubraces([])
+    setClasses([])
+    setBackgrounds([])
+    setEquipmentCatalog([])
+
+    const loadCatalog = (key, label, load, apply) => {
+      load()
+        .then(value => {
+          if (!cancelled) apply(value)
+        })
+        .catch(err => {
+          if (!cancelled) setError(prev => prev ?? `${label} content failed to load: ${err.message}`)
+        })
+        .finally(() => {
+          if (!cancelled) setContentLoading(prev => ({ ...prev, [key]: false }))
+        })
+    }
+
+    loadCatalog('races', 'Race', () => getRaces(rulesEdition), setRaces)
+    loadCatalog('subraces', 'Subrace', () => getSubraces(rulesEdition), setAllSubraces)
+    loadCatalog('classes', 'Class', () => getClasses(rulesEdition), setClasses)
+    loadCatalog('backgrounds', 'Background', () => getBackgrounds(rulesEdition), setBackgrounds)
+    loadCatalog('equipment', 'Equipment', getEquipment, setEquipmentCatalog)
+
+    return () => { cancelled = true }
   }, [rulesEdition])
 
   const hasSubrace = raceData?.subraces?.length > 0 || !!raceData?.ability_bonus_options
@@ -2878,7 +2909,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
           <StepRace
             races={races}
             selected={raceData}
-            loading={contentLoading}
+            loading={contentLoading.races}
             onSelect={selectRace}
             onNext={() => goTo(hasSubrace ? STEP_SUBRACE : hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
             onBack={() => goTo(STEP_NAME)}
