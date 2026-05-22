@@ -45,6 +45,12 @@ function safeCharacterFileName(character) {
   return `${slug || 'character'}.json`
 }
 
+function uniqueCharacterFileName(baseFileName, characterId, attempt = 0) {
+  const stem = baseFileName.replace(/\.json$/i, '') || 'character'
+  const suffix = String(characterId ?? Date.now()).replace(/[^a-zA-Z0-9-]+/g, '').slice(0, 8) || Date.now()
+  return attempt === 0 ? `${stem}-${suffix}.json` : `${stem}-${suffix}-${attempt + 1}.json`
+}
+
 function safeFilePart(value, fallback = 'image') {
   return (value || fallback)
     .toLowerCase()
@@ -133,22 +139,40 @@ function App() {
 
   // ── Save character to GitHub ────────────────────────────────
   const saveCharacter = async (character) => {
-    // Update local state immediately so controlled inputs reflect changes
-    setSelectedCharacter(character)
-
-    const fileName = safeCharacterFileName(character)
-    const path    = `${CHARACTERS_PATH}/${fileName}`
     const { _fileName, ...persistedCharacter } = character
     void _fileName
     const content = stringToBase64(JSON.stringify(persistedCharacter, null, 2))
 
+    let fileName = safeCharacterFileName(character)
     let sha
-    try {
-      const { data } = await octokit.repos.getContent({
-        owner: user.login, repo: DATA_REPO, path,
-      })
-      sha = Array.isArray(data) ? undefined : data.sha
-    } catch { /* new file */ }
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const path = `${CHARACTERS_PATH}/${fileName}`
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: user.login, repo: DATA_REPO, path,
+        })
+        if (Array.isArray(data)) break
+
+        let existingCharacter
+        try {
+          existingCharacter = JSON.parse(atob(data.content.replace(/\s/g, '')))
+        } catch {
+          existingCharacter = null
+        }
+        if (existingCharacter?.meta?.characterId === persistedCharacter.meta?.characterId) {
+          sha = data.sha
+          break
+        }
+
+        fileName = uniqueCharacterFileName(safeCharacterFileName(character), persistedCharacter.meta?.characterId, attempt)
+      } catch {
+        sha = undefined
+        break
+      }
+    }
+
+    const path = `${CHARACTERS_PATH}/${fileName}`
+    setSelectedCharacter({ ...character, _fileName: fileName })
 
     await octokit.repos.createOrUpdateFileContents({
       owner:   user.login,
