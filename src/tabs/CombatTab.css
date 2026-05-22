@@ -374,6 +374,12 @@
 .slot-pip--used { background: transparent; border-color: var(--border-hi); }
 
 /* ── Conditions ───────────────────────────────────────────── */
+.combat-condition-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .cond-picker {
   display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px;
 }

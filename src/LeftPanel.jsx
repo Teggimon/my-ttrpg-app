@@ -6,6 +6,13 @@ import './LeftPanel.css'
 const XP_THRESHOLDS = [0,300,900,2700,6500,14000,23000,34000,48000,64000,85000,100000,120000,140000,165000,195000,225000,265000,305000,355000]
 
 function fmtBonus(n) { return n >= 0 ? `+${n}` : `${n}` }
+function conditionKey(condition) { return String(condition ?? '').trim().toLowerCase() }
+function conditionLabel(condition) {
+  return conditionKey(condition).replace(/\b\w/g, char => char.toUpperCase())
+}
+function conditionList(conditions = []) {
+  return [...new Set(conditions.map(conditionKey).filter(Boolean))]
+}
 
 function CharacterPortrait({ char }) {
   const src = char.identity?.portrait || '/uploads/placeholders/default-portrait.jpg'
@@ -143,8 +150,9 @@ export default function LeftPanel({
   }
 
   const removeCondition = (cond) => {
+    const condition = conditionKey(cond)
     updateChar({
-      combat: { ...char.combat, conditions: char.combat.conditions.filter(c => c !== cond) }
+      combat: { ...char.combat, conditions: conditionList(char.combat.conditions).filter(c => c !== condition) }
     })
   }
 
@@ -243,18 +251,18 @@ export default function LeftPanel({
 
       {/* ── Conditions ── */}
       <div className="lp-conditions-row">
-        {(char.combat?.conditions ?? []).map(c => (
+        {conditionList(char.combat?.conditions).map(c => (
           <span
             key={c}
             className="lp-condition-pill"
             onClick={() => isOwner && !locked && removeCondition(c)}
-            title={isOwner && !locked ? 'Click to remove' : c}
+            title={isOwner && !locked ? 'Click to remove' : conditionLabel(c)}
           >
-            {c}
+            {conditionLabel(c)}
           </span>
         ))}
         {isOwner && !locked && (
-          <button className="lp-add-condition" onClick={() => onTabChange?.('combat')}>+ Add</button>
+          <button type="button" className="lp-add-condition" onClick={() => onTabChange?.('combat')}>+ Add</button>
         )}
       </div>
 

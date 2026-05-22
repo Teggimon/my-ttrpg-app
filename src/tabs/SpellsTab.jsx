@@ -53,6 +53,9 @@ function classLabel(index) {
 function spellNames(spells = []) {
   return spells.map(spell => spell.name).filter(Boolean).join(', ')
 }
+function featureKey(name) {
+  return String(name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+}
 function isPreparedSpell(spell, prepared) {
   return spell?.level === 0 || spell?.alwaysPrepared || prepared.includes(spell?.id)
 }
@@ -251,10 +254,18 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   const pactSlotEntries = Object.entries(pactSlots)
     .filter(([, v]) => v.total > 0)
     .sort(([a], [b]) => Number(a) - Number(b))
+  const storedAbilities = char.combat?.classAbilities ?? char.classAbilities ?? []
+  const storedAbilityMap = Object.fromEntries(storedAbilities.flatMap(ability => [
+    [featureKey(ability.name), ability],
+    ability.key ? [ability.key, ability] : null,
+  ].filter(Boolean)))
+  const hasSpentShortRestFeature = storedAbilities.some(ability => (ability.used ?? 0) > 0 && /SR/.test(ability.recharge ?? ''))
+  const hasSpentLongRestFeature = storedAbilities.some(ability => (ability.used ?? 0) > 0 && /LR/.test(ability.recharge ?? ''))
   const hasSpentPactSlots = pactSlotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
   const hasSpentSpellSlots = slotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
-  const canShortRestRecover = hasSpentPactSlots
-  const canLongRestRecover = hasSpentSpellSlots || hasSpentPactSlots || !!char.spells?.concentration
+  const canShortRestRecover = hasSpentShortRestFeature || hasSpentPactSlots
+  const canLongRestRecover = hasSpentSpellSlots || hasSpentPactSlots || hasSpentLongRestFeature || !!char.spells?.concentration
+  const showRestActions = canShortRestRecover || canLongRestRecover || slotEntries.length > 0 || pactSlotEntries.length > 0
 
   const preparedLeveled = known.filter(s => s.level > 0 && prepared.includes(s.id) && !s.alwaysPrepared)
   const preparedMax     = preparedCapacity(char)
@@ -269,6 +280,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
   const magicInitiateCantripIndexes = new Set((magicInitiateChoice?.cantrips ?? []).map(spell => spell.index))
   const ritualCasterSpellIndexes = new Set((ritualCasterChoice?.spells ?? []).map(spell => spell.index))
   const spellSniperCantripIndexes = new Set((spellSniperChoice?.cantrips ?? []).map(spell => spell.index))
+  const magicInitiateUsed = storedAbilityMap['feat-magic-initiate']?.used ?? 0
   const spellFeatNotes = [
     hasFeat(char, 'Elemental Adept') && {
       name: 'Elemental Adept',
@@ -417,6 +429,31 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     })
   }
 
+  function castMagicInitiateSpell(spell, requiresConcentration = false) {
+    if (!isOwner || locked || magicInitiateUsed >= 1) return
+    const concentration = nextConcentration(spell, requiresConcentration)
+    const nextAbility = {
+      name: 'Magic Initiate',
+      key: 'feat-magic-initiate',
+      recharge: 'LR',
+      max: 1,
+      used: magicInitiateUsed + 1,
+    }
+    updateChar({
+      spells: {
+        ...char.spells,
+        concentration,
+      },
+      combat: {
+        ...char.combat,
+        classAbilities: [
+          ...storedAbilities.filter(ability => featureKey(ability.name) !== 'feat-magic-initiate' && ability.key !== 'feat-magic-initiate'),
+          nextAbility,
+        ],
+      },
+    })
+  }
+
   function saveSlots(newSlots, newPactSlots = pactSlots) {
     updateChar({ spells: { ...char.spells, slots: newSlots, pactSlots: newPactSlots } })
     setShowSlotEditor(false)
@@ -424,6 +461,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
 
   function recoverSpellRest(restType) {
     if (!isOwner || locked) return
+    const rechargePattern = restType === 'SR' ? /SR/ : /LR/
     const nextSpells = { ...(char.spells ?? {}) }
     if (restType === 'SR') {
       nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
@@ -441,7 +479,13 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
       ]))
       nextSpells.concentration = null
     }
-    updateChar({ spells: nextSpells })
+    updateChar({
+      spells: nextSpells,
+      combat: {
+        ...char.combat,
+        classAbilities: storedAbilities.filter(ability => !rechargePattern.test(ability.recharge ?? '')),
+      },
+    })
   }
 
   // Collect unique schools from known spells (via SRD data)
@@ -529,14 +573,14 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
         {/* ── Slot tracker ── */}
         {(slotEntries.length > 0 || pactSlotEntries.length > 0 || (isOwner && !locked)) && (
           <div className="spell-slot-block">
-            {(slotEntries.length > 0 || pactSlotEntries.length > 0) && (
+            {showRestActions && (
               <div className="spell-rest-actions">
                 <button
                   type="button"
                   className="spell-prep-btn"
                   onClick={() => recoverSpellRest('SR')}
                   disabled={!isOwner || locked || !canShortRestRecover}
-                  title="Recover pact slots"
+                  title="Recover short-rest features and pact slots"
                 >
                   Short Rest
                 </button>
@@ -687,6 +731,7 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 const hasMagicInitiateCantripBadge = magicInitiateCantripIndexes.has(spell.index)
                 const hasRitualCasterBadge = ritualCasterSpellIndexes.has(spell.index)
                 const hasSpellSniperPickBadge = spellSniperCantripIndexes.has(spell.index)
+                const canUseMagicInitiateCast = hasMagicInitiateSpellBadge && magicInitiateUsed < 1
 
                 return (
                   <div key={spell.id} className={`spell-row${!isPrep ? ' spell-row--unprepared' : ''}${expanded ? ' spell-row--expanded' : ''}`}>
@@ -794,6 +839,17 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                               title="Start concentration"
                             >
                               Concentrate
+                            </button>
+                          )}
+                          {hasMagicInitiateSpellBadge && isOwner && !locked && (
+                            <button
+                              type="button"
+                              className="spell-prep-btn"
+                              onClick={() => castMagicInitiateSpell(spell, canConcentrate)}
+                              disabled={!canUseMagicInitiateCast}
+                              title={canUseMagicInitiateCast ? 'Magic Initiate free cast without spending a spell slot' : 'Magic Initiate free cast used until long rest'}
+                            >
+                              {canUseMagicInitiateCast ? 'Free cast' : 'Free cast used'}
                             </button>
                           )}
                           {isConc && isOwner && !locked && (

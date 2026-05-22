@@ -6,9 +6,9 @@ import '../TabShared.css'
 import './CombatTab.css'
 
 const ALL_CONDITIONS = [
-  'Blinded','Charmed','Deafened','Exhaustion','Frightened',
-  'Grappled','Incapacitated','Invisible','Paralyzed','Petrified',
-  'Poisoned','Prone','Restrained','Stunned','Unconscious',
+  'blinded','charmed','deafened','exhaustion','frightened',
+  'grappled','incapacitated','invisible','paralyzed','petrified',
+  'poisoned','prone','restrained','stunned','unconscious',
 ]
 
 const ORDINALS    = ['','I','II','III','IV','V','VI','VII','VIII','IX']
@@ -86,6 +86,13 @@ function breathDice(level, trait) {
 function abilityMod(score) { return Math.floor((score - 10) / 2) }
 function fmtB(n)            { return n >= 0 ? `+${n}` : `${n}` }
 function featureKey(name)   { return String(name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-') }
+function conditionKey(condition) { return String(condition ?? '').trim().toLowerCase() }
+function conditionLabel(condition) {
+  return conditionKey(condition).replace(/\b\w/g, char => char.toUpperCase())
+}
+function conditionList(conditions = []) {
+  return [...new Set(conditions.map(conditionKey).filter(Boolean))]
+}
 function itemKey(item) {
   return item.itemId ?? item.index ?? item.name
 }
@@ -538,6 +545,32 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     })
   }
 
+  function castMagicInitiateSpell(spell, requiresConcentration = false) {
+    const used = storedAbilityMap['feat-magic-initiate']?.used ?? 0
+    if (!isOwner || locked || used >= 1) return
+    const concentration = nextConcentration(spell, requiresConcentration)
+    const nextAbility = {
+      name: 'Magic Initiate',
+      key: 'feat-magic-initiate',
+      recharge: 'LR',
+      max: 1,
+      used: used + 1,
+    }
+    updateChar({
+      spells: {
+        ...char.spells,
+        concentration,
+      },
+      combat: {
+        ...char.combat,
+        classAbilities: [
+          ...storedAbilities.filter(ability => featureKey(ability.name) !== 'feat-magic-initiate' && ability.key !== 'feat-magic-initiate'),
+          nextAbility,
+        ],
+      },
+    })
+  }
+
   function clearConcentration() {
     updateChar({ spells: { ...char.spells, concentration: null } })
   }
@@ -557,13 +590,17 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   }
 
   function addCondition(cond) {
-    if (!(char.combat.conditions ?? []).includes(cond))
-      updateChar({ combat: { ...char.combat, conditions: [...(char.combat.conditions ?? []), cond] } })
+    const condition = conditionKey(cond)
+    const current = conditionList(char.combat.conditions)
+    if (condition && !current.includes(condition)) {
+      updateChar({ combat: { ...char.combat, conditions: [...current, condition] } })
+    }
     setShowCondPicker(false)
   }
 
   function removeCondition(cond) {
-    updateChar({ combat: { ...char.combat, conditions: (char.combat.conditions ?? []).filter(c => c !== cond) } })
+    const condition = conditionKey(cond)
+    updateChar({ combat: { ...char.combat, conditions: conditionList(char.combat.conditions).filter(c => c !== condition) } })
   }
 
   function setActionEconomy(patch) {
@@ -1336,7 +1373,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const hasSpentSpellSlots = slotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
   const hasSpentChargedItems = (char.inventory ?? []).some(item => item.chargesMax && (item.chargesCurrent ?? item.chargesMax) < item.chargesMax)
   const canShortRestRecover = hasSpentShortRestFeature || hasSpentPactSlots
-  const canLongRestRecover = hasSpentLongRestFeature || hasSpentSpellSlots || hasSpentPactSlots || hasSpentChargedItems
+  const canLongRestRecover = hasSpentLongRestFeature || hasSpentSpellSlots || hasSpentPactSlots || hasSpentChargedItems || !!char.spells?.concentration
   const showRestRecovery = canShortRestRecover || canLongRestRecover || slotEntries.length > 0 || pactSlotEntries.length > 0 || chargedItems.length > 0
 
   function recoverFeatures(restType) {
@@ -1366,7 +1403,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       spells: nextSpells,
       combat: {
         ...char.combat,
-        classAbilities: (char.combat?.classAbilities ?? []).filter(ability => !rechargePattern.test(ability.recharge ?? '')),
+        classAbilities: storedAbilities.filter(ability => !rechargePattern.test(ability.recharge ?? '')),
       },
     })
   }
@@ -1681,6 +1718,9 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
             const srd  = spellMap[spell.index] ?? {}
             const requiresConc = isConcentrationSpell(srd)
             const isConc = char.spells?.concentration === spell.id
+            const isMagicInitiateSpell = (magicInitiateChoice?.spells ?? []).some(choice => choice.index === spell.index)
+            const magicInitiateUsed = storedAbilityMap['feat-magic-initiate']?.used ?? 0
+            const canUseMagicInitiateCast = isMagicInitiateSpell && magicInitiateUsed < 1
             const availableSlots = spell.level > 0 ? availableSlotOptions(spell.level) : []
             const selectedSlot = availableSlots.some(option => option.value === castSlots[spell.id])
               ? castSlots[spell.id]
@@ -1738,6 +1778,15 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                       disabled={spell.level > 0 && !selectedSlot}
                       title={spell.level === 0 ? (requiresConc ? 'Cantrip — no slot used, starts concentration' : 'Cantrip — no slot used') : requiresConc ? 'Cast — uses one spell slot and starts concentration' : 'Cast — uses one spell slot'}
                     >Cast</button>
+                    {isMagicInitiateSpell && (
+                      <button
+                        type="button"
+                        className="atk-btn atk-btn--use"
+                        onClick={() => isOwner && !locked && castMagicInitiateSpell(spell, requiresConc)}
+                        disabled={!isOwner || locked || !canUseMagicInitiateCast}
+                        title={canUseMagicInitiateCast ? 'Magic Initiate free cast without spending a spell slot' : 'Magic Initiate free cast used until long rest'}
+                      >{canUseMagicInitiateCast ? 'Free Cast' : 'Free Used'}</button>
+                    )}
                     {isConc && (
                       <button
                         type="button"
@@ -1756,10 +1805,10 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       )}
 
       {/* ── Conditions ── */}
-      <div className="sec-head" style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+      <div className="sec-head combat-condition-head">
         <span>Conditions</span>
         {isOwner && !locked && (
-          <button className="add-link" onClick={() => setShowCondPicker(v => !v)}>
+          <button type="button" className="add-link" onClick={() => setShowCondPicker(v => !v)}>
             {showCondPicker ? 'Cancel' : '+ Add'}
           </button>
         )}
@@ -1767,8 +1816,8 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
 
       {showCondPicker && (
         <div className="cond-picker card">
-          {ALL_CONDITIONS.filter(c => !(char.combat.conditions ?? []).includes(c)).map(c => (
-            <button key={c} className="cond-option" onClick={() => addCondition(c)}>{c}</button>
+          {ALL_CONDITIONS.filter(c => !conditionList(char.combat.conditions).includes(c)).map(c => (
+            <button key={c} type="button" className="cond-option" onClick={() => addCondition(c)}>{conditionLabel(c)}</button>
           ))}
         </div>
       )}
@@ -1778,10 +1827,10 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       )}
       {(char.combat.conditions ?? []).length > 0 && (
         <div className="active-conds">
-          {(char.combat.conditions ?? []).map(c => (
+          {conditionList(char.combat.conditions).map(c => (
             <span key={c} className="pill pill-danger">
-              {c}
-              {isOwner && !locked && <button className="cond-remove" onClick={() => removeCondition(c)}>×</button>}
+              {conditionLabel(c)}
+              {isOwner && !locked && <button type="button" className="cond-remove" onClick={() => removeCondition(c)}>×</button>}
             </span>
           ))}
         </div>
@@ -1800,6 +1849,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                     const filled = i < (char.combat.deathSaves?.[type] ?? 0)
                     return (
                       <button
+                        type="button"
                         key={i}
                         className={`ds-pip ds-pip--${type === 'successes' ? 'success' : 'failure'}${filled ? ' ds-pip--filled' : ''}`}
                         onClick={() => isOwner && !locked && toggleDeathSave(type, i)}

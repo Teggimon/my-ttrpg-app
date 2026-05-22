@@ -738,6 +738,7 @@ const S = {
   }),
   cardName: { fontWeight: 800, fontSize: '0.95rem', color:'var(--text-primary)' },
   cardSub: { fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.2rem' },
+  emptyState: { minHeight:74, display:'grid', placeItems:'center', padding:'0.8rem 0.9rem', border:'1px dashed var(--border-strong)', borderRadius:'var(--radius-md)', background:'var(--bg-inset)', color:'var(--text-secondary)', fontSize:'0.85rem', textAlign:'center' },
   row: { position:'sticky', bottom:0, zIndex:30, display: 'grid', gridTemplateColumns:'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.75rem', marginTop: 'auto', padding:'0.75rem 0 1rem', background:'var(--bg-surface)', boxSizing:'border-box' },
   btn: (primary) => ({
     width:'100%', minHeight:44, padding: '0.65rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem',
@@ -840,6 +841,17 @@ function SearchInput({ placeholder, value, onChange, items, sourceFilter, onSour
 
 function SourceBadge({ item }) {
   return <span style={S.sourceBadge}>{sourceCode(item)}</span>
+}
+
+function raceSearchText(race) {
+  return [
+    race?.name,
+    race?.source,
+    race?.size,
+    ...(race?.ability_bonuses ?? []).map(bonus => bonus?.ability_score?.name),
+    ...(race?.traits ?? []).map(trait => trait?.name),
+    ...(race?.subraces ?? []).map(subrace => subrace?.name),
+  ].filter(Boolean).join(' ')
 }
 
 function StepEdition({ selected, onSelect, onNext, onCancel }) {
@@ -1114,10 +1126,17 @@ function StepName({ value, onChange, onNext, onCancel, cancelLabel = 'Cancel' })
 
 // ─── Step 2: Race ─────────────────────────────────────────────────────────────
 
-function StepRace({ races, selected, onSelect, onNext, onBack }) {
+function StepRace({ races, selected, loading, onSelect, onNext, onBack }) {
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
-  const filtered = filterBySearchAndSource(races, search, sourceFilter)
+  const availableSources = sourceOptions(races)
+  const filtered = filterBySearchAndSource(races, search, sourceFilter, raceSearchText)
+
+  useEffect(() => {
+    if (sourceFilter !== ALL_SOURCES && !availableSources.includes(sourceFilter)) {
+      setSourceFilter(ALL_SOURCES)
+    }
+  }, [availableSources, sourceFilter])
 
   return (
     <div style={S.wrap}>
@@ -1132,6 +1151,17 @@ function StepRace({ races, selected, onSelect, onNext, onBack }) {
         onSourceFilter={setSourceFilter}
       />
       <div style={S.scrollList}>
+        {loading && races.length === 0 && (
+          <div style={S.emptyState}>Loading races...</div>
+        )}
+        {!loading && races.length === 0 && (
+          <div style={S.emptyState}>No races are available for this rules edition.</div>
+        )}
+        {races.length > 0 && filtered.length === 0 && (
+          <div style={S.emptyState}>
+            No races match {search ? `"${search}"` : sourceFilter === ALL_SOURCES ? 'that filter' : sourceFilter}.
+          </div>
+        )}
         {filtered.map(r => (
           <div key={r.index} style={S.card(selected?.index === r.index)} onClick={() => onSelect(r)}>
             <div style={S.cardTop}>
@@ -2662,6 +2692,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
   const [classes, setClasses] = useState([])
   const [backgrounds, setBackgrounds] = useState([])
   const [equipmentCatalog, setEquipmentCatalog] = useState([])
+  const [contentLoading, setContentLoading] = useState(true)
 
   // Wizard state
   const [rulesEdition, setRulesEdition] = useState('2014')
@@ -2689,9 +2720,11 @@ function CreateCharacter({ user, onComplete, onCancel }) {
   const [alignment, setAlignment] = useState('')
 
   useEffect(() => {
+    setContentLoading(true)
     Promise.all([getRaces(rulesEdition), getSubraces(rulesEdition), getClasses(rulesEdition), getBackgrounds(rulesEdition), getEquipment()])
       .then(([r, s, c, b, e]) => { setRaces(r); setAllSubraces(s); setClasses(c); setBackgrounds(b); setEquipmentCatalog(e) })
       .catch(err => setError(err.message))
+      .finally(() => setContentLoading(false))
   }, [rulesEdition])
 
   const hasSubrace = raceData?.subraces?.length > 0 || !!raceData?.ability_bonus_options
@@ -2845,6 +2878,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
           <StepRace
             races={races}
             selected={raceData}
+            loading={contentLoading}
             onSelect={selectRace}
             onNext={() => goTo(hasSubrace ? STEP_SUBRACE : hasRacialOptions ? STEP_RACE_OPTIONS : STEP_CLASS)}
             onBack={() => goTo(STEP_NAME)}
