@@ -1367,47 +1367,6 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
     ...featCombatFeatures,
     ...raceAbilityFeatures,
   ]
-  const hasSpentShortRestFeature = combatAbilityFeatures.some(feature => feature.max && feature.used > 0 && /SR/.test(feature.recharge ?? ''))
-  const hasSpentLongRestFeature = combatAbilityFeatures.some(feature => feature.max && feature.used > 0 && /LR/.test(feature.recharge ?? ''))
-  const hasSpentPactSlots = pactSlotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
-  const hasSpentSpellSlots = slotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
-  const hasSpentChargedItems = (char.inventory ?? []).some(item => item.chargesMax && (item.chargesCurrent ?? item.chargesMax) < item.chargesMax)
-  const canShortRestRecover = hasSpentShortRestFeature || hasSpentPactSlots
-  const canLongRestRecover = hasSpentLongRestFeature || hasSpentSpellSlots || hasSpentPactSlots || hasSpentChargedItems || !!char.spells?.concentration
-  const showRestRecovery = canShortRestRecover || canLongRestRecover || slotEntries.length > 0 || pactSlotEntries.length > 0 || chargedItems.length > 0
-
-  function recoverFeatures(restType) {
-    if (!isOwner || locked) return
-    const rechargePattern = restType === 'SR' ? /SR/ : /LR/
-    const nextSpells = { ...(char.spells ?? {}) }
-    if (restType === 'SR') {
-      nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
-        lvl,
-        { ...slot, used: 0 },
-      ]))
-    } else {
-      nextSpells.slots = Object.fromEntries(Object.entries(nextSpells.slots ?? {}).map(([lvl, slot]) => [
-        lvl,
-        { ...slot, used: 0 },
-      ]))
-      nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
-        lvl,
-        { ...slot, used: 0 },
-      ]))
-      nextSpells.concentration = null
-    }
-    updateChar({
-      inventory: restType === 'LR'
-        ? (char.inventory ?? []).map(item => item.chargesMax ? { ...item, chargesCurrent: item.chargesMax } : item)
-        : char.inventory,
-      spells: nextSpells,
-      combat: {
-        ...char.combat,
-        classAbilities: storedAbilities.filter(ability => !rechargePattern.test(ability.recharge ?? '')),
-      },
-    })
-  }
-
   function handleCombatFeature(feature) {
     if (!isOwner || locked || !feature.max || feature.used >= feature.max) return
     const nextAbility = {
@@ -1616,29 +1575,6 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
           </div>
         )
       })}
-
-      {showRestRecovery && (
-        <div className="combat-rest-actions">
-          <button
-            className="combat-rest-btn"
-            type="button"
-            onClick={() => recoverFeatures('SR')}
-            disabled={!isOwner || locked || !canShortRestRecover}
-            title="Recover spent short-rest features and pact slots"
-          >
-            Short Rest
-          </button>
-          <button
-            className="combat-rest-btn"
-            type="button"
-            onClick={() => recoverFeatures('LR')}
-            disabled={!isOwner || locked || !canLongRestRecover}
-            title="Recover spent long-rest features, spell slots, pact slots, charges, and concentration"
-          >
-            Long Rest
-          </button>
-        </div>
-      )}
 
       {combatAbilityFeatures.length > 0 && (
           <div className="combat-feature-grid" aria-label="Combat abilities">

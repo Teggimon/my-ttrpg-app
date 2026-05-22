@@ -259,14 +259,6 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     [featureKey(ability.name), ability],
     ability.key ? [ability.key, ability] : null,
   ].filter(Boolean)))
-  const hasSpentShortRestFeature = storedAbilities.some(ability => (ability.used ?? 0) > 0 && /SR/.test(ability.recharge ?? ''))
-  const hasSpentLongRestFeature = storedAbilities.some(ability => (ability.used ?? 0) > 0 && /LR/.test(ability.recharge ?? ''))
-  const hasSpentPactSlots = pactSlotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
-  const hasSpentSpellSlots = slotEntries.some(([, slot]) => (slot.used ?? 0) > 0)
-  const canShortRestRecover = hasSpentShortRestFeature || hasSpentPactSlots
-  const canLongRestRecover = hasSpentSpellSlots || hasSpentPactSlots || hasSpentLongRestFeature || !!char.spells?.concentration
-  const showRestActions = canShortRestRecover || canLongRestRecover || slotEntries.length > 0 || pactSlotEntries.length > 0
-
   const preparedLeveled = known.filter(s => s.level > 0 && prepared.includes(s.id) && !s.alwaysPrepared)
   const preparedMax     = preparedCapacity(char)
   const preparedFull    = preparedMax != null && preparedLeveled.length >= preparedMax
@@ -459,35 +451,6 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
     setShowSlotEditor(false)
   }
 
-  function recoverSpellRest(restType) {
-    if (!isOwner || locked) return
-    const rechargePattern = restType === 'SR' ? /SR/ : /LR/
-    const nextSpells = { ...(char.spells ?? {}) }
-    if (restType === 'SR') {
-      nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
-        lvl,
-        { ...slot, used: 0 },
-      ]))
-    } else {
-      nextSpells.slots = Object.fromEntries(Object.entries(nextSpells.slots ?? {}).map(([lvl, slot]) => [
-        lvl,
-        { ...slot, used: 0 },
-      ]))
-      nextSpells.pactSlots = Object.fromEntries(Object.entries(nextSpells.pactSlots ?? {}).map(([lvl, slot]) => [
-        lvl,
-        { ...slot, used: 0 },
-      ]))
-      nextSpells.concentration = null
-    }
-    updateChar({
-      spells: nextSpells,
-      combat: {
-        ...char.combat,
-        classAbilities: storedAbilities.filter(ability => !rechargePattern.test(ability.recharge ?? '')),
-      },
-    })
-  }
-
   // Collect unique schools from known spells (via SRD data)
   const knownIds = new Set(known.map(s => s.index))
   const knownSchools = [...new Set(
@@ -573,28 +536,6 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
         {/* ── Slot tracker ── */}
         {(slotEntries.length > 0 || pactSlotEntries.length > 0 || (isOwner && !locked)) && (
           <div className="spell-slot-block">
-            {showRestActions && (
-              <div className="spell-rest-actions">
-                <button
-                  type="button"
-                  className="spell-prep-btn"
-                  onClick={() => recoverSpellRest('SR')}
-                  disabled={!isOwner || locked || !canShortRestRecover}
-                  title="Recover short-rest features and pact slots"
-                >
-                  Short Rest
-                </button>
-                <button
-                  type="button"
-                  className="spell-prep-btn"
-                  onClick={() => recoverSpellRest('LR')}
-                  disabled={!isOwner || locked || !canLongRestRecover}
-                  title="Recover spell slots, pact slots, and concentration"
-                >
-                  Long Rest
-                </button>
-              </div>
-            )}
             {slotEntries.map(([lvl, { total, used }]) => (
               <div key={lvl} className="slot-row-sp">
                 <span className="slot-lbl-sp">{ORDINALS[Number(lvl)]}</span>

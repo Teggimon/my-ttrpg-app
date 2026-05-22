@@ -73,12 +73,6 @@
   padding: 10px; margin-bottom: 8px;
   background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md);
 }
-.spell-rest-actions {
-  display: flex;
-  gap: 6px;
-  flex-basis: 100%;
-  flex-wrap: wrap;
-}
 .slot-row-sp { display: flex; align-items: center; gap: 6px; }
 .slot-lbl-sp { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); width: 18px; text-align: right; flex-shrink: 0; }
 .slot-row-sp--pact { flex-basis: 100%; }
