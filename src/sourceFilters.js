@@ -5,6 +5,15 @@ const SOURCE_ORDER = [
   'TCE', 'XGE', 'SCAG', 'MPMM', 'MOT', 'FTD',
 ]
 
+const SOURCE_EQUIVALENTS = {
+  PHB: ['XPHB'],
+  XPHB: ['PHB'],
+  DMG: ['XDMG'],
+  XDMG: ['DMG'],
+  MM: ['XMM'],
+  XMM: ['MM'],
+}
+
 export function sourceCode(item) {
   return item?.sourceBook || item?.source || 'Unknown'
 }
@@ -24,9 +33,13 @@ export function matchesSource(item, selectedSource) {
 }
 
 export function effectiveSourceFilter(items, selectedSource) {
-  const sourceIsAvailable = selectedSource === ALL_SOURCES
-    || (items ?? []).some(item => sourceCode(item) === selectedSource)
-  return sourceIsAvailable ? selectedSource : ALL_SOURCES
+  if (selectedSource === ALL_SOURCES) return ALL_SOURCES
+
+  const available = new Set((items ?? []).map(sourceCode))
+  if (available.has(selectedSource)) return selectedSource
+
+  const equivalent = (SOURCE_EQUIVALENTS[selectedSource] ?? []).find(source => available.has(source))
+  return equivalent ?? ALL_SOURCES
 }
 
 export function filterBySearchAndSource(items, search, selectedSource, getSearchText = item => item?.name ?? '') {
