@@ -664,6 +664,10 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                 const isConc    = char.spells?.concentration === spell.id
                 const expanded  = expandedId === spell.id
                 const srd       = srdSpellMap[spell.index] ?? {}
+                const availableSlots = spell.level > 0 ? availableSlotOptions(spell.level) : []
+                const selectedSlot = availableSlots.some(option => option.value === castSlots[spell.id])
+                  ? castSlots[spell.id]
+                  : availableSlots[0]?.value
                 const school    = srd.school?.name
                 const castTime  = srd.casting_time
                 const range     = srd.range
@@ -743,6 +747,34 @@ export default function SpellsTab({ char, locked, isOwner, updateChar }) {
                         )}
                         {desc && <p className="spell-desc">{desc.slice(0, 400)}{desc.length > 400 ? '…' : ''}</p>}
                         <div className="spell-detail-actions">
+                          {isOwner && !locked && (
+                            <div className="spell-cast-actions">
+                              {spell.level > 0 && (
+                                <select
+                                  className="spell-cast-slot-select"
+                                  value={selectedSlot ?? ''}
+                                  onChange={e => setCastSlots(prev => ({ ...prev, [spell.id]: e.target.value }))}
+                                  disabled={availableSlots.length === 0}
+                                  title="Choose spell slot level"
+                                >
+                                  {availableSlots.length === 0 ? (
+                                    <option value="">No slots</option>
+                                  ) : availableSlots.map(option => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                  ))}
+                                </select>
+                              )}
+                              <button
+                                type="button"
+                                className="spell-prep-btn spell-prep-btn--on"
+                                onClick={() => castSpell(spell, selectedSlot, canConcentrate)}
+                                disabled={spell.level > 0 && !selectedSlot}
+                                title={spell.level === 0 ? (canConcentrate ? 'Cantrip — no slot used, starts concentration' : 'Cantrip — no slot used') : canConcentrate ? 'Cast — uses one spell slot and starts concentration' : 'Cast — uses one spell slot'}
+                              >
+                                Cast
+                              </button>
+                            </div>
+                          )}
                           {lvlNum > 0 && isOwner && !locked && (
                             <button
                               type="button"

@@ -42,6 +42,12 @@ function spellCastingAbility(spell, char) {
     ?? char.spells?.spellcastingAbility
     ?? null
 }
+function isPreparedSpell(spell, prepared) {
+  return spell?.level === 0 || spell?.alwaysPrepared || prepared.includes(spell?.id)
+}
+function isConcentrationSpell(srdSpell) {
+  return !!srdSpell?.concentration || String(srdSpell?.duration ?? '').toLowerCase().includes('concentration')
+}
 function cantripScalingLevel(spell, char, fallbackLevel) {
   if (char.settings?.cantripScaling !== 'class') return fallbackLevel
   return classLevel(char, spell.classIndex) ?? fallbackLevel
@@ -473,7 +479,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const known    = char.spells?.known    ?? []
   const prepared = char.spells?.prepared ?? []
   const preparedSpells = known.filter(s =>
-    s.level === 0 || prepared.includes(s.id)
+    isPreparedSpell(s, prepared)
   )
 
   // Racial combat abilities
@@ -1673,7 +1679,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
           <div className="sec-head">Prepared Spells</div>
           {preparedSpells.map(spell => {
             const srd  = spellMap[spell.index] ?? {}
-            const requiresConc = srd.concentration === true
+            const requiresConc = isConcentrationSpell(srd)
             const isConc = char.spells?.concentration === spell.id
             const availableSlots = spell.level > 0 ? availableSlotOptions(spell.level) : []
             const selectedSlot = availableSlots.some(option => option.value === castSlots[spell.id])
@@ -1726,6 +1732,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                   )}
                   <div className="atk-btns">
                     <button
+                      type="button"
                       className="atk-btn atk-btn--roll"
                       onClick={() => isOwner && !locked && castSpell(spell, selectedSlot, requiresConc)}
                       disabled={spell.level > 0 && !selectedSlot}
@@ -1733,6 +1740,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
                     >Cast</button>
                     {isConc && (
                       <button
+                        type="button"
                         className="atk-btn atk-btn--concentration"
                         onClick={() => isOwner && !locked && clearConcentration()}
                         disabled={!isOwner || locked}
