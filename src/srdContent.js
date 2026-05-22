@@ -292,7 +292,7 @@ function draconicAncestryOptions(entries = []) {
 }
 
 function fixedLanguagesFromProficiencies(languageProficiencies = []) {
-  return languageProficiencies.flatMap(group =>
+  return (languageProficiencies ?? []).flatMap(group =>
     Object.entries(group ?? {})
       .filter(([key, value]) => value === true && !['any', 'anyStandard', 'other', 'choose'].includes(key))
       .map(([name]) => ref(name))
@@ -300,7 +300,7 @@ function fixedLanguagesFromProficiencies(languageProficiencies = []) {
 }
 
 function racialLanguageOptions(languageProficiencies = []) {
-  const options = languageProficiencies.flatMap(group => {
+  const options = (languageProficiencies ?? []).flatMap(group => {
     const choose = group?.choose
     if (choose?.from?.length) {
       return [{ choose: choose.count ?? 1, options: choose.from.map(name => ref(name)), desc: 'Choose a racial language' }]
@@ -312,7 +312,7 @@ function racialLanguageOptions(languageProficiencies = []) {
 }
 
 function racialSkillOptions(skillProficiencies = []) {
-  const options = skillProficiencies.flatMap(group => {
+  const options = (skillProficiencies ?? []).flatMap(group => {
     const choose = group?.choose
     if (choose?.from?.length) {
       return [{ choose: choose.count ?? 1, options: choose.from.map(skill => skillRef(skill)), desc: 'Choose racial skills' }]
@@ -439,7 +439,7 @@ function toolOptionsFromKey(tool) {
 }
 
 function fixedToolProficiencies(toolProficiencies = []) {
-  return toolProficiencies.flatMap(group =>
+  return (toolProficiencies ?? []).flatMap(group =>
     Object.entries(group ?? {})
       .filter(([key, enabled]) => enabled === true && key !== 'choose')
       .flatMap(([tool]) => toolOptionsFromKey(tool))
@@ -447,7 +447,7 @@ function fixedToolProficiencies(toolProficiencies = []) {
 }
 
 function toolChoiceOptions(toolProficiencies = [], desc = 'Choose a tool proficiency') {
-  const options = toolProficiencies.flatMap(group => {
+  const options = (toolProficiencies ?? []).flatMap(group => {
     const choose = group?.choose
     if (choose?.from?.length) {
       return [{
