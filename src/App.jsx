@@ -37,18 +37,39 @@ function stringToBase64(value) {
 function safeCharacterFileName(character) {
   const existing = character._fileName
   if (existing) return existing.endsWith('.json') ? existing : `${existing}.json`
-  const slug = String(character.identity?.name ?? 'character')
+  const slug = characterNameSlug(character.identity?.name)
+  return `${slug}.json`
+}
+
+function characterNameSlug(name) {
+  return String(name ?? 'character')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return `${slug || 'character'}.json`
+    || 'character'
 }
 
-function uniqueCharacterFileName(baseFileName, characterId, attempt = 0) {
-  const stem = baseFileName.replace(/\.json$/i, '') || 'character'
-  const suffix = String(characterId ?? Date.now()).replace(/[^a-zA-Z0-9-]+/g, '').slice(0, 8) || Date.now()
-  return attempt === 0 ? `${stem}-${suffix}.json` : `${stem}-${suffix}-${attempt + 1}.json`
+function numberedCharacterFileName(index, slug) {
+  return `${String(index).padStart(2, '0')}_${slug}.json`
+}
+
+function nextNumberedCharacterFileName(name, existingNames = []) {
+  const slug = characterNameSlug(name)
+  const escapedSlug = slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const numberedPattern = new RegExp(`^(\\d+)_${escapedSlug}\\.json$`, 'i')
+  const legacyName = `${slug}.json`
+  const used = new Set()
+
+  for (const name of existingNames) {
+    const numbered = name.match(numberedPattern)
+    if (numbered) used.add(Number(numbered[1]))
+    if (name.toLowerCase() === legacyName) used.add(1)
+  }
+
+  let next = 1
+  while (used.has(next)) next += 1
+  return numberedCharacterFileName(next, slug)
 }
 
 function safeFilePart(value, fallback = 'image') {
@@ -143,7 +164,22 @@ function App() {
     void _fileName
     const content = stringToBase64(JSON.stringify(persistedCharacter, null, 2))
 
-    let fileName = safeCharacterFileName(character)
+    let fileName = character._fileName ? safeCharacterFileName(character) : null
+    let existingCharacterFileNames = []
+    if (!fileName) {
+      try {
+        const { data: files } = await octokit.repos.getContent({
+          owner: user.login,
+          repo: DATA_REPO,
+          path: CHARACTERS_PATH,
+        })
+        existingCharacterFileNames = Array.isArray(files) ? files.filter(file => file.name.endsWith('.json')).map(file => file.name) : []
+        fileName = nextNumberedCharacterFileName(persistedCharacter.identity?.name, existingCharacterFileNames)
+      } catch {
+        fileName = numberedCharacterFileName(1, characterNameSlug(persistedCharacter.identity?.name))
+      }
+    }
+
     let sha
     for (let attempt = 0; attempt < 20; attempt++) {
       const path = `${CHARACTERS_PATH}/${fileName}`
@@ -164,7 +200,8 @@ function App() {
           break
         }
 
-        fileName = uniqueCharacterFileName(safeCharacterFileName(character), persistedCharacter.meta?.characterId, attempt)
+        existingCharacterFileNames = [...existingCharacterFileNames, fileName]
+        fileName = nextNumberedCharacterFileName(persistedCharacter.identity?.name, existingCharacterFileNames)
       } catch {
         sha = undefined
         break

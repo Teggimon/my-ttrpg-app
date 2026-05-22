@@ -27,15 +27,6 @@ const CONTENT_LOADING_INITIAL = {
   equipment: true,
 }
 
-function characterFileName(name) {
-  const slug = String(name ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return `${slug || 'character'}.json`
-}
-
 function skillKeyFromIndex(index) {
   const key = String(index ?? '').replace(/^skill-/, '')
   return SKILL_INDEX_TO_STAT_KEY[key] ?? key
@@ -2813,8 +2804,7 @@ function CreateCharacter({ user, onComplete, onCancel }) {
           racialTools: racialOptionChoices.racialTools ?? [],
         },
       })
-      const fileName = characterFileName(name)
-      await onComplete({ ...character, _fileName: fileName })
+      await onComplete(character)
     } catch (err) {
       setError(err.message)
       setCreating(false)
