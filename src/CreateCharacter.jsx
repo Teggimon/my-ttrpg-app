@@ -1139,6 +1139,7 @@ function StepRace({ races, selected, loading, onSelect, onNext, onBack }) {
   const [sourceFilter, setSourceFilter] = useState(ALL_SOURCES)
   const availableSources = sourceOptions(races)
   const filtered = filterBySearchAndSource(races, search, sourceFilter, raceSearchText)
+  const selectedIsAvailable = !!selected && races.some(race => race.index === selected.index)
 
   useEffect(() => {
     if (sourceFilter !== ALL_SOURCES && !availableSources.includes(sourceFilter)) {
@@ -1186,7 +1187,7 @@ function StepRace({ races, selected, loading, onSelect, onNext, onBack }) {
       </div>
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
-        <button style={S.btn(true)} onClick={onNext} disabled={!selected}>
+        <button style={S.btn(true)} onClick={onNext} disabled={!selectedIsAvailable}>
           Next: {selected?.subraces?.length > 0 ? 'Subrace' : 'Class'} →
         </button>
       </div>

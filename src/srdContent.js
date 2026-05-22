@@ -1,4 +1,5 @@
 import { canonicalizeAmmoItem } from './itemRules'
+import racesJson from '../ttrpg_resource/5etools_data/races.json'
 
 const cache = {}
 
@@ -131,6 +132,10 @@ const ITEM_PROPERTIES = {
 
 function firstModule(globResult) {
   return Object.values(globResult)[0] ?? {}
+}
+
+function firstModuleOrFallback(globResult, fallback) {
+  return Object.values(globResult)[0] ?? fallback ?? {}
 }
 
 function fromModules(globResult, key) {
@@ -1360,7 +1365,7 @@ function dedupeByIndex(items, preferredSource = 'PHB') {
 }
 
 export const getRaces = (rulesEdition = '2014') => memo(`races:${rulesEdition}`, () => {
-  const data = firstModule(raceData)
+  const data = firstModuleOrFallback(raceData, racesJson)
   const preferredSource = preferredSourceForRules(rulesEdition)
   const races = dedupeByIndex((data.race ?? []).map(normalizeRace).filter(race => matchesRulesEdition(race, rulesEdition)), preferredSource)
   const subraces = markSubraceAbilityModes((data.subrace ?? []).map(normalizeSubrace).filter(Boolean).filter(subrace => matchesRulesEdition(subrace, rulesEdition)), races)
@@ -1371,7 +1376,7 @@ export const getRaces = (rulesEdition = '2014') => memo(`races:${rulesEdition}`,
 })
 
 export const getSubraces = (rulesEdition = '2014') => memo(`subraces:${rulesEdition}`, () => {
-  const data = firstModule(raceData)
+  const data = firstModuleOrFallback(raceData, racesJson)
   const preferredSource = preferredSourceForRules(rulesEdition)
   const races = dedupeByIndex((data.race ?? []).map(normalizeRace).filter(race => matchesRulesEdition(race, rulesEdition)), preferredSource)
   return dedupeByIndex(markSubraceAbilityModes((data.subrace ?? []).map(normalizeSubrace).filter(Boolean).filter(subrace => matchesRulesEdition(subrace, rulesEdition)), races), preferredSource)
