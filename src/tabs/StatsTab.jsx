@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import '../TabShared.css'
 import './StatsTab.css'
+import { normalizeRulesEdition } from '../ruleSettings'
 
 const ABILITIES = ['str','dex','con','int','wis','cha']
 const ABILITY_LABELS = { str:'STR', dex:'DEX', con:'CON', int:'INT', wis:'WIS', cha:'CHA' }
@@ -90,6 +91,8 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
   const skills = char.stats?.skills ?? {}
   const saves  = char.stats?.savingThrows ?? {}
   const level  = characterLevel(char)
+  const rulesEdition = normalizeRulesEdition(char.settings?.rulesEdition ?? char.meta?.rulesEdition)
+  const showsPassiveInvestigation = rulesEdition === '2024'
   const pb     = PROFICIENCY[level] ?? 2
   const dexMod = mod(scores.dex ?? 10)
 
@@ -280,10 +283,10 @@ export default function StatsTab({ char, locked, isOwner, updateChar }) {
           { val: fmtB(pb),          lbl: 'Prof Bonus',   effects: [] },
           { val: fmtB(initiative),  lbl: 'Initiative',   effects: itemEffectsFor('Initiative') },
           { val: passivePerc,       lbl: 'Passive Perc', effects: [] },
-          { val: passiveInv,        lbl: 'Passive Inv',  effects: [] },
+          showsPassiveInvestigation && { val: passiveInv, lbl: 'Passive Inv', effects: [] },
           { val: ac,                lbl: 'AC',            effects: acEffects },
           { val: `${speed}ft`,      lbl: 'Speed',         effects: speedEffects },
-        ].map(({ val, lbl, effects }) => (
+        ].filter(Boolean).map(({ val, lbl, effects }) => (
           <div key={lbl} className="summary-cell">
             <div className="summary-val-wrap">
               <span className="summary-val">{val}</span>
