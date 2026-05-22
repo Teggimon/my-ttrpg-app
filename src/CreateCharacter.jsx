@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { getClasses, getRaces, getSubraces, getBackgrounds, getEquipment, getOptionalFeatures } from './srdContent'
 import { FEATS, SUBCLASSES, SUBCLASS_LEVELS, featRule, getSlotsForCharacter, CANTRIPS_KNOWN, SPELLS_KNOWN_L1 } from './LevelUpModal'
 import { getSpells } from './srdContent'
-import { ALL_SOURCES, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
+import { ALL_SOURCES, effectiveSourceFilter, filterBySearchAndSource, sourceCode, sourceOptions } from './sourceFilters'
 import { inventoryItemFromCatalogItem, normalizeInventoryItem } from './itemRules'
 import { RULES_EDITION_OPTIONS, normalizeAvailableRulesEdition, normalizeRuleSettings, normalizeRulesEdition, rulesSystemForEdition } from './ruleSettings'
 
@@ -1201,7 +1201,8 @@ function StepSubrace({ race, subraces, selected, onSelect, bonusOptions, onBonus
   const [featSearch, setFeatSearch] = useState('')
   // Filter subraces for this race
   const allAvailable = subraces.filter(s => s.race?.index === race.index)
-  const available = allAvailable.filter(s => sourceFilter === ALL_SOURCES || sourceCode(s) === sourceFilter)
+  const effectiveSource = effectiveSourceFilter(allAvailable, sourceFilter)
+  const available = allAvailable.filter(s => effectiveSource === ALL_SOURCES || sourceCode(s) === effectiveSource)
 
   // Half-Elf and Variant Human style: ability_bonus_options can live on race or subrace.
   const abilityChoices = effectiveAbilityChoices(race, selected)
@@ -2216,7 +2217,8 @@ function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsCha
               const choiceComplete = selectedCategoryItems.length >= choose
               const loadedItems = categoryItems[choice.id] // null=loading, undefined=not started, []=empty, [...]
               const itemSourceFilter = categorySourceFilters[choice.id] ?? ALL_SOURCES
-              const visibleItems = (loadedItems ?? []).filter(item => itemSourceFilter === ALL_SOURCES || sourceCode(item) === itemSourceFilter)
+              const effectiveItemSource = effectiveSourceFilter(loadedItems ?? [], itemSourceFilter)
+              const visibleItems = (loadedItems ?? []).filter(item => effectiveItemSource === ALL_SOURCES || sourceCode(item) === effectiveItemSource)
               return (
                 <div key={choice.id}>
                   <div

@@ -23,12 +23,15 @@ export function matchesSource(item, selectedSource) {
   return selectedSource === ALL_SOURCES || sourceCode(item) === selectedSource
 }
 
-export function filterBySearchAndSource(items, search, selectedSource, getSearchText = item => item?.name ?? '') {
-  const q = search.trim().toLowerCase()
+export function effectiveSourceFilter(items, selectedSource) {
   const sourceIsAvailable = selectedSource === ALL_SOURCES
     || (items ?? []).some(item => sourceCode(item) === selectedSource)
-  const effectiveSource = sourceIsAvailable ? selectedSource : ALL_SOURCES
+  return sourceIsAvailable ? selectedSource : ALL_SOURCES
+}
 
+export function filterBySearchAndSource(items, search, selectedSource, getSearchText = item => item?.name ?? '') {
+  const q = search.trim().toLowerCase()
+  const effectiveSource = effectiveSourceFilter(items, selectedSource)
   return (items ?? []).filter(item => {
     if (!matchesSource(item, effectiveSource)) return false
     if (!q) return true
