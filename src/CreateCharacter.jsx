@@ -1960,6 +1960,13 @@ function StepClassSetup({
   const toolGroups = (classData.class_tool_options ?? []).map((group, groupIndex) => ({ ...group, groupIndex }))
   const isRanger2014 = classData?.index === 'ranger' && rulesEdition === '2014'
   const rangerMode = rangerOptionalFeatureMode(selectedFeatureChoices)
+  const visibleFeatureChoiceGroups = featureChoiceGroups.filter(choice => {
+    if (!isRanger2014) return true
+    if (rangerMode === 'tce') {
+      return !/^(favored enemy|natural explorer)$/i.test(choice.feature?.name ?? '')
+    }
+    return true
+  })
   const superiorTechniqueChoiceKey = `${classData.index}:superior-technique-maneuver`
   const superiorTechniqueSelected = selectedFeatureChoices.some(choice =>
     (choice.options ?? []).some(option => option.name === 'Superior Technique')
@@ -1999,11 +2006,15 @@ function StepClassSetup({
   }
 
   const setRangerMode = (mode) => {
-    const nextChoices = selectedFeatureChoices.filter(choice => ![
-      RANGER_OPTIONAL_FEATURE_CHOICE_KEY,
-      RANGER_CANNY_SKILL_CHOICE_KEY,
-      RANGER_CANNY_LANGUAGE_CHOICE_KEY,
-    ].includes(choice.choiceKey))
+    const nextChoices = selectedFeatureChoices.filter(choice => {
+      if ([
+        RANGER_OPTIONAL_FEATURE_CHOICE_KEY,
+        RANGER_CANNY_SKILL_CHOICE_KEY,
+        RANGER_CANNY_LANGUAGE_CHOICE_KEY,
+      ].includes(choice.choiceKey)) return false
+      if (mode === 'tce' && /^(favored enemy|natural explorer)$/i.test(choice.featureName ?? '')) return false
+      return true
+    })
     nextChoices.push({
       choiceKey: RANGER_OPTIONAL_FEATURE_CHOICE_KEY,
       featureIndex: 'ranger-optional-features',
@@ -2173,7 +2184,7 @@ function StepClassSetup({
       return have >= need
     })
   })
-  const allFeatureChoicesSelected = featureChoiceGroups.every(choice => {
+  const allFeatureChoicesSelected = visibleFeatureChoiceGroups.every(choice => {
     const selected = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
     return (selected?.options?.length ?? 0) >= (choice.choose ?? 1)
   }) && (!superiorTechniqueSelected || !!superiorTechniqueManeuver)
@@ -2377,7 +2388,7 @@ function StepClassSetup({
       })}
 
       {/* Feature choices */}
-      {featureChoiceGroups.map(choice => {
+      {visibleFeatureChoiceGroups.map(choice => {
         const selected = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
         const selectedOptions = selected?.options ?? []
         const choose = choice.choose ?? 1
