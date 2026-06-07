@@ -720,9 +720,9 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const S = {
-  shell: { minHeight: '100dvh', width: '100vw', marginLeft: 'calc(50% - 50vw)', padding: '1rem', boxSizing: 'border-box', display: 'grid', placeItems: 'center', background: 'var(--bg-base)' },
-  panel: { width: 'min(calc(100vw - 2rem), 920px)', minWidth: 'min(calc(100vw - 2rem), 720px)', height: 'calc(100dvh - 2rem)', display: 'flex', flexDirection: 'column', overflowY: 'auto', scrollbarGutter: 'stable', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', boxSizing: 'border-box' },
-  wrap: { flex: 1, display: 'flex', flexDirection: 'column', padding: '1.25rem 1rem 0', width: '720px', maxWidth: '100%', margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', boxSizing: 'border-box' },
+  shell: { minHeight: '100dvh', width: '100%', padding: 'clamp(0px, 2vw, 1rem)', boxSizing: 'border-box', display: 'grid', placeItems: 'stretch', background: 'var(--bg-base)' },
+  panel: { width: '100%', maxWidth: '920px', minWidth: 0, minHeight: '100dvh', height: '100%', justifySelf: 'center', display: 'flex', flexDirection: 'column', overflowY: 'auto', scrollbarGutter: 'stable', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-md)', boxSizing: 'border-box' },
+  wrap: { flex: 1, display: 'flex', flexDirection: 'column', padding: '1.25rem 1rem 0', width: '100%', maxWidth: '720px', minWidth: 0, margin: '0 auto', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', boxSizing: 'border-box' },
   h1: { fontSize: '1.05rem', fontWeight: 800, marginBottom: '0.25rem', color: 'var(--text-primary)', letterSpacing:'0.01em' },
   sub: { fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight:1.45 },
   label: { display: 'block', fontSize: '0.72rem', fontWeight:700, color: 'var(--text-muted)', marginBottom: '0.35rem', marginTop: '1rem', textTransform: 'uppercase', letterSpacing: '0.08em' },
@@ -1948,6 +1948,21 @@ function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsCha
         }
         return []
       })
+      const equipmentChoice = (o.items ?? []).find(i => i.option_type === 'equipment_type_choice')
+      if (equipmentChoice) {
+        const label = [
+          equipmentChoice.label ?? 'Choose equipment',
+          ...parts.map(p => p.quantity > 1 ? `${p.name} ×${p.quantity}` : p.name),
+        ].join(' + ')
+        return {
+          id: `${gi}_${oi}`,
+          label,
+          items: parts,
+          isCategory: false,
+          isEquipmentTypeChoice: true,
+          equipmentChoice,
+        }
+      }
       const embeddedChoice = (o.items ?? []).find(i => i.option_type === 'choice' && i.choice?.from?.equipment_category?.index)
       if (embeddedChoice) {
         const desc = embeddedChoice.choice?.desc ?? 'Any item'
@@ -2000,6 +2015,9 @@ function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsCha
     // At least one choice in the group must be fully satisfied
     return g.choices.some(choice => {
       if (!selectedChoiceIds.has(choice.id)) return false
+      if (choice.isEquipmentTypeChoice) {
+        return groupSelections.some(e => e.choiceId === choice.id && e.equipmentTypeChoice)
+      }
       if (!choice.isCategory) return true
       const need = choice.choose ?? 1
       const have = groupSelections.filter(e => e.choiceId === choice.id && !e.bundledFixed).length
@@ -2267,6 +2285,45 @@ function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsCha
                           })}
                         </>
                       }
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            if (choice.isEquipmentTypeChoice) {
+              const selectedForChoice = groupSelections.filter(e => e.choiceId === choice.id)
+              const selectedToolIndex = selectedForChoice.find(item => item.equipmentTypeChoice)?.index
+              return (
+                <div key={choice.id}>
+                  <div style={S.card(checked, lockedByOtherChoice)}>
+                    <div style={S.cardName}>{choice.equipmentChoice?.label ?? choice.label}</div>
+                    {choice.items.length > 0 && (
+                      <div style={S.cardSub}>Also includes {choice.items.map(item => item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name).join(', ')}</div>
+                    )}
+                  </div>
+                  {!lockedByOtherChoice && (
+                    <div style={{ paddingLeft: '1rem', marginBottom: '0.5rem' }}>
+                      {(choice.equipmentChoice?.options ?? []).map(option => {
+                        const optionChecked = selectedToolIndex === option.index
+                        return (
+                          <div
+                            key={option.index}
+                            style={{ ...S.checkRow, border: optionChecked ? '1px solid var(--accent)' : '1px solid var(--border)', marginBottom: '0.35rem' }}
+                            onClick={() => {
+                              const without = selectedEquipment.filter(e => e.groupIndex !== group.groupIndex)
+                              onEquipmentChange([
+                                ...without,
+                                { ...option, quantity: choice.equipmentChoice?.count ?? 1, groupIndex: group.groupIndex, choiceId: choice.id, equipmentTypeChoice: true },
+                                ...choice.items.map(item => ({ ...item, groupIndex: group.groupIndex, choiceId: choice.id })),
+                              ])
+                            }}
+                          >
+                            <span style={{ color: optionChecked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{optionChecked ? '◉' : '○'}</span>
+                            <span>{option.name}</span>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>
