@@ -1833,6 +1833,20 @@ async function fetchCategoryItems(categoryIndex) {
       }
     }
 
+    if (items.length === 0 && categoryIndex === 'holy-symbols') {
+      return [{
+        index: 'holy-symbol-generic',
+        name: 'Holy Symbol',
+        source: 'PHB',
+        quantity: 1,
+        custom: true,
+        equipment_category: { index: 'spellcasting-focus', name: 'Spellcasting Focus' },
+        equipment_category_index: 'spellcasting-focus',
+        scfType: 'holy',
+        description: 'Generic holy symbol placeholder. Players can rename or edit this item in inventory.',
+      }]
+    }
+
     return items.map(item => ({ index: item.index, name: item.name, source: item.source, quantity: 1 }))
   } catch { return [] }
 }
