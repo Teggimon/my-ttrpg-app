@@ -124,8 +124,13 @@ export default function LeftPanel({
 
   const hpCur = char.combat?.hpCurrent ?? 0
   const hpMax = char.combat?.hpMax ?? 1
-  const hpPct = Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100)))
-  const hpColor = hpPct > 66 ? 'var(--hp-high)' : hpPct > 33 ? 'var(--hp-mid)' : 'var(--hp-low)'
+  const hpTemp = Math.max(0, char.combat?.hpTemp ?? 0)
+  const hpDisplay = hpCur + hpTemp
+  const hpBarMax = hpMax + hpTemp
+  const hpBasePct = Math.max(0, Math.min(100, Math.round((hpCur / hpBarMax) * 100)))
+  const hpTempPct = hpTemp > 0 ? Math.max(0, Math.min(100 - hpBasePct, Math.round((hpTemp / hpBarMax) * 100))) : 0
+  const hpHealthPct = Math.max(0, Math.min(100, Math.round((hpCur / hpMax) * 100)))
+  const hpColor = hpHealthPct > 66 ? 'var(--hp-high)' : hpHealthPct > 33 ? 'var(--hp-mid)' : 'var(--hp-low)'
 
   const next = XP_THRESHOLDS[level]
   const prev = XP_THRESHOLDS[level - 1] ?? 0
@@ -214,8 +219,9 @@ export default function LeftPanel({
           <div className="lp-hp-label">Hit Points</div>
           <div className="lp-hp-row">
             <div>
-              <span className="lp-hp-value">{hpCur}</span>
+              <span className="lp-hp-value">{hpDisplay}</span>
               <span className="lp-hp-max"> / {hpMax}</span>
+              {hpTemp > 0 && <span className="lp-hp-temp"> (+{hpTemp} temp)</span>}
             </div>
             {isOwner && !locked && (
               <div className="lp-hp-controls">
@@ -228,7 +234,13 @@ export default function LeftPanel({
             )}
           </div>
           <div className="lp-hp-bar-track">
-            <div className="lp-hp-bar-fill" style={{ width: `${hpPct}%`, background: hpColor }} />
+            <div className="lp-hp-bar-fill" style={{ width: `${hpBasePct}%`, background: hpColor }} />
+            {hpTempPct > 0 && (
+              <div
+                className="lp-hp-bar-temp"
+                style={{ left: `${hpBasePct}%`, width: `${hpTempPct}%` }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -362,7 +374,7 @@ export default function LeftPanel({
           setAmount={setHpDelta}
           hpCur={hpCur}
           hpMax={hpMax}
-          hpTemp={char.combat?.hpTemp ?? 0}
+          hpTemp={hpTemp}
           onAdjust={adjustHP}
           onSetHp={(patch) => updateChar({ combat: { ...char.combat, ...patch } })}
           onClose={() => setShowHpAdjust(false)}
