@@ -46,7 +46,7 @@ function measuredQuantityFromName(value) {
 
 export function ammoKindFromText(value) {
   const text = String(value ?? '').toLowerCase()
-  if (/needle|blowgun/.test(text)) return 'needle'
+  if (/blowgun/.test(text) || /\bneedle(s)?\b/.test(text) && /\bammo|ammunition\b/.test(text)) return 'needle'
   if (/sling/.test(text) && /\bbullets?\b/.test(text)) return 'sling-bullet'
   if (/firearm|modern|renaissance|pistol|musket/.test(text) && /\bbullets?\b/.test(text)) return 'firearm-bullet'
   if (/\barrows?\b|\bbow\b|shortbow|longbow/.test(text)) return 'arrow'
@@ -58,7 +58,7 @@ export function ammoKindForItem(item) {
   if (item?.ammoKind) return item.ammoKind
   const text = `${item?.name ?? ''} ${item?.index ?? ''}`.toLowerCase()
   if (/case|quiver|pouch/.test(text)) return null
-  if (/needle/.test(text)) return 'needle'
+  if (/blowgun/.test(text) || /\bneedle(s)?\b/.test(text) && item?.equipment_category_index === 'ammunition') return 'needle'
   if (/sling/.test(text) && /\bbullets?\b/.test(text)) return 'sling-bullet'
   if (/firearm|modern|renaissance/.test(text) && /\bbullets?\b/.test(text)) return 'firearm-bullet'
   if (/\barrows?\b/.test(text)) return 'arrow'
