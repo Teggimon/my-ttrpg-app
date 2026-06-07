@@ -19,6 +19,30 @@ const SKILL_INDEX_TO_STAT_KEY = {
   'sleight-of-hand': 'sleightOfHand',
 }
 
+const COMMON_LANGUAGES = [
+  'Abyssal', 'Celestial', 'Draconic', 'Deep Speech', 'Dwarvish', 'Elvish', 'Giant',
+  'Gnomish', 'Goblin', 'Halfling', 'Infernal', 'Orc', 'Primordial', 'Sylvan', 'Undercommon',
+]
+
+const RANGER_OPTIONAL_FEATURE_CHOICE_KEY = 'ranger:optional-features'
+const RANGER_CANNY_SKILL_CHOICE_KEY = 'ranger:deft-explorer-canny-skill'
+const RANGER_CANNY_LANGUAGE_CHOICE_KEY = 'ranger:deft-explorer-canny-languages'
+
+function labelFromIndex(value) {
+  return String(value ?? '')
+    .replace(/^skill-/, '')
+    .split('-')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function rangerOptionalFeatureMode(classFeatureChoices = []) {
+  return selectedFeatureOptionsByType(classFeatureChoices, 'RANGER:OPTIONAL_FEATURE_SET')[0]?.id === 'tce'
+    ? 'tce'
+    : 'phb'
+}
+
 const CONTENT_LOADING_INITIAL = {
   races: true,
   subraces: true,
@@ -373,6 +397,9 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
 
   const subclassData = selectedSubclassData(classData, subclassChoice)
   const draconicAncestor = selectedDraconicAncestor(classFeatureChoices)
+  const rangerOptionalMode = classData?.index === 'ranger' && normalizedRulesEdition === '2014'
+    ? rangerOptionalFeatureMode(classFeatureChoices)
+    : 'phb'
   const subclassFeatures = Object.values(subclassData?.features_by_level ?? {})
     .flat()
     .filter(feature => (feature.level ?? 1) <= 1)
@@ -535,10 +562,21 @@ export function buildCharacter({ user, name, raceData, subraceData, classData, s
     }
   })
   const damageResistances = draconicAncestry?.grantsResistance && draconicAncestry?.damageType ? [draconicAncestry.damageType] : []
+  const levelOneClassFeatures = Object.values(classData?.features_by_level ?? {})
+    .flat()
+    .filter(feature => (feature.level ?? 1) <= 1)
+    .filter(feature => {
+      if (classData?.index !== 'ranger' || normalizedRulesEdition !== '2014') return true
+      if (rangerOptionalMode === 'tce') {
+        return !(/^favored enemy$/i.test(feature.name ?? '') && feature.source === 'PHB')
+          && !(/^natural explorer$/i.test(feature.name ?? '') && feature.source === 'PHB')
+      }
+      return !(/^favored foe$/i.test(feature.name ?? '') && feature.source === 'TCE')
+        && !(/^deft explorer$/i.test(feature.name ?? '') && feature.source === 'TCE')
+    })
+
   const classFeatures = [
-    ...Object.values(classData?.features_by_level ?? {})
-      .flat()
-      .filter(feature => (feature.level ?? 1) <= 1)
+    ...levelOneClassFeatures
       .map(feature => ({
         index: feature.index,
         name: feature.name,
@@ -897,7 +935,6 @@ const ABILITY_LABEL   = { str:'STR', dex:'DEX', con:'CON', int:'INT', wis:'WIS',
 const ABILITY_NAME    = { str:'Strength', dex:'Dexterity', con:'Constitution', int:'Intelligence', wis:'Wisdom', cha:'Charisma' }
 // Point-buy cost per score value
 const PB_COST = { 8:0, 9:1, 10:2, 11:3, 12:4, 13:5, 14:7, 15:9 }
-const COMMON_LANGUAGES = ['Abyssal', 'Celestial', 'Draconic', 'Deep Speech', 'Dwarvish', 'Elvish', 'Giant', 'Gnomish', 'Goblin', 'Halfling', 'Infernal', 'Orc', 'Primordial', 'Sylvan', 'Undercommon']
 const SKILL_OPTIONS = [
   ['acrobatics', 'Acrobatics'],
   ['animal-handling', 'Animal Handling'],
@@ -1894,7 +1931,24 @@ function classFeatureChoiceGroups(classData, subclassChoice) {
   return [...merged.values()]
 }
 
-function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsChange, selectedTools = [], onToolsChange, selectedEquipment, onEquipmentChange, selectedFeatureChoices, onFeatureChoicesChange, onNext, onBack }) {
+function StepClassSetup({
+  classData,
+  subclassChoice,
+  selectedSkills,
+  onSkillsChange,
+  selectedTools = [],
+  onToolsChange,
+  selectedEquipment,
+  onEquipmentChange,
+  selectedFeatureChoices,
+  onFeatureChoicesChange,
+  onNext,
+  onBack,
+  rulesEdition = '2014',
+  raceData = null,
+  subraceData = null,
+  racialOptionChoices = {},
+}) {
   const [categoryItems, setCategoryItems] = useState({}) // { choiceId: [items] }
   const [categorySourceFilters, setCategorySourceFilters] = useState({})
   const [expandedChoice, setExpandedChoice] = useState(null) // choiceId being expanded
@@ -1904,12 +1958,93 @@ function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsCha
   const equipOptions = classData.starting_equipment_options ?? []
   const featureChoiceGroups = classFeatureChoiceGroups(classData, subclassChoice)
   const toolGroups = (classData.class_tool_options ?? []).map((group, groupIndex) => ({ ...group, groupIndex }))
+  const isRanger2014 = classData?.index === 'ranger' && rulesEdition === '2014'
+  const rangerMode = rangerOptionalFeatureMode(selectedFeatureChoices)
   const superiorTechniqueChoiceKey = `${classData.index}:superior-technique-maneuver`
   const superiorTechniqueSelected = selectedFeatureChoices.some(choice =>
     (choice.options ?? []).some(option => option.name === 'Superior Technique')
   )
   const superiorTechniqueChoice = selectedFeatureChoices.find(choice => choice.choiceKey === superiorTechniqueChoiceKey)
   const superiorTechniqueManeuver = superiorTechniqueChoice?.options?.[0] ?? null
+
+  const rangerSkillOptionMap = new Map()
+  ;[
+    ...selectedSkills,
+    ...((raceData?.starting_proficiencies ?? [])
+      .filter(prof => prof.index?.startsWith('skill-'))
+      .map(prof => prof.index)),
+    ...((subraceData?.starting_proficiencies ?? [])
+      .filter(prof => prof.index?.startsWith('skill-'))
+      .map(prof => prof.index)),
+    ...(racialOptionChoices.racialSkills ?? []),
+  ].forEach(skillIndex => {
+    rangerSkillOptionMap.set(skillIndex, {
+      id: skillIndex,
+      name: `Skill: ${labelFromIndex(skillIndex)}`,
+      source: 'TCE',
+      optionType: 'manual',
+      desc: ['Double your proficiency bonus for checks with this skill.'],
+      featureType: ['EXPERTISE'],
+    })
+  })
+  const rangerSkillOptions = [...rangerSkillOptionMap.values()]
+  const rangerSelectedCannySkill = (selectedFeatureChoices.find(choice => choice.choiceKey === RANGER_CANNY_SKILL_CHOICE_KEY)?.options ?? [])[0]?.id ?? null
+  const rangerSelectedCannyLanguages = (selectedFeatureChoices.find(choice => choice.choiceKey === RANGER_CANNY_LANGUAGE_CHOICE_KEY)?.options ?? []).map(option => option.id)
+
+  const replaceFeatureChoice = (nextChoice) => {
+    onFeatureChoicesChange([
+      ...selectedFeatureChoices.filter(choice => choice.choiceKey !== nextChoice.choiceKey),
+      nextChoice,
+    ])
+  }
+
+  const setRangerMode = (mode) => {
+    const nextChoices = selectedFeatureChoices.filter(choice => ![
+      RANGER_OPTIONAL_FEATURE_CHOICE_KEY,
+      RANGER_CANNY_SKILL_CHOICE_KEY,
+      RANGER_CANNY_LANGUAGE_CHOICE_KEY,
+    ].includes(choice.choiceKey))
+    nextChoices.push({
+      choiceKey: RANGER_OPTIONAL_FEATURE_CHOICE_KEY,
+      featureIndex: 'ranger-optional-features',
+      featureName: 'Ranger Optional Features',
+      className: classData.name,
+      classIndex: classData.index,
+      gainedAtLevel: 1,
+      options: [{
+        id: mode,
+        name: mode === 'tce' ? "Tasha's Optional Features" : 'Player Handbook Features',
+        source: mode === 'tce' ? 'TCE' : 'PHB',
+        desc: [],
+        featureType: ['RANGER:OPTIONAL_FEATURE_SET'],
+      }],
+    })
+    onFeatureChoicesChange(nextChoices)
+  }
+
+  const toggleRangerCannyLanguage = (language) => {
+    const checked = rangerSelectedCannyLanguages.includes(language)
+    const nextIds = checked
+      ? rangerSelectedCannyLanguages.filter(id => id !== language)
+      : rangerSelectedCannyLanguages.length < 2
+        ? [...rangerSelectedCannyLanguages, language]
+        : rangerSelectedCannyLanguages
+    replaceFeatureChoice({
+      choiceKey: RANGER_CANNY_LANGUAGE_CHOICE_KEY,
+      featureIndex: 'deft-explorer-canny-languages',
+      featureName: 'Deft Explorer',
+      className: classData.name,
+      classIndex: classData.index,
+      gainedAtLevel: 1,
+      options: nextIds.map(id => ({
+        id,
+        name: id,
+        source: 'TCE',
+        desc: ['Additional language from Deft Explorer (Canny).'],
+        featureType: ['LANGUAGE'],
+      })),
+    })
+  }
 
   useEffect(() => {
     getOptionalFeatures()
@@ -2042,6 +2177,9 @@ function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsCha
     const selected = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
     return (selected?.options?.length ?? 0) >= (choice.choose ?? 1)
   }) && (!superiorTechniqueSelected || !!superiorTechniqueManeuver)
+  const rangerOptionalChoicesReady = !isRanger2014
+    || rangerMode === 'phb'
+    || (rangerSelectedCannySkill && rangerSelectedCannyLanguages.length >= 2)
 
   const toggleFeatureOption = (choice, option) => {
     const existing = selectedFeatureChoices.find(item => item.choiceKey === choice.choiceKey)
@@ -2115,6 +2253,76 @@ function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsCha
             ))}
           </div>
         </>
+      )}
+
+      {isRanger2014 && (
+        <div>
+          <label style={S.label}>Ranger Features</label>
+          <div style={S.cardSub}>Choose either the original 2014 ranger features or the Tasha's optional replacements.</div>
+          <div
+            style={{ ...S.checkRow, border: rangerMode === 'phb' ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+            onClick={() => setRangerMode('phb')}
+          >
+            <span style={{ color: rangerMode === 'phb' ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{rangerMode === 'phb' ? '◉' : '○'}</span>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span>Player's Handbook Features</span>
+              <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)', lineHeight:1.35 }}>Favored Enemy and Natural Explorer.</span>
+            </span>
+          </div>
+          <div
+            style={{ ...S.checkRow, border: rangerMode === 'tce' ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+            onClick={() => setRangerMode('tce')}
+          >
+            <span style={{ color: rangerMode === 'tce' ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{rangerMode === 'tce' ? '◉' : '○'}</span>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span>Tasha's Optional Features</span>
+              <span style={{ fontSize:'0.75rem', color:'var(--text-secondary)', lineHeight:1.35 }}>Favored Foe and Deft Explorer (Canny).</span>
+            </span>
+          </div>
+          {rangerMode === 'tce' && (
+            <>
+              <label style={S.label}>Deft Explorer: Canny Skill</label>
+              <div style={S.cardSub}>Choose one proficient skill for expertise.</div>
+              {rangerSkillOptions.map(option => {
+                const checked = rangerSelectedCannySkill === option.id
+                return (
+                  <div
+                    key={option.id}
+                    style={{ ...S.checkRow, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                    onClick={() => replaceFeatureChoice({
+                      choiceKey: RANGER_CANNY_SKILL_CHOICE_KEY,
+                      featureIndex: 'deft-explorer-canny-skill',
+                      featureName: 'Deft Explorer',
+                      className: classData.name,
+                      classIndex: classData.index,
+                      gainedAtLevel: 1,
+                      options: [option],
+                    })}
+                  >
+                    <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                    <span>{option.name.replace(/^Skill:\s*/, '')}</span>
+                  </div>
+                )
+              })}
+              <label style={S.label}>Deft Explorer: Languages</label>
+              <div style={S.cardSub}>{rangerSelectedCannyLanguages.length} / 2 selected</div>
+              {COMMON_LANGUAGES.map(language => {
+                const checked = rangerSelectedCannyLanguages.includes(language)
+                const disabled = !checked && rangerSelectedCannyLanguages.length >= 2
+                return (
+                  <div
+                    key={language}
+                    style={{ ...S.checkRow, opacity: disabled ? 0.4 : 1, border: checked ? '1px solid var(--accent)' : '1px solid var(--border)' }}
+                    onClick={() => !disabled && toggleRangerCannyLanguage(language)}
+                  >
+                    <span style={{ color: checked ? 'var(--accent-hover)' : 'var(--text-muted)', fontSize: '1.1rem' }}>{checked ? '◉' : '○'}</span>
+                    <span>{language}</span>
+                  </div>
+                )
+              })}
+            </>
+          )}
+        </div>
       )}
 
      {/* Skill choices */}
@@ -2376,16 +2584,17 @@ function StepClassSetup({ classData, subclassChoice, selectedSkills, onSkillsCha
 
       <div style={S.row}>
         <button style={S.btn(false)} onClick={onBack}>← Back</button>
-        <button style={S.btn(true)} onClick={onNext} disabled={!allSkillsSelected || !allToolsSelected || !allEquipSelected || !allFeatureChoicesSelected}>
+        <button style={S.btn(true)} onClick={onNext} disabled={!allSkillsSelected || !allToolsSelected || !allEquipSelected || !allFeatureChoicesSelected || !rangerOptionalChoicesReady}>
           Next: Background →
         </button>
       </div>
-      {(!allSkillsSelected || !allToolsSelected || !allEquipSelected || !allFeatureChoicesSelected) && (
+      {(!allSkillsSelected || !allToolsSelected || !allEquipSelected || !allFeatureChoicesSelected || !rangerOptionalChoicesReady) && (
         <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
           {!allSkillsSelected && <div>Skills not complete ({allSkillGroups.map(g => `${selectedSkills.filter(s => g.options.some(o => o.item.index === s)).length}/${g.choose}`).join(', ')})</div>}
           {!allToolsSelected && <div>Tool choices not complete.</div>}
           {!allFeatureChoicesSelected && <div>Feature choices not complete.</div>}
           {!allEquipSelected && <div>Equipment not complete — groups: {equipGroups.length}, selected groupIndexes: [{selectedEquipment.map(e => e.groupIndex).join(', ')}]</div>}
+          {!rangerOptionalChoicesReady && <div>Ranger optional feature choices are not complete.</div>}
         </div>
       )}
     </div>
@@ -2441,8 +2650,6 @@ function StepBackgroundSetup({ backgroundData, selectedLanguages, onLanguagesCha
     : []
   const langChoose = langOptions?.choose ?? 0
   const isResourceList = langOptions?.from?.option_set_type === 'resource_list'
-
-  const COMMON_LANGUAGES = ['Abyssal', 'Celestial', 'Draconic', 'Deep Speech', 'Dwarvish', 'Elvish', 'Giant', 'Gnomish', 'Goblin', 'Halfling', 'Infernal', 'Orc', 'Primordial', 'Sylvan', 'Undercommon']
 
   const displayLangs = isResourceList
     ? COMMON_LANGUAGES.map(name => ({ option_type: 'reference', item: { index: name.toLowerCase().replace(/\s/g, '-'), name } }))
@@ -3033,6 +3240,10 @@ function CreateCharacter({ user, onComplete, onCancel }) {
           <StepClassSetup
             classData={classData}
             subclassChoice={subclassChoice}
+            rulesEdition={rulesEdition}
+            raceData={raceData}
+            subraceData={subraceData}
+            racialOptionChoices={racialOptionChoices}
             selectedSkills={classSkills}
             onSkillsChange={setClassSkills}
             selectedTools={classTools}

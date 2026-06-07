@@ -676,6 +676,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const paladinSource = classSourceFor(char, 'paladin', /^channel divinity$/i)
   const druidSource = classSourceFor(char, 'druid', /^wild shape$/i)
   const rangerFavoredEnemySource = classSourceFor(char, 'ranger', /^favored enemy$/i)
+  const rangerFavoredFoeSource = classSourceFor(char, 'ranger', /^favored foe$/i)
   const rageMax = rageUses(barbarianLevel, barbarianSource)
   const clericChannelMax = /xphb/i.test(clericSource ?? '') ? xphbClericChannelUses(clericLevel) : clericChannelUses(clericLevel)
   const paladinChannelMax = paladinChannelUses(paladinLevel, paladinSource)
@@ -685,6 +686,7 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
   const isXphbClericIntervention = /xphb/i.test(clericInterventionSource ?? '')
   const isXphbFighter = /xphb/i.test(fighterSource ?? '')
   const isXphbRangerFavoredEnemy = /xphb/i.test(rangerFavoredEnemySource ?? '')
+  const isTceRangerFavoredFoe = /tce/i.test(rangerFavoredFoeSource ?? '')
   const isXphbPaladin = /xphb/i.test(paladinSource ?? '')
   const hasPrimevalAwareness = hasClassFeature(char, 'ranger', /^primeval awareness$/i)
   const combatFeatures = classFeatures
@@ -979,6 +981,17 @@ export default function CombatTab({ char, locked, isOwner, updateChar }) {
       actionType: 'Action',
       effect: 'End charm/fear',
       detail: 'End one effect causing you to be charmed or frightened.',
+    },
+    isTceRangerFavoredFoe && rangerLevel > 0 && {
+      name: 'Favored Foe',
+      key: 'class-ranger-favored-foe',
+      sourceType: 'Ranger',
+      actionType: 'On hit',
+      recharge: 'LR',
+      max: favoredEnemyMax,
+      used: storedAbilityMap['class-ranger-favored-foe']?.used ?? 0,
+      effect: `${favoredEnemyMax} mark${favoredEnemyMax === 1 ? '' : 's'}`,
+      detail: 'Mark a target you hit; once per turn, deal extra damage while the mark lasts.',
     },
     isXphbRangerFavoredEnemy && rangerLevel > 0 && {
       name: "Hunter's Mark",
