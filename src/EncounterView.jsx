@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Octokit } from '@octokit/rest'
 import { getMonsters } from './srdContent'
 import { DATA_REPO } from './githubStorage'
@@ -417,17 +417,95 @@ function EnemyRow({ combatant, isActive, onHpChange, onAddCondition, onRemoveCon
 // ════════════════════════════════════════════════════════════════
 //  Main EncounterView
 // ════════════════════════════════════════════════════════════════
-export default function EncounterView({ token, user, encounter, session, campaign, party, onBack, onEndEncounter }) {
-  const [phase, setPhase]         = useState('hp')  // 'hp' | 'initiative' | 'combat'
-  const [combatants, setCombatants] = useState(() => buildCombatants(party, encounter))
-  const [order, setOrder]         = useState([])
-  const [currentIdx, setCurrentIdx] = useState(0)
+export default function EncounterView({ token, user, encounter, session, campaign, party, onEndEncounter }) {
+  const savedOrder = encounter.order?.length ? encounter.order : null
+  const [phase, setPhase]         = useState(() => encounter.phase ?? (savedOrder ? 'combat' : 'hp'))  // 'hp' | 'initiative' | 'combat'
+  const [combatants, setCombatants] = useState(() => {
+    if (savedOrder) return encounter.combatants?.length ? encounter.combatants : savedOrder
+    return buildCombatants(party, encounter)
+  })
+  const [order, setOrder]         = useState(() => savedOrder ?? [])
+  const [currentIdx, setCurrentIdx] = useState(encounter.currentIdx ?? 0)
   const [round, setRound]         = useState(encounter.rounds ?? 1)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [saving, setSaving]       = useState(false)
+  const liveSaveStartedRef = useRef(false)
+  const endingRef = useRef(false)
 
-  const octokit = new Octokit({ auth: token })
+  const octokit = useMemo(() => new Octokit({ auth: token }), [token])
   const basePath = `campaigns/${campaign.slug}`
+
+  const liveEncounterState = useCallback(() => {
+    const liveCombatants = phase === 'combat' && order.length ? order : combatants
+    return {
+      ...encounter,
+      phase,
+      combatants: liveCombatants,
+      order,
+      currentIdx,
+      rounds: round,
+      enemyCount: liveCombatants.filter(c => c.type !== 'player').length,
+      status: 'live',
+      updatedAt: new Date().toISOString(),
+    }
+  }, [combatants, currentIdx, encounter, order, phase, round])
+
+  const saveLiveEncounter = useCallback(async (showSaving = false) => {
+    if (endingRef.current) return liveEncounterState()
+    const liveEncounter = liveEncounterState()
+    if (showSaving) setSaving(true)
+    try {
+      const { data } = await octokit.repos.getContent({
+        owner: user.login,
+        repo: DATA_REPO,
+        path: `${basePath}/sessions.json`,
+      })
+      const sessions = decode(data.content).sessions ?? []
+      let updatedSession = session
+      const updatedSessions = sessions.map(s => {
+        if (s.sessionId !== session.sessionId) return s
+        updatedSession = {
+          ...s,
+          encounters: (s.encounters ?? []).map(enc =>
+            enc.encounterId === encounter.encounterId ? liveEncounter : enc
+          ),
+        }
+        return updatedSession
+      })
+
+      await octokit.repos.createOrUpdateFileContents({
+        owner: user.login,
+        repo: DATA_REPO,
+        path: `${basePath}/sessions.json`,
+        message: 'Update live encounter',
+        content: encode({ sessions: updatedSessions }),
+        sha: data.sha,
+      })
+      return updatedSession
+    } catch (e) {
+      console.error('Live encounter save failed:', e)
+      return session
+    } finally {
+      if (showSaving) setSaving(false)
+    }
+  }, [basePath, encounter.encounterId, liveEncounterState, octokit, session, user.login])
+
+  const handleBack = async () => {
+    const updatedSession = await saveLiveEncounter(true)
+    onEndEncounter(liveEncounterState(), updatedSession)
+  }
+
+  useEffect(() => {
+    if (phase !== 'combat' || endingRef.current) return
+    if (!liveSaveStartedRef.current) {
+      liveSaveStartedRef.current = true
+      return
+    }
+    const timer = setTimeout(() => {
+      saveLiveEncounter()
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [phase, combatants, order, currentIdx, round, saveLiveEncounter])
 
   // Start encounter after initiative setup
   const continueToInitiative = (updatedCombatants) => {
@@ -437,6 +515,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
 
   const startEncounter = (sorted) => {
     setOrder(sorted)
+    setCombatants(sorted)
     setPhase('combat')
   }
 
@@ -485,6 +564,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
   }
 
   const saveEncounterResult = async (result) => {
+    endingRef.current = true
     setSaving(true)
     let updatedSession = session
     try {
@@ -571,7 +651,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
         <HpSetupOverlay
           combatants={combatants}
           onContinue={continueToInitiative}
-          onCancel={onBack}
+          onCancel={handleBack}
         />
       )}
 
@@ -580,7 +660,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
         <InitiativeOverlay
           combatants={combatants}
           onStart={startEncounter}
-          onCancel={onBack}
+          onCancel={handleBack}
         />
       )}
 
@@ -590,7 +670,7 @@ export default function EncounterView({ token, user, encounter, session, campaig
           {/* Top bar */}
           <div className="ev-topbar">
             <div className="ev-topbar-left">
-              <button className="ev-back-btn" onClick={onBack}>← Session</button>
+              <button className="ev-back-btn" onClick={handleBack}>← Session</button>
               <div className="ev-enc-name">{encounter.name}</div>
             </div>
 

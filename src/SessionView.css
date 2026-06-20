@@ -619,7 +619,7 @@
   padding: 10px 12px;
   margin-bottom: var(--spacing-md);
 }
-.sv-modal-actions { display: flex; gap: var(--spacing-sm); }
+.sv-modal-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
 .sv-btn { flex: 1; padding: 11px; border-radius: var(--radius-md); font-family: var(--font-body); font-size: 13px; font-weight: 700; cursor: pointer; border: none; min-height: 44px; }
 .sv-btn--ghost { background: var(--bg-inset); border: 0.5px solid var(--border-strong); color: var(--text-secondary); flex: none; padding: 11px 20px; }
 .sv-btn--ghost:hover { color: var(--text-primary); }
@@ -680,5 +680,11 @@
   }
   .sv-mobile-tab--active span {
     color: var(--dm);
+  }
+  .sv-modal-actions {
+    flex-direction: column;
+  }
+  .sv-btn--ghost {
+    flex: 1;
   }
 }

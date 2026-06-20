@@ -173,7 +173,11 @@ function EncounterRow({ encounter, onOpen, isActive, actionLabel }) {
           ? 'Fled'
           : encounter.outcome === 'defeat'
             ? 'Defeat'
-            : '—')
+            : encounter.outcome === 'continued'
+              ? 'Continued'
+              : encounter.outcome === 'unresolved'
+                ? 'Unresolved'
+                : '—')
   return (
     <div className={`sv-enc-row${isActive ? ' sv-enc-row--live' : ''}`} onClick={() => onOpen(encounter)}>
       <div className="sv-enc-num">{encounter.number}</div>
@@ -459,10 +463,22 @@ export default function SessionView({ token, user, session, campaign, party, ini
   }
   const handleEndSession = async () => {
     const finalDuration = clockSecondsRef.current
+    const finalEncounters = activeEncounter
+      ? encountersRef.current.map(enc =>
+          enc.encounterId === activeEncounter.encounterId
+            ? {
+                ...enc,
+                status: 'done',
+                outcome: enc.outcome ?? 'unresolved',
+                unresolvedAt: new Date().toISOString(),
+              }
+            : enc
+        )
+      : encountersRef.current
     sessionEndedRef.current = true
     await updateStoredSession(
       {
-        encounters: encountersRef.current,
+        encounters: finalEncounters,
         notes: notesRef.current,
         players: chars.map(char => ({
           characterId: char.characterId,
@@ -483,6 +499,151 @@ export default function SessionView({ token, user, session, campaign, party, ini
     setShowEndConfirm(false)
     onBack()
   }
+
+  const handleCarryEncounterForward = async () => {
+    if (!activeEncounter) return
+
+    setSaving(true)
+    const now = new Date().toISOString()
+    const finalDuration = clockSecondsRef.current
+    const nextNumber = (session.number ?? 0) + 1
+    const oldEncounterId = activeEncounter.encounterId
+    const carriedEncounterId = activeEncounter.continuation?.toEncounterId ?? genId()
+    let sessions = []
+    let sessionsSha
+
+    try {
+      try {
+        const { data } = await octokit.repos.getContent({
+          owner: user.login,
+          repo: DATA_REPO,
+          path: `${basePath}/sessions.json`,
+        })
+        sessions = decode(data.content).sessions ?? []
+        sessionsSha = data.sha
+      } catch { /* no sessions yet */ }
+
+      const storedCurrent = sessions.find(s => s.sessionId === session.sessionId) ?? session
+      const existingNext = sessions.find(s =>
+        s.sessionId !== session.sessionId && s.number === nextNumber
+      )
+      const nextSessionId = existingNext?.sessionId ?? genId()
+      const oldEncounter = {
+        ...activeEncounter,
+        status: 'continued',
+        outcome: 'continued',
+        continuedAt: now,
+        continuation: {
+          fromSessionId: session.sessionId,
+          fromEncounterId: oldEncounterId,
+          toSessionId: nextSessionId,
+          toEncounterId: carriedEncounterId,
+        },
+      }
+      const carriedEncounter = {
+        ...activeEncounter,
+        encounterId: carriedEncounterId,
+        number: ((existingNext?.encounters ?? []).length || 0) + 1,
+        status: 'live',
+        outcome: null,
+        defeated: false,
+        carriedAt: now,
+        continuation: {
+          fromSessionId: session.sessionId,
+          fromEncounterId: oldEncounterId,
+          toSessionId: nextSessionId,
+          toEncounterId: carriedEncounterId,
+        },
+      }
+      const currentEncounters = (encountersRef.current ?? []).map(enc =>
+        enc.encounterId === oldEncounterId ? oldEncounter : enc
+      )
+      const closedCurrentSession = {
+        ...storedCurrent,
+        encounters: currentEncounters,
+        notes: notesRef.current,
+        players: chars.map(char => ({
+          characterId: char.characterId,
+          characterName: char.name,
+          github: char.github,
+          absent: attendance[char.characterId] === false,
+        })),
+        duration: finalDuration,
+        status: 'done',
+        timerRunning: false,
+        timerStartedAt: null,
+        timerUpdatedAt: now,
+        endedAt: now,
+      }
+      const nextSession = existingNext
+        ? {
+            ...existingNext,
+            status: 'live',
+            timerRunning: existingNext.timerRunning ?? true,
+            timerStartedAt: existingNext.timerStartedAt ?? now,
+            timerUpdatedAt: now,
+            encounters: (existingNext.encounters ?? []).some(enc =>
+              enc.encounterId === carriedEncounterId ||
+              enc.continuation?.fromEncounterId === oldEncounterId
+            )
+              ? (existingNext.encounters ?? []).map(enc =>
+                  enc.encounterId === carriedEncounterId ||
+                  enc.continuation?.fromEncounterId === oldEncounterId
+                    ? { ...carriedEncounter, number: enc.number ?? carriedEncounter.number }
+                    : enc
+                )
+              : [...(existingNext.encounters ?? []), carriedEncounter],
+          }
+        : {
+            sessionId: nextSessionId,
+            name: `Session ${nextNumber}`,
+            number: nextNumber,
+            date: now,
+            status: 'live',
+            duration: 0,
+            timerRunning: true,
+            timerStartedAt: now,
+            timerUpdatedAt: now,
+            players: [],
+            encounters: [carriedEncounter],
+            carriedFromSessionId: session.sessionId,
+          }
+
+      let sawCurrent = false
+      let sawNext = false
+      const updatedSessions = sessions.map(s => {
+        if (s.sessionId === session.sessionId) {
+          sawCurrent = true
+          return closedCurrentSession
+        }
+        if (s.sessionId === nextSession.sessionId) {
+          sawNext = true
+          return nextSession
+        }
+        return s
+      })
+      if (!sawCurrent) updatedSessions.push(closedCurrentSession)
+      if (!sawNext) updatedSessions.unshift(nextSession)
+
+      await octokit.repos.createOrUpdateFileContents({
+        owner: user.login,
+        repo: DATA_REPO,
+        path: `${basePath}/sessions.json`,
+        message: 'Carry encounter to next session',
+        content: encode({ sessions: updatedSessions }),
+        ...(sessionsSha ? { sha: sessionsSha } : {}),
+      })
+
+      sessionEndedRef.current = true
+      setEncounters(currentEncounters)
+      setShowEndConfirm(false)
+      onBack()
+    } catch (e) {
+      console.error('Carry encounter failed:', e)
+    }
+    setSaving(false)
+  }
+
   const handleOpenEncounter = async (encounter) => {
     await saveDuration()
     onOpenEncounter(encounter, currentSession, campaign)
@@ -695,15 +856,20 @@ export default function SessionView({ token, user, session, campaign, party, ini
             </p>
             {activeEncounter && (
               <p className="sv-modal-warning">
-                There is still a live encounter in this session. End that encounter first if you want a final outcome recorded.
+                {activeEncounter.name} is still live. Carry it forward to preserve round {activeEncounter.rounds ?? 1}, combatants, HP, conditions, and turn order in Session {(session.number ?? 0) + 1}.
               </p>
             )}
             <div className="sv-modal-actions">
               <button className="sv-btn sv-btn--ghost" onClick={() => setShowEndConfirm(false)}>
                 Keep Session Live
               </button>
+              {activeEncounter && (
+                <button className="sv-btn sv-btn--dm" onClick={handleCarryEncounterForward} disabled={saving}>
+                  {saving ? 'Carrying...' : 'Carry Forward'}
+                </button>
+              )}
               <button className="sv-btn sv-btn--danger" onClick={handleEndSession} disabled={saving}>
-                {saving ? 'Ending...' : 'End Session'}
+                {saving ? 'Ending...' : activeEncounter ? 'End Anyway' : 'End Session'}
               </button>
             </div>
           </div>
