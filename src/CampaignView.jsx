@@ -218,7 +218,13 @@ function CharRow({ char, onToggleActive, onView }) {
           {char.class || 'Adventurer'} · Lv {char.level ?? 1}
           {!canView && <span className="char-row-source">Quick ref</span>}
         </div>
-        {char.keySkills && <div className="char-row-skills">{char.keySkills}</div>}
+        {(char.keySkills || char.passivePerception != null) && (
+          <div className="char-row-skills">
+            {char.keySkills}
+            {char.keySkills && char.passivePerception != null ? ' · ' : ''}
+            {char.passivePerception != null ? `PP ${char.passivePerception}` : ''}
+          </div>
+        )}
         <div className="char-row-hp-track">
           <div className="char-row-hp-fill" style={{ width: `${pct}%`, background: color }} />
         </div>
@@ -277,6 +283,8 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
   const [fetching, setFetching]   = useState(false)
   const [fetchedChars, setFetchedChars] = useState(player?.characters ?? [])
   const [error, setError]         = useState(null)
+  const [manualPlayerId]          = useState(() => player?.github ?? `manual-${genId()}`)
+  const [editingManualId, setEditingManualId] = useState(null)
   const [manualChar, setManualChar] = useState({
     name: '',
     class: '',
@@ -285,13 +293,14 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
     hpMax: '',
     ac: '',
     initiative: '',
+    passivePerception: '',
     keySkills: '',
   })
 
   const octokit = new Octokit({ auth: token })
   const hasManualPlayerId = player?.github?.startsWith('manual-')
   const resolvedPlayerName = playerName.trim() || username.trim() || player?.displayName || player?.github || 'Player'
-  const resolvedGithub = username.trim() || player?.github || `manual-${genId()}`
+  const resolvedGithub = username.trim() || manualPlayerId
 
   const fetchChars = async () => {
     if (!username.trim()) return
@@ -328,6 +337,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
               ac:           char.combat?.ac ?? null,
               initiative:   char.combat?.initiative ?? null,
               initiativeMod: char.combat?.initiative ?? 0,
+              passivePerception: char.stats?.passivePerception ?? null,
               active:       existingChar ? existingChar.active : false,
               inCampaign:   !!existingChar,
             }
@@ -348,10 +358,42 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
 
   const removeManualChar = (id) => {
     setFetchedChars(prev => prev.filter(c => c.characterId !== id))
+    if (editingManualId === id) resetManualForm()
   }
 
   const updateManualChar = (field, value) => {
     setManualChar(prev => ({ ...prev, [field]: value }))
+  }
+
+  const resetManualForm = () => {
+    setEditingManualId(null)
+    setManualChar({
+      name: '',
+      class: '',
+      level: '1',
+      hpCurrent: '',
+      hpMax: '',
+      ac: '',
+      initiative: '',
+      passivePerception: '',
+      keySkills: '',
+    })
+  }
+
+  const editManualChar = (char) => {
+    setMode('manual')
+    setEditingManualId(char.characterId)
+    setManualChar({
+      name: char.name ?? '',
+      class: char.class ?? '',
+      level: String(char.level ?? 1),
+      hpCurrent: String(char.hpCurrent ?? ''),
+      hpMax: String(char.hpMax ?? ''),
+      ac: String(char.ac ?? ''),
+      initiative: String(char.initiative ?? ''),
+      passivePerception: String(char.passivePerception ?? ''),
+      keySkills: char.keySkills ?? '',
+    })
   }
 
   const addManualChar = () => {
@@ -371,23 +413,18 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
       ac: parseOptionalInt(manualChar.ac),
       initiative,
       initiativeMod: initiative ?? 0,
+      passivePerception: parseOptionalInt(manualChar.passivePerception),
       keySkills: manualChar.keySkills.trim(),
       active: true,
       inCampaign: true,
       manual: true,
       dmCreated: true,
     }
-    setFetchedChars(prev => [...prev, character])
-    setManualChar({
-      name: '',
-      class: '',
-      level: '1',
-      hpCurrent: '',
-      hpMax: '',
-      ac: '',
-      initiative: '',
-      keySkills: '',
-    })
+    setFetchedChars(prev => editingManualId
+      ? prev.map(c => c.characterId === editingManualId ? { ...c, ...character, characterId: editingManualId, active: c.active ?? true } : c)
+      : [...prev, character]
+    )
+    resetManualForm()
   }
 
   const save = () => {
@@ -461,14 +498,21 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
                 <div className="fetched-char-info">
                   <div className="fetched-char-name">{char.name}</div>
                   <div className="fetched-char-sub">
-                    {char.class}{char.keySkills ? ` · ${char.keySkills}` : ''}
+                    {char.class}
+                    {char.keySkills ? ` · ${char.keySkills}` : ''}
+                    {char.passivePerception != null ? ` · PP ${char.passivePerception}` : ''}
                   </div>
                 </div>
                 <div className="fetched-char-right">
                   {char.manual || char.dmCreated ? (
-                    <button className="active-badge" onClick={() => removeManualChar(char.characterId)}>
-                      Remove
-                    </button>
+                    <div className="manual-char-actions">
+                      <button className="active-badge" onClick={() => editManualChar(char)}>
+                        Edit
+                      </button>
+                      <button className="active-badge" onClick={() => removeManualChar(char.characterId)}>
+                        Remove
+                      </button>
+                    </div>
                   ) : (
                     <button
                       className={`active-badge${char.active ? ' active-badge--active' : ''}`}
@@ -518,13 +562,24 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
                 <input className="cv-input" type="number" value={manualChar.initiative} onChange={e => updateManualChar('initiative', e.target.value)} placeholder="+3" />
               </div>
               <div>
+                <label className="cv-label">Passive Perception</label>
+                <input className="cv-input" type="number" min="0" value={manualChar.passivePerception} onChange={e => updateManualChar('passivePerception', e.target.value)} placeholder="13" />
+              </div>
+            </div>
+            <div className="cv-input-row">
+              <div>
                 <label className="cv-label">Key skills</label>
                 <input className="cv-input" value={manualChar.keySkills} onChange={e => updateManualChar('keySkills', e.target.value)} placeholder="Stealth, Insight" />
               </div>
             </div>
             <button className="cv-btn cv-btn--dm manual-char-add" onClick={addManualChar} disabled={!manualChar.name.trim()}>
-              Add Quick Ref
+              {editingManualId ? 'Update Quick Ref' : 'Add Quick Ref'}
             </button>
+            {editingManualId && (
+              <button className="cv-btn cv-btn--ghost manual-char-add" onClick={resetManualForm}>
+                Cancel Edit
+              </button>
+            )}
           </div>
         )}
 

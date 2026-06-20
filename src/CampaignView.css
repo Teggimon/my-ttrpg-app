@@ -1099,6 +1099,7 @@
 .fetched-char-name { font-family: var(--font-body); font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .fetched-char-sub  { font-family: var(--font-body); font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
 .fetched-char-right { flex-shrink: 0; }
+.manual-char-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* Buttons — use cv- prefix for backwards compat */
 .cv-btn {
