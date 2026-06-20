@@ -115,6 +115,15 @@
   border-color: var(--success-border);
   color: var(--success);
 }
+.sv-clock-btn--end {
+  background: var(--danger-bg);
+  border-color: var(--danger-bdr);
+  color: var(--danger);
+}
+.sv-clock-btn--end:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
 
 /* ── Sidebar tabs ── */
 .sv-sidebar-tabs {
@@ -224,6 +233,11 @@
   background: var(--success-subtle);
   border-color: var(--success-border);
   color: var(--success);
+}
+.sv-mobile-clock-btn--end {
+  background: var(--danger-bg);
+  border-color: var(--danger-bdr);
+  color: var(--danger);
 }
 
 .sv-saving-bar {
@@ -567,6 +581,21 @@
 }
 .sv-modal-handle { width: 36px; height: 4px; background: var(--border-strong); border-radius: var(--radius-full); margin: 12px auto 16px; }
 .sv-modal-title  { font-family: var(--font-body); font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 14px; }
+.sv-modal-body,
+.sv-modal-warning {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 var(--spacing-md);
+}
+.sv-modal-body { color: var(--text-secondary); }
+.sv-modal-warning {
+  color: var(--warning);
+  background: var(--warning-subtle);
+  border: 0.5px solid var(--warning-border);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
 .sv-modal-label  { display: block; font-family: var(--font-body); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
 .sv-modal-input {
   width: 100%; padding: 10px 12px;
@@ -596,6 +625,9 @@
 .sv-btn--ghost:hover { color: var(--text-primary); }
 .sv-btn--dm { background: var(--dm); color: var(--dm-text); }
 .sv-btn--dm:hover { background: var(--dm-hover); }
+.sv-btn--danger { background: var(--danger-bg); border: 0.5px solid var(--danger-bdr); color: var(--danger); }
+.sv-btn--danger:hover { background: var(--danger-subtle); }
+.sv-btn:disabled { opacity: 0.45; cursor: default; }
 
 /* Mobile */
 @media (max-width: 600px) {

@@ -246,6 +246,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
     return a
   })
   const [saving, setSaving]       = useState(false)
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
 
   // ── Session clock ──
   const [clockSeconds, setClockSeconds] = useState(() => sessionDuration(session))
@@ -254,6 +255,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
   const clockSecondsRef = useRef(clockSeconds)
   const encountersRef = useRef(encounters)
   const notesRef = useRef(notes)
+  const sessionEndedRef = useRef(false)
 
   useEffect(() => {
     if (clockRunning) {
@@ -325,6 +327,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
   }, [basePath, clockRunning, octokit, session, user.login])
 
   const saveDuration = useCallback(() => {
+    if (sessionEndedRef.current) return Promise.resolve()
     return updateStoredSession(
       {
         duration: clockSecondsRef.current,
@@ -370,7 +373,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
 
   function allActiveChars(party) {
     return (party ?? []).flatMap(p =>
-      (p.characters ?? []).filter(c => c.active)
+      (p.characters ?? []).filter(c => c.active).map(c => ({ ...c, github: p.github }))
     )
   }
 
@@ -454,6 +457,32 @@ export default function SessionView({ token, user, session, campaign, party, ini
     await saveDuration()
     onBack()
   }
+  const handleEndSession = async () => {
+    const finalDuration = clockSecondsRef.current
+    sessionEndedRef.current = true
+    await updateStoredSession(
+      {
+        encounters: encountersRef.current,
+        notes: notesRef.current,
+        players: chars.map(char => ({
+          characterId: char.characterId,
+          characterName: char.name,
+          github: char.github,
+          absent: attendance[char.characterId] === false,
+        })),
+        duration: finalDuration,
+        status: 'done',
+        timerRunning: false,
+        timerStartedAt: null,
+        timerUpdatedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+      },
+      'End session',
+      true
+    )
+    setShowEndConfirm(false)
+    onBack()
+  }
   const handleOpenEncounter = async (encounter) => {
     await saveDuration()
     onOpenEncounter(encounter, currentSession, campaign)
@@ -494,6 +523,12 @@ export default function SessionView({ token, user, session, campaign, party, ini
             >
               {clockRunning ? 'Pause' : 'Resume'}
             </button>
+            <button
+              className="sv-clock-btn sv-clock-btn--end"
+              onClick={() => setShowEndConfirm(true)}
+            >
+              End
+            </button>
           </div>
         </div>
 
@@ -525,6 +560,12 @@ export default function SessionView({ token, user, session, campaign, party, ini
             onClick={() => setClockRunning(r => !r)}
           >
             {clockRunning ? 'Pause' : 'Resume'}
+          </button>
+          <button
+            className="sv-mobile-clock-btn sv-mobile-clock-btn--end"
+            onClick={() => setShowEndConfirm(true)}
+          >
+            End
           </button>
         </div>
 
@@ -643,6 +684,31 @@ export default function SessionView({ token, user, session, campaign, party, ini
           </div>
         )}
       </div>
+
+      {showEndConfirm && (
+        <div className="sv-modal-overlay" onClick={() => setShowEndConfirm(false)}>
+          <div className="sv-modal-sheet" onClick={e => e.stopPropagation()}>
+            <div className="sv-modal-handle" />
+            <div className="sv-modal-title">End {session.name}?</div>
+            <p className="sv-modal-body">
+              This marks the session as done, saves the final timer, notes, attendance, and encounter history, then returns you to the campaign.
+            </p>
+            {activeEncounter && (
+              <p className="sv-modal-warning">
+                There is still a live encounter in this session. End that encounter first if you want a final outcome recorded.
+              </p>
+            )}
+            <div className="sv-modal-actions">
+              <button className="sv-btn sv-btn--ghost" onClick={() => setShowEndConfirm(false)}>
+                Keep Session Live
+              </button>
+              <button className="sv-btn sv-btn--danger" onClick={handleEndSession} disabled={saving}>
+                {saving ? 'Ending...' : 'End Session'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
     </div>
