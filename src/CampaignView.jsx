@@ -218,11 +218,13 @@ function CharRow({ char, onToggleActive, onView }) {
           {char.class || 'Adventurer'} · Lv {char.level ?? 1}
           {!canView && <span className="char-row-source">Quick ref</span>}
         </div>
-        {(char.keySkills || char.passivePerception != null) && (
+        {(char.keySkills || char.passivePerception != null || char.spellSaveDC != null) && (
           <div className="char-row-skills">
             {char.keySkills}
-            {char.keySkills && char.passivePerception != null ? ' · ' : ''}
+            {char.keySkills && (char.passivePerception != null || char.spellSaveDC != null) ? ' · ' : ''}
             {char.passivePerception != null ? `PP ${char.passivePerception}` : ''}
+            {char.passivePerception != null && char.spellSaveDC != null ? ' · ' : ''}
+            {char.spellSaveDC != null ? `DC ${char.spellSaveDC}` : ''}
           </div>
         )}
         <div className="char-row-hp-track">
@@ -294,6 +296,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
     ac: '',
     initiative: '',
     passivePerception: '',
+    spellSaveDC: '',
     keySkills: '',
   })
 
@@ -338,6 +341,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
               initiative:   char.combat?.initiative ?? null,
               initiativeMod: char.combat?.initiative ?? 0,
               passivePerception: char.stats?.passivePerception ?? null,
+              spellSaveDC: char.spells?.spellSaveDC ?? char.stats?.spellSaveDC ?? null,
               active:       existingChar ? existingChar.active : false,
               inCampaign:   !!existingChar,
             }
@@ -376,6 +380,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
       ac: '',
       initiative: '',
       passivePerception: '',
+      spellSaveDC: '',
       keySkills: '',
     })
   }
@@ -392,6 +397,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
       ac: String(char.ac ?? ''),
       initiative: String(char.initiative ?? ''),
       passivePerception: String(char.passivePerception ?? ''),
+      spellSaveDC: String(char.spellSaveDC ?? ''),
       keySkills: char.keySkills ?? '',
     })
   }
@@ -414,6 +420,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
       initiative,
       initiativeMod: initiative ?? 0,
       passivePerception: parseOptionalInt(manualChar.passivePerception),
+      spellSaveDC: parseOptionalInt(manualChar.spellSaveDC),
       keySkills: manualChar.keySkills.trim(),
       active: true,
       inCampaign: true,
@@ -501,6 +508,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
                     {char.class}
                     {char.keySkills ? ` · ${char.keySkills}` : ''}
                     {char.passivePerception != null ? ` · PP ${char.passivePerception}` : ''}
+                    {char.spellSaveDC != null ? ` · DC ${char.spellSaveDC}` : ''}
                   </div>
                 </div>
                 <div className="fetched-char-right">
@@ -564,6 +572,10 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
               <div>
                 <label className="cv-label">Passive Perception</label>
                 <input className="cv-input" type="number" min="0" value={manualChar.passivePerception} onChange={e => updateManualChar('passivePerception', e.target.value)} placeholder="13" />
+              </div>
+              <div>
+                <label className="cv-label">Spell Save DC</label>
+                <input className="cv-input" type="number" min="0" value={manualChar.spellSaveDC} onChange={e => updateManualChar('spellSaveDC', e.target.value)} placeholder="14" />
               </div>
             </div>
             <div className="cv-input-row">
