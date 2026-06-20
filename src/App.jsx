@@ -504,6 +504,7 @@ function App() {
   // ── Session View ──
   if (screen === 'dm-session' && selectedSession) return (
     <SessionView
+      key={selectedSession.sessionId}
       token={token}
       user={user}
       session={selectedSession}
@@ -516,6 +517,11 @@ function App() {
         setSelectedSession(session)
         setSelectedCampaign(campaign)
         setScreen('dm-encounter')
+      }}
+      onOpenCarriedSession={(session, campaign) => {
+        setSelectedSession(session)
+        setSelectedCampaign(campaign)
+        setScreen('dm-session')
       }}
     />
   )

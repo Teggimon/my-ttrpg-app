@@ -231,8 +231,10 @@ function SVNoteSection({ section, onChange }) {
 // ════════════════════════════════════════════════════════════════
 //  Main SessionView
 // ════════════════════════════════════════════════════════════════
-export default function SessionView({ token, user, session, campaign, party, initialPreparedEncounters = [], onBack, onOpenEncounter }) {
-  const [tab, setTab]             = useState('party')
+export default function SessionView({ token, user, session, campaign, party, initialPreparedEncounters = [], onBack, onOpenEncounter, onOpenCarriedSession }) {
+  const [tab, setTab]             = useState(() =>
+    session.encounters?.some(enc => enc.status === 'live') ? 'encounter' : 'party'
+  )
   const [encounters, setEncounters] = useState(session.encounters ?? [])
   const [preparedEncounters, setPreparedEncounters] = useState(initialPreparedEncounters)
   const [notes, setNotes]         = useState({
@@ -637,7 +639,7 @@ export default function SessionView({ token, user, session, campaign, party, ini
       sessionEndedRef.current = true
       setEncounters(currentEncounters)
       setShowEndConfirm(false)
-      onBack()
+      onOpenCarriedSession(nextSession, campaign)
     } catch (e) {
       console.error('Carry encounter failed:', e)
     }
