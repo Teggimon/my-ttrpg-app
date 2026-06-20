@@ -124,6 +124,14 @@ function hpColor(pct) {
   if (pct < 50)  return 'var(--hp-mid)'
   return 'var(--hp-high)'
 }
+function parseOptionalInt(value) {
+  if (value === '' || value == null) return null
+  const parsed = parseInt(value, 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
+function playerLabel(player) {
+  return player.displayName || player.name || player.github
+}
 
 // ════════════════════════════════════════════════════════════════
 //  Sub-components
@@ -198,11 +206,19 @@ function SessionRow({ session, index, onOpen, nowMs }) {
 function CharRow({ char, onToggleActive, onView }) {
   const pct   = hpPct(char.hpCurrent ?? char.hpMax, char.hpMax)
   const color = hpColor(pct)
+  const canView = !char.manual && !char.dmCreated
   return (
-    <div className={`char-row${char.active ? '' : ' char-row--inactive'}`} onClick={() => onView(char)}>
+    <div
+      className={`char-row${char.active ? '' : ' char-row--inactive'}${canView ? '' : ' char-row--manual'}`}
+      onClick={() => canView && onView(char)}
+    >
       <div className="char-row-info">
         <div className="char-row-name">{char.name}</div>
-        <div className="char-row-class">{char.class} · Lv {char.level}</div>
+        <div className="char-row-class">
+          {char.class || 'Adventurer'} · Lv {char.level ?? 1}
+          {!canView && <span className="char-row-source">Quick ref</span>}
+        </div>
+        {char.keySkills && <div className="char-row-skills">{char.keySkills}</div>}
         <div className="char-row-hp-track">
           <div className="char-row-hp-fill" style={{ width: `${pct}%`, background: color }} />
         </div>
@@ -222,13 +238,14 @@ function CharRow({ char, onToggleActive, onView }) {
 
 // ── Player Block (in party tab) ───────────────────────────────
 function PlayerBlock({ player, onToggleCharActive, onManage, onViewCharacter }) {
+  const label = playerLabel(player)
   return (
     <div className="player-block">
       <div className="player-block-header">
-        <div className="player-avatar">{player.github[0].toUpperCase()}</div>
+        <div className="player-avatar">{label[0].toUpperCase()}</div>
         <div className="player-header-info">
-          <div className="player-github">{player.github}</div>
-          <div className="player-handle">@{player.github}</div>
+          <div className="player-github">{label}</div>
+          <div className="player-handle">{player.github?.startsWith('manual-') ? 'DM-created player' : `@${player.github}`}</div>
         </div>
         <button className="manage-chars-btn" onClick={() => onManage(player)}>
           Manage Characters
@@ -254,12 +271,27 @@ function PlayerBlock({ player, onToggleCharActive, onManage, onViewCharacter }) 
 
 // ── Manage Characters Modal ───────────────────────────────────
 function ManageCharsModal({ token, player, onSave, onClose }) {
-  const [username, setUsername]   = useState(player?.github ?? '')
+  const [mode, setMode]           = useState(player ? 'manual' : 'fetch')
+  const [username, setUsername]   = useState(player?.github?.startsWith('manual-') ? '' : (player?.github ?? ''))
+  const [playerName, setPlayerName] = useState(player?.displayName ?? player?.name ?? '')
   const [fetching, setFetching]   = useState(false)
-  const [fetchedChars, setFetchedChars] = useState([])
+  const [fetchedChars, setFetchedChars] = useState(player?.characters ?? [])
   const [error, setError]         = useState(null)
+  const [manualChar, setManualChar] = useState({
+    name: '',
+    class: '',
+    level: '1',
+    hpCurrent: '',
+    hpMax: '',
+    ac: '',
+    initiative: '',
+    keySkills: '',
+  })
 
   const octokit = new Octokit({ auth: token })
+  const hasManualPlayerId = player?.github?.startsWith('manual-')
+  const resolvedPlayerName = playerName.trim() || username.trim() || player?.displayName || player?.github || 'Player'
+  const resolvedGithub = username.trim() || player?.github || `manual-${genId()}`
 
   const fetchChars = async () => {
     if (!username.trim()) return
@@ -293,6 +325,9 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
               level:        (char.identity?.class ?? []).reduce((s, c) => s + (c.level ?? 0), 0),
               hpCurrent:    char.combat?.hpCurrent ?? char.combat?.hpMax ?? 10,
               hpMax:        char.combat?.hpMax ?? 10,
+              ac:           char.combat?.ac ?? null,
+              initiative:   char.combat?.initiative ?? null,
+              initiativeMod: char.combat?.initiative ?? 0,
               active:       existingChar ? existingChar.active : false,
               inCampaign:   !!existingChar,
             }
@@ -311,9 +346,56 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
     ))
   }
 
+  const removeManualChar = (id) => {
+    setFetchedChars(prev => prev.filter(c => c.characterId !== id))
+  }
+
+  const updateManualChar = (field, value) => {
+    setManualChar(prev => ({ ...prev, [field]: value }))
+  }
+
+  const addManualChar = () => {
+    if (!manualChar.name.trim()) return
+    const hpMax = parseOptionalInt(manualChar.hpMax) ?? 10
+    const hpCurrent = parseOptionalInt(manualChar.hpCurrent) ?? hpMax
+    const initiative = parseOptionalInt(manualChar.initiative)
+    const character = {
+      characterId: `manual-${genId()}`,
+      owner: null,
+      fileName: null,
+      name: manualChar.name.trim(),
+      class: manualChar.class.trim() || 'Adventurer',
+      level: parseOptionalInt(manualChar.level) ?? 1,
+      hpCurrent,
+      hpMax,
+      ac: parseOptionalInt(manualChar.ac),
+      initiative,
+      initiativeMod: initiative ?? 0,
+      keySkills: manualChar.keySkills.trim(),
+      active: true,
+      inCampaign: true,
+      manual: true,
+      dmCreated: true,
+    }
+    setFetchedChars(prev => [...prev, character])
+    setManualChar({
+      name: '',
+      class: '',
+      level: '1',
+      hpCurrent: '',
+      hpMax: '',
+      ac: '',
+      initiative: '',
+      keySkills: '',
+    })
+  }
+
   const save = () => {
     const selected = fetchedChars.filter(c => c.inCampaign || c.active)
-    onSave(username.trim(), selected)
+    onSave(resolvedGithub, selected, {
+      displayName: resolvedPlayerName,
+      manual: hasManualPlayerId || !username.trim(),
+    })
   }
 
   return createPortal(
@@ -321,10 +403,35 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
       <div className="cv-modal-sheet" onClick={e => e.stopPropagation()}>
         <div className="cv-modal-handle" />
         <div className="cv-modal-title">
-          {player ? `Manage Characters — @${player.github}` : 'Add Player'}
+          {player ? `Manage Characters — ${playerLabel(player)}` : 'Add Player'}
         </div>
 
-        {!player && (
+        <div className="player-modal-mode-row">
+          <button
+            className={`player-modal-mode${mode === 'manual' ? ' player-modal-mode--active' : ''}`}
+            type="button"
+            onClick={() => setMode('manual')}
+          >
+            Create quick ref
+          </button>
+          <button
+            className={`player-modal-mode${mode === 'fetch' ? ' player-modal-mode--active' : ''}`}
+            type="button"
+            onClick={() => setMode('fetch')}
+          >
+            Load from GitHub
+          </button>
+        </div>
+
+        <label className="cv-label">Player name</label>
+        <input
+          className="cv-input"
+          placeholder="Optional display name"
+          value={playerName}
+          onChange={e => setPlayerName(e.target.value)}
+        />
+
+        {mode === 'fetch' && (
           <div className="fetch-row">
             <input
               className="cv-input"
@@ -339,7 +446,7 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
           </div>
         )}
 
-        {player && fetchedChars.length === 0 && !fetching && (
+        {mode === 'fetch' && player && fetchedChars.length === 0 && !fetching && (
           <button className="cv-btn cv-btn--ghost" onClick={fetchChars} disabled={fetching}>
             {fetching ? 'Loading…' : 'Refresh Characters'}
           </button>
@@ -353,24 +460,77 @@ function ManageCharsModal({ token, player, onSave, onClose }) {
               <div key={char.characterId} className="fetched-char-row">
                 <div className="fetched-char-info">
                   <div className="fetched-char-name">{char.name}</div>
-                  <div className="fetched-char-sub">{char.class}</div>
+                  <div className="fetched-char-sub">
+                    {char.class}{char.keySkills ? ` · ${char.keySkills}` : ''}
+                  </div>
                 </div>
                 <div className="fetched-char-right">
-                  <button
-                    className={`active-badge${char.active ? ' active-badge--active' : ''}`}
-                    onClick={() => toggle(char.characterId)}
-                  >
-                    {char.inCampaign ? (char.active ? 'Active' : 'Inactive') : '+ Add'}
-                  </button>
+                  {char.manual || char.dmCreated ? (
+                    <button className="active-badge" onClick={() => removeManualChar(char.characterId)}>
+                      Remove
+                    </button>
+                  ) : (
+                    <button
+                      className={`active-badge${char.active ? ' active-badge--active' : ''}`}
+                      onClick={() => toggle(char.characterId)}
+                    >
+                      {char.inCampaign ? (char.active ? 'Active' : 'Inactive') : '+ Add'}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
+        {mode === 'manual' && (
+          <div className="manual-char-form">
+            <div className="manual-char-title">Quick reference character</div>
+            <label className="cv-label">Character name *</label>
+            <input className="cv-input" value={manualChar.name} onChange={e => updateManualChar('name', e.target.value)} placeholder="e.g. Mira" />
+            <div className="cv-input-row">
+              <div>
+                <label className="cv-label">Class / role</label>
+                <input className="cv-input" value={manualChar.class} onChange={e => updateManualChar('class', e.target.value)} placeholder="Rogue" />
+              </div>
+              <div>
+                <label className="cv-label">Level</label>
+                <input className="cv-input" type="number" min="1" value={manualChar.level} onChange={e => updateManualChar('level', e.target.value)} />
+              </div>
+            </div>
+            <div className="cv-input-row">
+              <div>
+                <label className="cv-label">Current HP</label>
+                <input className="cv-input" type="number" min="0" value={manualChar.hpCurrent} onChange={e => updateManualChar('hpCurrent', e.target.value)} placeholder="18" />
+              </div>
+              <div>
+                <label className="cv-label">Max HP</label>
+                <input className="cv-input" type="number" min="1" value={manualChar.hpMax} onChange={e => updateManualChar('hpMax', e.target.value)} placeholder="24" />
+              </div>
+              <div>
+                <label className="cv-label">AC</label>
+                <input className="cv-input" type="number" min="0" value={manualChar.ac} onChange={e => updateManualChar('ac', e.target.value)} placeholder="15" />
+              </div>
+            </div>
+            <div className="cv-input-row">
+              <div>
+                <label className="cv-label">Initiative</label>
+                <input className="cv-input" type="number" value={manualChar.initiative} onChange={e => updateManualChar('initiative', e.target.value)} placeholder="+3" />
+              </div>
+              <div>
+                <label className="cv-label">Key skills</label>
+                <input className="cv-input" value={manualChar.keySkills} onChange={e => updateManualChar('keySkills', e.target.value)} placeholder="Stealth, Insight" />
+              </div>
+            </div>
+            <button className="cv-btn cv-btn--dm manual-char-add" onClick={addManualChar} disabled={!manualChar.name.trim()}>
+              Add Quick Ref
+            </button>
+          </div>
+        )}
+
         <div className="cv-modal-actions">
           <button className="cv-btn cv-btn--ghost" onClick={onClose}>Cancel</button>
-          {fetchedChars.length > 0 && (
+          {(fetchedChars.length > 0 || playerName.trim() || username.trim()) && (
             <button className="cv-btn cv-btn--accent" onClick={save}>Save</button>
           )}
         </div>
@@ -1482,13 +1642,13 @@ export default function CampaignView({ token, user, campaign, onBack, onOpenSess
   }
 
   // ── Party tab actions ──
-  const handleManageSave = async (github, characters) => {
+  const handleManageSave = async (github, characters, playerPatch = {}) => {
     const updated = [...party]
     const idx = updated.findIndex(p => p.github === github)
     if (idx >= 0) {
-      updated[idx] = { ...updated[idx], characters }
+      updated[idx] = { ...updated[idx], ...playerPatch, github, characters }
     } else {
-      updated.push({ github, characters })
+      updated.push({ github, ...playerPatch, characters })
     }
     setParty(updated)
     await saveFile('party.json', { players: updated })

@@ -59,6 +59,11 @@ const SESSION_TABS = [
 function CharRefCard({ char, isPresent, onTogglePresent }) {
   const pct   = hpPct(char.hpCurrent, char.hpMax)
   const color = hpColor(pct)
+  const details = [
+    char.race,
+    char.class || 'Adventurer',
+    `Lv ${char.level ?? 1}`,
+  ].filter(Boolean).join(' · ')
 
   return (
     <div className={`crc${!isPresent ? ' crc--absent' : ''}`}>
@@ -76,7 +81,7 @@ function CharRefCard({ char, isPresent, onTogglePresent }) {
         <div className="crc-portrait">{char.portrait ? <img src={char.portrait} alt={char.name} /> : <img src="/uploads/placeholders/default-portrait.jpg" alt="" />}</div>
         <div className="crc-header-info">
           <div className="crc-name">{char.name}</div>
-          <div className="crc-sub">{char.race} · {char.class} · Lv {char.level}</div>
+          <div className="crc-sub">{details}</div>
         </div>
       </div>
 
@@ -131,6 +136,12 @@ function CharRefCard({ char, isPresent, onTogglePresent }) {
           <div className="crc-sec-row">
             <span className="crc-sec-label">Alignment</span>
             <span className="crc-sec-val">{char.alignment}</span>
+          </div>
+        )}
+        {char.keySkills && (
+          <div className="crc-sec-row">
+            <span className="crc-sec-label">Key Skills</span>
+            <span className="crc-sec-val">{char.keySkills}</span>
           </div>
         )}
       </div>
